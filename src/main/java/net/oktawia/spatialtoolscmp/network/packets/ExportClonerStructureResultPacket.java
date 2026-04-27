@@ -2,7 +2,7 @@ package net.oktawia.spatialtoolscmp.network.packets;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.crazyae2addons.client.misc.ClonerStructureFileTransferClient;
+import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureFileTransferClient;
 
 import java.util.function.Supplier;
 

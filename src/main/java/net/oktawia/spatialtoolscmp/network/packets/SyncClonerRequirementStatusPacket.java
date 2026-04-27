@@ -3,8 +3,8 @@ package net.oktawia.spatialtoolscmp.network.packets;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.crazyae2addons.client.misc.ClonerMaterialListWidget;
-import net.oktawia.crazyae2addons.client.misc.PortableSpatialClonerRequirementSync;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
+import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
 
 import java.util.ArrayList;
 import java.util.List;

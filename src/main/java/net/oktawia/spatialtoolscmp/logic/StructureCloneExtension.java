@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;

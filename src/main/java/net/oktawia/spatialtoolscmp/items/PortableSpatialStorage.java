@@ -1,7 +1,5 @@
 package net.oktawia.spatialtoolscmp.items;
 
-import appeng.api.config.Actionable;
-import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -15,7 +13,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
@@ -23,11 +20,11 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlac
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.oktawia.crazyae2addons.CrazyConfig;
-import net.oktawia.crazyae2addons.defs.LangDefs;
-import net.oktawia.crazyae2addons.defs.regs.CrazyMenuRegistrar;
-import net.oktawia.crazyae2addons.logic.structuretool.*;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.SpatialConfig;
+import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
+import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.logic.*;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -37,7 +34,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     private static final String STORAGE_UNDO_TYPE_KEY = "storageUndoType";
     private static final String STORAGE_UNDO_DIMENSION_KEY = "storageUndoDimension";
-    private static final String STORAGE_UNDO_ENERGY_KEY = "storageUndoEnergy";
 
     private static final String STORAGE_UNDO_TYPE_CUT = "cut";
     private static final String STORAGE_UNDO_TYPE_PASTE = "paste";
@@ -55,11 +51,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     private static final String STORAGE_UNDO_MAX_Z_KEY = "storageUndoMaxZ";
 
     public PortableSpatialStorage(Item.Properties properties) {
-        super(
-                CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY::get,
-                DEFAULT_UPGRADE_SLOTS,
-                properties
-        );
+        super(SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY::get, 4, 4, properties);
     }
 
     public static BlockHitResult rayTrace(Level level, Player player, double maxDistance) {
@@ -68,7 +60,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     @Override
     protected MenuType<?> getToolMenuType() {
-        return CrazyMenuRegistrar.PORTABLE_SPATIAL_STORAGE_MENU.get();
+        return SpatialMenuRegistrar.PORTABLE_SPATIAL_STORAGE_MENU.get();
     }
 
     @Override
@@ -87,23 +79,18 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     }
 
     @Override
-    protected boolean isToolEnabled() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENABLED.get();
-    }
-
-    @Override
     protected double getPowerPerBlockCapture() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get();
     }
 
     @Override
     protected double getPowerPerBlockPaste() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get();
     }
 
     @Override
     protected int getMaxStructureSize() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_MAX_STRUCTURE_SIZE.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_MAX_STRUCTURE_SIZE.get();
     }
 
     @Override
@@ -149,8 +136,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 level,
                 result.origin(),
                 result.min(),
-                result.max(),
-                result.usedPower()
+                result.max()
         );
     }
 
@@ -167,17 +153,13 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     }
 
     @Override
-    protected void onUseOnWithStoredStructure(ServerLevel level, Player player, ItemStack stack, BlockPos clickedFacePos) {
+    protected void onUseOnWithStoredStructure(
+            ServerLevel level,
+            Player player,
+            ItemStack stack,
+            BlockPos clickedFacePos
+    ) {
         paste(level, player, stack, clickedFacePos);
-    }
-
-    private double calculateStructurePower(CompoundTag templateTag, BlockPos localOrigin, double baseCostPerBlock) {
-        return StructureToolUtil.calculatePreviewStructurePower(
-                templateTag,
-                localOrigin,
-                baseCostPerBlock,
-                getEnergyCostMultiplier()
-        );
     }
 
     private void paste(ServerLevel level, Player player, ItemStack stack, BlockPos origin) {
@@ -186,7 +168,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 player,
                 stack,
                 origin,
-                true,
                 true,
                 true,
                 true
@@ -198,7 +179,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             Player player,
             ItemStack stack,
             BlockPos origin,
-            boolean consumePower,
             boolean clearAfterPaste,
             boolean recordUndoPaste,
             boolean showSuccess
@@ -246,22 +226,10 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return false;
         }
 
-        BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(savedTag);
-        double requiredPower = calculateStructurePower(savedTag, energyOrigin, getPowerPerBlockPaste());
-        double usedPower = 0.0D;
-
-        if (consumePower && !player.isCreative()) {
-            if (!tryUsePower(player, stack, requiredPower)) {
-                showNotEnoughPower(player, stack, requiredPower);
-                return false;
-            }
-
-            usedPower = requiredPower;
-        }
-
         StructureTemplate template = new StructureTemplate();
         template.load(level.registryAccess().lookupOrThrow(Registries.BLOCK), savedTag);
 
+        BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(savedTag);
         BlockPos templateOffset = TemplateUtil.getTemplateOffset(savedTag);
         BlockPos placementOrigin = origin.subtract(energyOrigin).offset(templateOffset);
 
@@ -286,8 +254,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                         level,
                         origin,
                         bounds.min(),
-                        bounds.max(),
-                        usedPower
+                        bounds.max()
                 );
             }
         }
@@ -359,7 +326,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     private void undoCut(ServerLevel level, Player player, ItemStack stack) {
         CompoundTag tag = stack.getOrCreateTag();
         BlockPos origin = readUndoOrigin(tag);
-        double refund = tag.getDouble(STORAGE_UNDO_ENERGY_KEY);
 
         if (!StructureToolStackState.hasStructure(stack)) {
             clearStorageUndo(stack);
@@ -380,7 +346,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 player,
                 stack,
                 origin,
-                false,
                 true,
                 false,
                 false
@@ -390,15 +355,13 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        refundEnergy(stack, refund);
         clearStorageUndo(stack);
 
         showHud(
                 player,
                 HUD_TIME_MEDIUM,
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_CUT_UNDONE.getTranslationKey())),
-                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_ENERGY_REFUNDED.getTranslationKey()))
+                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_CUT_UNDONE.getTranslationKey()))
         );
     }
 
@@ -408,7 +371,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         BlockPos min = readUndoMin(tag);
         BlockPos max = readUndoMax(tag);
         BlockPos origin = readUndoOrigin(tag);
-        double refund = tag.getDouble(STORAGE_UNDO_ENERGY_KEY);
 
         CapturedStructureResult result = captureStructureFromBounds(
                 level,
@@ -427,7 +389,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        refundEnergy(stack, refund);
+        clearStorageUndo(stack);
 
         showHud(
                 player,
@@ -438,30 +400,17 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         );
     }
 
-    private void refundEnergy(ItemStack stack, double amount) {
-        if (amount <= 0.0D) {
-            return;
-        }
-
-        try {
-            injectAEPower(stack, amount, Actionable.MODULATE);
-        } catch (Throwable ignored) {
-        }
-    }
-
     private void storeUndoCut(
             ItemStack stack,
             ServerLevel level,
             BlockPos origin,
             BlockPos min,
-            BlockPos max,
-            double usedPower
+            BlockPos max
     ) {
         CompoundTag tag = stack.getOrCreateTag();
 
         tag.putString(STORAGE_UNDO_TYPE_KEY, STORAGE_UNDO_TYPE_CUT);
         tag.putString(STORAGE_UNDO_DIMENSION_KEY, level.dimension().location().toString());
-        tag.putDouble(STORAGE_UNDO_ENERGY_KEY, usedPower);
 
         writeUndoOrigin(tag, origin);
         writeUndoMin(tag, min);
@@ -473,14 +422,12 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             BlockPos origin,
             BlockPos min,
-            BlockPos max,
-            double usedPower
+            BlockPos max
     ) {
         CompoundTag tag = stack.getOrCreateTag();
 
         tag.putString(STORAGE_UNDO_TYPE_KEY, STORAGE_UNDO_TYPE_PASTE);
         tag.putString(STORAGE_UNDO_DIMENSION_KEY, level.dimension().location().toString());
-        tag.putDouble(STORAGE_UNDO_ENERGY_KEY, usedPower);
 
         writeUndoOrigin(tag, origin);
         writeUndoMin(tag, min);
@@ -496,7 +443,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
         tag.remove(STORAGE_UNDO_TYPE_KEY);
         tag.remove(STORAGE_UNDO_DIMENSION_KEY);
-        tag.remove(STORAGE_UNDO_ENERGY_KEY);
 
         tag.remove(STORAGE_UNDO_ORIGIN_X_KEY);
         tag.remove(STORAGE_UNDO_ORIGIN_Y_KEY);
@@ -649,23 +595,11 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         return false;
     }
 
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag advancedTooltips) {
-        super.appendHoverText(stack, level, tooltip, advancedTooltips);
-
-        if (!CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENABLED.get()) {
-            tooltip.add(Component.translatable(LangDefs.FEATURE_DISABLED.getTranslationKey())
-                    .withStyle(ChatFormatting.RED));
-            tooltip.add(Component.translatable(LangDefs.FEATURE_DISABLED_CONFIG.getTranslationKey())
-                    .withStyle(ChatFormatting.GRAY));
-        }
-    }
-
     private record BlockBounds(BlockPos min, BlockPos max) {
     }
 
     @Override
     protected double getEnergyCostMultiplier() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
     }
 }

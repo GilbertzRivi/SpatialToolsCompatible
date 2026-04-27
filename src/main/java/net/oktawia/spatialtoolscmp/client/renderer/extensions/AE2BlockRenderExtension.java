@@ -18,10 +18,10 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
-import net.oktawia.crazyae2addons.client.renderer.preview.BlockRenderExtension;
-import net.oktawia.crazyae2addons.client.renderer.preview.PreviewBlock;
-import net.oktawia.crazyae2addons.client.renderer.preview.PreviewBlockAndTintGetter;
-import net.oktawia.crazyae2addons.util.StructureToolKeys;
+import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
+import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
+import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
+import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;

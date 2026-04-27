@@ -16,17 +16,17 @@ import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
-import net.oktawia.crazyae2addons.CrazyAddons;
-import net.oktawia.crazyae2addons.CrazyConfig;
-import net.oktawia.crazyae2addons.defs.LangDefs;
-import net.oktawia.crazyae2addons.items.PortableSpatialCloner;
-import net.oktawia.crazyae2addons.items.PortableSpatialStorage;
-import net.oktawia.crazyae2addons.logic.structuretool.AbstractStructureCaptureToolItem;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolStackState;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolUtil;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.SpatialConfig;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
+import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
+import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
-@Mod.EventBusSubscriber(modid = CrazyAddons.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
+@Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class GadgetCostPreviewClient {
 
     private static final int COLOR_OK = 0xFFFFFF;
@@ -78,7 +78,7 @@ public class GadgetCostPreviewClient {
             return;
         }
 
-        int energy = (int) Math.floor(tool.getAECurrentPower(held));
+        int energy = 1_000_000;
 
         if (StructureToolStackState.hasStructure(held)) {
             CAPTURE_COST_CACHE.invalidate();
@@ -148,13 +148,13 @@ public class GadgetCostPreviewClient {
 
     private static double getEffectivePowerPerBlock(ItemStack stack) {
         if (stack.getItem() instanceof PortableSpatialStorage) {
-            return CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get()
-                    * CrazyConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
+            return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get()
+                    * SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
         }
 
         if (stack.getItem() instanceof PortableSpatialCloner) {
-            return CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get()
-                    * CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
+            return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get()
+                    * SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
         }
 
         return 0.0D;

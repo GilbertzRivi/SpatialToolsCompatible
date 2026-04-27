@@ -1,51 +1,57 @@
 package net.oktawia.spatialtoolscmp.menus;
 
-import appeng.api.config.Actionable;
-import appeng.api.networking.IGrid;
-import appeng.api.networking.security.IActionSource;
-import appeng.api.stacks.AEItemKey;
-import appeng.api.storage.MEStorage;
-import appeng.items.tools.powered.WirelessTerminalItem;
-import appeng.menu.locator.MenuLocators;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.crazyae2addons.CrazyAddons;
-import net.oktawia.crazyae2addons.defs.regs.CrazyMenuRegistrar;
-import net.oktawia.crazyae2addons.logic.structuretool.ClonerStructureLibraryStore;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolHost;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolStackState;
-import net.oktawia.crazyae2addons.network.NetworkHandler;
-import net.oktawia.crazyae2addons.network.packets.structures.SyncClonerLibraryPacket;
-import net.oktawia.crazyae2addons.network.packets.structures.SyncClonerRequirementStatusPacket;
-import net.oktawia.crazyae2addons.util.Ae2clOpenCraftingMenu;
-import net.oktawia.crazyae2addons.util.StructureToolKeys;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
+import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
+import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.RequestClonerCraftingPacket;
+import net.oktawia.spatialtoolscmp.network.packets.SyncClonerLibraryPacket;
+import net.oktawia.spatialtoolscmp.network.packets.SyncClonerRequirementStatusPacket;
+import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu {
 
-    private static final String ACTION_CRAFT_REQUEST = "craft_request";
-
     private int requirementSyncTick = 0;
 
-    public PortableSpatialClonerMenu(int id, Inventory playerInventory, StructureToolHost host) {
-        super(CrazyMenuRegistrar.PORTABLE_SPATIAL_CLONER_MENU.get(), id, playerInventory, host);
-
-        registerClientAction(ACTION_CRAFT_REQUEST, String.class, this::craftRequest);
+    public PortableSpatialClonerMenu(int id, Inventory playerInventory) {
+        super(
+                SpatialMenuRegistrar.PORTABLE_SPATIAL_CLONER_MENU.get(),
+                id,
+                playerInventory,
+                findToolStack(playerInventory)
+        );
 
         if (!isClientSide()) {
             syncRequirementsToClient();
             syncLibraryToClient();
         }
+    }
+
+    private static ItemStack findToolStack(Inventory playerInventory) {
+        ItemStack stack = PortableSpatialCloner.findActive(playerInventory.player);
+
+        if (stack.isEmpty()) {
+            stack = PortableSpatialCloner.findHeld(playerInventory.player);
+        }
+
+        return stack;
     }
 
     @Override
@@ -54,10 +60,91 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
 
         if (!isClientSide()) {
             requirementSyncTick++;
+
             if (requirementSyncTick >= 20) {
                 requirementSyncTick = 0;
                 syncRequirementsToClient();
             }
+        }
+    }
+
+    @Override
+    protected boolean hasStoredStructure() {
+        return !StructureToolStackState.getStructureId(getItemStack()).isBlank();
+    }
+
+    @Override
+    protected byte[] getStructureBytes() {
+        if (!(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return null;
+        }
+
+        try {
+            CompoundTag tag = ClonerStructureLibraryStore.loadSelectedOrMigrateLegacy(
+                    serverPlayer.server,
+                    serverPlayer.getUUID(),
+                    getItemStack()
+            );
+
+            if (tag == null || tag.isEmpty()) {
+                return null;
+            }
+
+            return TemplateUtil.compressNbt(tag);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    @Override
+    protected void setStructureBytes(byte[] bytes) {
+        if (!(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+
+        if (bytes == null || bytes.length == 0) {
+            return;
+        }
+
+        try {
+            CompoundTag tag = TemplateUtil.decompressNbt(bytes);
+            String currentId = StructureToolStackState.getStructureId(getItemStack());
+
+            if (currentId == null || currentId.isBlank()) {
+                ClonerStructureLibraryStore.Entry entry = ClonerStructureLibraryStore.saveForCurrentSelection(
+                        serverPlayer.server,
+                        serverPlayer.getUUID(),
+                        getItemStack(),
+                        tag
+                );
+
+                StructureToolStackState.setSelectedClonerLibraryEntry(
+                        getItemStack(),
+                        serverPlayer.getUUID(),
+                        entry.id()
+                );
+
+                syncLibraryToClient();
+                syncRequirementsToClient();
+                return;
+            }
+
+            ClonerStructureLibraryStore.saveExisting(
+                    serverPlayer.server,
+                    serverPlayer.getUUID(),
+                    currentId,
+                    tag
+            );
+
+            StructureToolStackState.setSelectedClonerLibraryEntry(
+                    getItemStack(),
+                    serverPlayer.getUUID(),
+                    currentId
+            );
+
+            syncLibraryToClient();
+            syncRequirementsToClient();
+        } catch (Exception ignored) {
         }
     }
 
@@ -71,7 +158,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                     serverPlayer,
                     SyncClonerLibraryPacket.fromStoreEntries(
                             ClonerStructureLibraryStore.list(serverPlayer.server, serverPlayer.getUUID()),
-                            StructureToolStackState.getStructureId(host.getItemStack())
+                            StructureToolStackState.getStructureId(getItemStack())
                     )
             );
         } catch (Exception ignored) {
@@ -79,27 +166,98 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                     serverPlayer,
                     SyncClonerLibraryPacket.fromStoreEntries(
                             List.of(),
-                            StructureToolStackState.getStructureId(host.getItemStack())
+                            StructureToolStackState.getStructureId(getItemStack())
                     )
             );
         }
     }
 
-    public void craftRequest(String format) {
-        if (isClientSide()) {
-            CrazyAddons.LOGGER.info("sending client action");
-            sendClientAction(ACTION_CRAFT_REQUEST, format);
-        } else {
-            var item = ForgeRegistries.ITEMS.getValue(ResourceLocation.parse(format.split("\\|")[0]));
-            if (item != null) {
-                String[] parts = format.split("\\|");
+    public void craftRequest(ResourceLocation itemId, long amount) {
+        if (itemId == null || amount <= 0) {
+            return;
+        }
 
-                Ae2clOpenCraftingMenu.open(
-                        (ServerPlayer) getPlayer(),
-                        MenuLocators.forHand(getPlayer(), getPlayer().swingingArm),
-                        AEItemKey.of(item),
-                        Long.parseLong(parts[1])
-                );
+        if (isClientSide()) {
+            NetworkHandler.sendToServer(new RequestClonerCraftingPacket(
+                    this.containerId,
+                    itemId,
+                    amount
+            ));
+            return;
+        }
+
+        handleCraftRequest(itemId, amount);
+    }
+
+    public void craftRequest(String format) {
+        if (format == null || format.isBlank()) {
+            return;
+        }
+
+        String[] parts = format.split("\\|");
+
+        if (parts.length < 2) {
+            return;
+        }
+
+        ResourceLocation itemId = ResourceLocation.tryParse(parts[0]);
+
+        if (itemId == null) {
+            return;
+        }
+
+        long amount;
+
+        try {
+            amount = Long.parseLong(parts[1]);
+        } catch (NumberFormatException ignored) {
+            return;
+        }
+
+        craftRequest(itemId, amount);
+    }
+
+    public void handleCraftRequest(ResourceLocation itemId, long amount) {
+        if (isClientSide()) {
+            return;
+        }
+
+        if (itemId == null || amount <= 0) {
+            return;
+        }
+
+        if (!(getPlayer() instanceof ServerPlayer serverPlayer)) {
+            return;
+        }
+
+        if (!(serverPlayer.level() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        if (!hasCraftingUpgradeInstalled()) {
+            return;
+        }
+
+        if (IsModLoaded.AE2) {
+            try {
+                Item item = ForgeRegistries.ITEMS.getValue(itemId);
+
+                if (item == null) {
+                    return;
+                }
+
+                ItemStack filter = new ItemStack(item);
+
+                if (filter.isEmpty()) {
+                    return;
+                }
+
+                if (!AE2MEOps.isCraftable(filter, getItemStack(), serverLevel)) {
+                    return;
+                }
+
+                AE2MEOps.openCraftingMenu(filter, amount, serverPlayer);
+            } catch (Throwable ignored) {
             }
         }
     }
@@ -111,21 +269,26 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
 
         NetworkHandler.sendToPlayer(
                 serverPlayer,
-                new SyncClonerRequirementStatusPacket(this.containerId, buildRequirementEntries())
+                new SyncClonerRequirementStatusPacket(
+                        this.containerId,
+                        buildRequirementEntries()
+                )
         );
     }
 
     private List<SyncClonerRequirementStatusPacket.Entry> buildRequirementEntries() {
-        if (!host.hasStoredStructure()) {
+        if (!hasStoredStructure()) {
             return List.of();
         }
 
-        byte[] bytes = host.getStructureBytes();
+        byte[] bytes = getStructureBytes();
+
         if (bytes == null || bytes.length == 0) {
             return List.of();
         }
 
         CompoundTag structureTag;
+
         try {
             structureTag = TemplateUtil.decompressNbt(bytes);
         } catch (Exception ignored) {
@@ -137,6 +300,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
         }
 
         CompoundTag metadata = structureTag.getCompound(StructureToolKeys.CLONE_METADATA_KEY);
+
         if (!metadata.contains(StructureToolKeys.CLONE_REQUIREMENTS_KEY, Tag.TAG_LIST)) {
             return List.of();
         }
@@ -145,20 +309,6 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                 StructureToolKeys.CLONE_REQUIREMENTS_KEY,
                 Tag.TAG_COMPOUND
         );
-
-        IGrid grid = resolveGrid();
-        MEStorage meStorage = null;
-        IActionSource actionSource = null;
-
-        if (grid != null) {
-            try {
-                meStorage = grid.getStorageService().getInventory();
-                actionSource = IActionSource.ofPlayer(getPlayer());
-            } catch (Exception ignored) {
-                meStorage = null;
-                actionSource = null;
-            }
-        }
 
         List<SyncClonerRequirementStatusPacket.Entry> out = new ArrayList<>();
 
@@ -170,6 +320,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             }
 
             ItemStack stack = ItemStack.of(row.getCompound(StructureToolKeys.CLONE_KEY_STACK));
+
             if (stack.isEmpty()) {
                 continue;
             }
@@ -179,20 +330,29 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
 
             long required = Math.max(1L, row.getLong(StructureToolKeys.CLONE_KEY_COUNT));
             long available = countPlayerInventory(stack);
-
-            AEItemKey key = AEItemKey.of(stack);
             boolean craftable = false;
 
-            if (key != null && meStorage != null && actionSource != null) {
-                try {
-                    available += meStorage.extract(key, Long.MAX_VALUE, Actionable.SIMULATE, actionSource);
-                } catch (Exception ignored) {
-                }
+            if (getPlayer().level() instanceof ServerLevel serverLevel) {
+                if (IsModLoaded.AE2) {
+                    try {
+                        available += AE2MEOps.getAmount(
+                                stack,
+                                getItemStack(),
+                                serverLevel
+                        );
+                    } catch (Throwable ignored) {
+                    }
 
-                try {
-                    craftable = grid != null && grid.getCraftingService().isCraftable(key);
-                } catch (Exception ignored) {
-                    craftable = false;
+                    try {
+                        craftable = hasCraftingUpgradeInstalled()
+                                && AE2MEOps.isCraftable(
+                                stack,
+                                getItemStack(),
+                                serverLevel
+                        );
+                    } catch (Throwable ignored) {
+                        craftable = false;
+                    }
                 }
             }
 
@@ -208,39 +368,25 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
     }
 
     private long countPlayerInventory(ItemStack targetStack) {
-        AEItemKey targetKey = AEItemKey.of(targetStack);
-        if (targetKey == null) {
+        if (targetStack.isEmpty()) {
             return 0L;
         }
 
         long total = 0L;
-        var inventory = getPlayer().getInventory();
+        Inventory inventory = getPlayer().getInventory();
 
         for (ItemStack stack : inventory.items) {
-            if (!stack.isEmpty() && targetKey.equals(AEItemKey.of(stack))) {
+            if (!stack.isEmpty() && ItemStack.isSameItemSameTags(stack, targetStack)) {
                 total += stack.getCount();
             }
         }
 
         for (ItemStack stack : inventory.offhand) {
-            if (!stack.isEmpty() && targetKey.equals(AEItemKey.of(stack))) {
+            if (!stack.isEmpty() && ItemStack.isSameItemSameTags(stack, targetStack)) {
                 total += stack.getCount();
             }
         }
 
         return total;
-    }
-
-    private @Nullable IGrid resolveGrid() {
-        ItemStack stack = host.getItemStack();
-        if (!(stack.getItem() instanceof WirelessTerminalItem wirelessTerminalItem)) {
-            return null;
-        }
-
-        try {
-            return wirelessTerminalItem.getLinkedGrid(stack, getPlayer().level(), getPlayer());
-        } catch (Exception ignored) {
-            return null;
-        }
     }
 }

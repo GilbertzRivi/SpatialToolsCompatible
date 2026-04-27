@@ -1,6 +1,7 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
 import com.gregtechceu.gtceu.api.block.PipeBlock;
+import com.gregtechceu.gtceu.api.pipenet.IPipeNode;
 import com.gregtechceu.gtceu.client.model.PipeModel;
 import com.gregtechceu.gtceu.client.renderer.block.PipeBlockRenderer;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -18,29 +19,27 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.ChunkRenderTypeSet;
 import net.minecraftforge.client.model.BakedModelWrapper;
 import net.minecraftforge.client.model.data.ModelData;
-import net.minecraftforge.client.model.data.ModelProperty;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.crazyae2addons.client.renderer.preview.BlockRenderExtension;
-import net.oktawia.crazyae2addons.client.renderer.preview.PreviewBlock;
-import net.oktawia.crazyae2addons.client.renderer.preview.PreviewBlockAndTintGetter;
+import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
+import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
+import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
 import org.jetbrains.annotations.Nullable;
 
-import java.lang.reflect.Field;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
-public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
+import static com.lowdragmc.lowdraglib.client.model.forge.LDLRendererModel.RendererBakedModel.CURRENT_MODEL_DATA;
+import static com.lowdragmc.lowdraglib.client.model.forge.LDLRendererModel.RendererBakedModel.CURRENT_RENDER_TYPE;
+import static com.lowdragmc.lowdraglib.client.model.forge.LDLRendererModel.RendererBakedModel.MODEL_DATA;
 
-    private static final String GT_MODEL_PROPERTIES_CLASS =
-            "com.gregtechceu.gtceu.client.model.GTModelProperties";
+public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
 
     private static final RenderType PIPE_RENDER_TYPE = RenderType.cutoutMipped();
 
@@ -72,7 +71,10 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         }
 
         Set<RenderType> types = new LinkedHashSet<>();
+
+        types.add(RenderType.cutout());
         types.add(PIPE_RENDER_TYPE);
+        types.add(RenderType.translucent());
 
         BlockState frameState = getGregFrameState(tag);
 
@@ -120,85 +122,60 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         int connections = tag.getInt("connections");
         int blockedConnections = tag.getInt("blockedConnections");
 
+        boolean hasPipeNode = getPipeNode(localLevel, localPos) != null;
         boolean renderedAnything = false;
 
-        if (renderType == PIPE_RENDER_TYPE) {
-            if (tryRenderRealGregPipeModel(
-                    modelRenderer,
-                    localLevel,
-                    model,
-                    state,
-                    localPos,
-                    poseStack,
-                    vertexConsumer,
-                    seed,
-                    connections,
-                    blockedConnections
-            )) {
-                renderedAnything = true;
-            } else {
-                PipeBlockRenderer pipeRenderer = pipeBlock.getRenderer(state);
+        if (isPipeOrCoverRenderType(renderType)) {
+            PipeBlockRenderer pipeRenderer = pipeBlock.getRenderer(state);
 
-                if (pipeRenderer != null) {
-                    PipeModel pipeModel = pipeRenderer.getPipeModel();
+            if (hasPipeNode && pipeRenderer != null) {
+                renderedAnything = renderDirectPipeRendererModel(
+                        pipeRenderer,
+                        modelRenderer,
+                        localLevel,
+                        model,
+                        state,
+                        localPos,
+                        poseStack,
+                        vertexConsumer,
+                        renderType,
+                        seed,
+                        modelData
+                );
+            }
 
-                    if (pipeModel != null) {
-                        BakedModel pipePreviewModel = createPipePreviewModel(
-                                model,
-                                pipeModel,
-                                connections,
-                                blockedConnections
-                        );
-
-                        modelRenderer.tesselateBlock(
-                                localLevel,
-                                pipePreviewModel,
-                                state,
-                                localPos,
-                                poseStack,
-                                vertexConsumer,
-                                false,
-                                RandomSource.create(seed),
-                                seed,
-                                OverlayTexture.NO_OVERLAY,
-                                ModelData.EMPTY,
-                                PIPE_RENDER_TYPE
-                        );
-
-                        renderedAnything = true;
-                    }
-                }
+            if (!renderedAnything && renderType == PIPE_RENDER_TYPE) {
+                renderedAnything = renderFallbackPipeModel(
+                        pipeBlock,
+                        modelRenderer,
+                        localLevel,
+                        model,
+                        state,
+                        localPos,
+                        poseStack,
+                        vertexConsumer,
+                        seed,
+                        connections,
+                        blockedConnections
+                );
             }
         }
 
-        BlockState frameState = getGregFrameState(tag);
-
-        if (frameState == null) {
-            return renderedAnything;
-        }
-
-        BakedModel frameModel = dispatcher.getBlockModel(frameState);
-
-        if (!shouldRenderFrameInPass(frameModel, frameState, renderType, seed)) {
-            return renderedAnything;
-        }
-
-        modelRenderer.tesselateBlock(
+        if (!hasPipeNode && renderFallbackFrame(
+                dispatcher,
+                modelRenderer,
                 localLevel,
-                frameModel,
-                frameState,
+                tag,
                 localPos,
                 poseStack,
                 vertexConsumer,
-                false,
-                RandomSource.create(seed),
-                seed,
-                OverlayTexture.NO_OVERLAY,
-                ModelData.EMPTY,
-                renderType
-        );
+                renderType,
+                seed
+        )) {
+            return true;
+        }
 
-        return true;
+        return renderedAnything;
     }
 
     @Override
@@ -227,94 +204,240 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         int connections = tag.getInt("connections");
         int blockedConnections = tag.getInt("blockedConnections");
 
+        boolean hasPipeNode = getPipeNode(localLevel, localPos) != null;
+
         Set<RenderType> renderTypes = collectWidgetRenderTypes(
                 dispatcher,
                 tag,
                 seed
         );
 
+        boolean renderedAnything = false;
+
         for (RenderType renderType : renderTypes) {
-            if (renderType == PIPE_RENDER_TYPE) {
-                VertexConsumer guiConsumer = bufferSource.getBuffer(
-                        RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS)
-                );
+            VertexConsumer consumer = bufferSource.getBuffer(toGuiSafeRenderType(renderType));
 
-                if (!tryRenderRealGregPipeModel(
-                        dispatcher.getModelRenderer(),
-                        localLevel,
-                        model,
-                        state,
-                        localPos,
-                        poseStack,
-                        guiConsumer,
-                        seed,
-                        connections,
-                        blockedConnections
-                )) {
-                    PipeBlockRenderer pipeRenderer = pipeBlock.getRenderer(state);
+            if (isPipeOrCoverRenderType(renderType)) {
+                PipeBlockRenderer pipeRenderer = pipeBlock.getRenderer(state);
+                boolean renderedPipePass = false;
 
-                    if (pipeRenderer != null) {
-                        PipeModel pipeModel = pipeRenderer.getPipeModel();
+                if (hasPipeNode && pipeRenderer != null) {
+                    renderedPipePass = renderDirectPipeRendererModel(
+                            pipeRenderer,
+                            dispatcher.getModelRenderer(),
+                            localLevel,
+                            model,
+                            state,
+                            localPos,
+                            poseStack,
+                            consumer,
+                            renderType,
+                            seed,
+                            ModelData.EMPTY
+                    );
+                }
 
-                        if (pipeModel != null) {
-                            BakedModel pipePreviewModel = createPipePreviewModel(
-                                    model,
-                                    pipeModel,
-                                    connections,
-                                    blockedConnections
-                            );
+                if (!renderedPipePass && renderType == PIPE_RENDER_TYPE) {
+                    renderedPipePass = renderFallbackPipeModel(
+                            pipeBlock,
+                            dispatcher.getModelRenderer(),
+                            localLevel,
+                            model,
+                            state,
+                            localPos,
+                            poseStack,
+                            consumer,
+                            seed,
+                            connections,
+                            blockedConnections
+                    );
+                }
 
-                            dispatcher.getModelRenderer().tesselateBlock(
-                                    localLevel,
-                                    pipePreviewModel,
-                                    state,
-                                    localPos,
-                                    poseStack,
-                                    guiConsumer,
-                                    false,
-                                    RandomSource.create(seed),
-                                    seed,
-                                    OverlayTexture.NO_OVERLAY,
-                                    ModelData.EMPTY,
-                                    PIPE_RENDER_TYPE
-                            );
-                        }
-                    }
+                if (renderedPipePass) {
+                    renderedAnything = true;
                 }
             }
 
-            BlockState frameState = getGregFrameState(tag);
-
-            if (frameState == null) {
-                continue;
-            }
-
-            BakedModel frameModel = dispatcher.getBlockModel(frameState);
-
-            if (!shouldRenderFrameInPass(frameModel, frameState, renderType, seed)) {
-                continue;
-            }
-
-            dispatcher.getModelRenderer().tesselateBlock(
+            if (renderFallbackFrame(
+                    dispatcher,
+                    dispatcher.getModelRenderer(),
                     localLevel,
-                    frameModel,
-                    frameState,
+                    tag,
                     localPos,
                     poseStack,
-                    bufferSource.getBuffer(toGuiSafeRenderType(renderType)),
+                    consumer,
+                    renderType,
+                    seed
+            )) {
+                renderedAnything = true;
+            }
+        }
+
+        return renderedAnything;
+    }
+
+    private static @Nullable IPipeNode<?, ?> getPipeNode(
+            PreviewBlockAndTintGetter localLevel,
+            BlockPos localPos
+    ) {
+        if (localLevel.getBlockEntity(localPos) instanceof IPipeNode<?, ?> pipeNode) {
+            return pipeNode;
+        }
+
+        return null;
+    }
+
+    private static boolean renderDirectPipeRendererModel(
+            PipeBlockRenderer pipeRenderer,
+            ModelBlockRenderer modelRenderer,
+            PreviewBlockAndTintGetter localLevel,
+            BakedModel baseModel,
+            BlockState state,
+            BlockPos localPos,
+            PoseStack poseStack,
+            VertexConsumer vertexConsumer,
+            RenderType renderType,
+            long seed,
+            ModelData sourceModelData
+    ) {
+        BakedModel pipeRendererModel = createDirectPipeRendererModel(
+                baseModel,
+                pipeRenderer,
+                localLevel,
+                localPos,
+                renderType,
+                sourceModelData
+        );
+
+        CountingVertexConsumer countingConsumer = new CountingVertexConsumer(vertexConsumer);
+
+        try {
+            modelRenderer.tesselateBlock(
+                    localLevel,
+                    pipeRendererModel,
+                    state,
+                    localPos,
+                    poseStack,
+                    countingConsumer,
                     false,
                     RandomSource.create(seed),
                     seed,
                     OverlayTexture.NO_OVERLAY,
-                    ModelData.EMPTY,
+                    createGregPipeModelData(sourceModelData),
                     renderType
             );
+        } catch (Throwable ignored) {
+            return false;
         }
 
-        return true;
+        return countingConsumer.vertexCount() > 0;
     }
 
-    private static boolean tryRenderRealGregPipeModel(
+    private static BakedModel createDirectPipeRendererModel(
+            BakedModel baseModel,
+            PipeBlockRenderer pipeRenderer,
+            PreviewBlockAndTintGetter localLevel,
+            BlockPos localPos,
+            RenderType renderType,
+            ModelData sourceModelData
+    ) {
+        return new BakedModelWrapper<>(baseModel) {
+
+            @Override
+            public List<BakedQuad> getQuads(
+                    @Nullable BlockState state,
+                    @Nullable Direction side,
+                    RandomSource random
+            ) {
+                if (state == null) {
+                    return List.of();
+                }
+
+                return renderPipeQuads(
+                        pipeRenderer,
+                        localLevel,
+                        localPos,
+                        state,
+                        side,
+                        random,
+                        renderType,
+                        sourceModelData
+                );
+            }
+
+            @Override
+            public List<BakedQuad> getQuads(
+                    @Nullable BlockState state,
+                    @Nullable Direction side,
+                    RandomSource random,
+                    ModelData data,
+                    @Nullable RenderType requestedRenderType
+            ) {
+                if (state == null) {
+                    return List.of();
+                }
+
+                RenderType actualRenderType = requestedRenderType == null ? renderType : requestedRenderType;
+
+                return renderPipeQuads(
+                        pipeRenderer,
+                        localLevel,
+                        localPos,
+                        state,
+                        side,
+                        random,
+                        actualRenderType,
+                        sourceModelData
+                );
+            }
+
+            @Override
+            public ChunkRenderTypeSet getRenderTypes(
+                    BlockState state,
+                    RandomSource random,
+                    ModelData data
+            ) {
+                return ChunkRenderTypeSet.of(renderType);
+            }
+        };
+    }
+
+    private static List<BakedQuad> renderPipeQuads(
+            PipeBlockRenderer pipeRenderer,
+            PreviewBlockAndTintGetter localLevel,
+            BlockPos localPos,
+            BlockState state,
+            @Nullable Direction side,
+            RandomSource random,
+            RenderType renderType,
+            ModelData sourceModelData
+    ) {
+        ModelData gregModelData = createGregPipeModelData(sourceModelData);
+
+        RenderType previousRenderType = CURRENT_RENDER_TYPE.get();
+        ModelData previousModelData = CURRENT_MODEL_DATA.get();
+
+        CURRENT_RENDER_TYPE.set(renderType);
+        CURRENT_MODEL_DATA.set(gregModelData);
+
+        try {
+            return pipeRenderer.renderModel(
+                    localLevel,
+                    localPos,
+                    state,
+                    side,
+                    random
+            );
+        } catch (Throwable ignored) {
+            return List.of();
+        } finally {
+            CURRENT_RENDER_TYPE.set(previousRenderType);
+            CURRENT_MODEL_DATA.set(previousModelData);
+        }
+    }
+
+    private static boolean renderFallbackPipeModel(
+            PipeBlock<?, ?, ?> pipeBlock,
             ModelBlockRenderer modelRenderer,
             PreviewBlockAndTintGetter localLevel,
             BakedModel model,
@@ -326,84 +449,107 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             int connections,
             int blockedConnections
     ) {
-        GregModelDataResult gregModelData = createGregPipeModelData(
-                localLevel,
-                localPos,
+        PipeBlockRenderer pipeRenderer = pipeBlock.getRenderer(state);
+
+        if (pipeRenderer == null) {
+            return false;
+        }
+
+        PipeModel pipeModel = pipeRenderer.getPipeModel();
+
+        if (pipeModel == null) {
+            return false;
+        }
+
+        BakedModel pipePreviewModel = createFallbackPipeModel(
+                model,
+                pipeModel,
                 connections,
                 blockedConnections
         );
 
-        if (!gregModelData.usable()) {
-            return false;
-        }
-
-        CountingVertexConsumer countingConsumer = new CountingVertexConsumer(vertexConsumer);
-
-        try {
-            modelRenderer.tesselateBlock(
-                    localLevel,
-                    model,
-                    state,
-                    localPos,
-                    poseStack,
-                    countingConsumer,
-                    false,
-                    RandomSource.create(seed),
-                    seed,
-                    OverlayTexture.NO_OVERLAY,
-                    gregModelData.modelData(),
-                    PIPE_RENDER_TYPE
-            );
-        } catch (Throwable ignored) {
-            return false;
-        }
-
-        return countingConsumer.vertexCount() > 0;
-    }
-
-    private static GregModelDataResult createGregPipeModelData(
-            BlockAndTintGetter level,
-            BlockPos localPos,
-            int connections,
-            int blockedConnections
-    ) {
-        ModelData.Builder builder = ModelData.builder();
-        boolean usable = false;
-
-        usable |= putModelPropertyIfPresent(builder, "LEVEL", level);
-        usable |= putModelPropertyIfPresent(builder, "POS", localPos);
-        usable |= putModelPropertyIfPresent(builder, "PIPE_CONNECTION_MASK", connections);
-        usable |= putModelPropertyIfPresent(builder, "PIPE_BLOCKED_MASK", blockedConnections);
-
-        return new GregModelDataResult(
-                usable ? builder.build() : ModelData.EMPTY,
-                usable
+        modelRenderer.tesselateBlock(
+                localLevel,
+                pipePreviewModel,
+                state,
+                localPos,
+                poseStack,
+                vertexConsumer,
+                false,
+                RandomSource.create(seed),
+                seed,
+                OverlayTexture.NO_OVERLAY,
+                ModelData.EMPTY,
+                PIPE_RENDER_TYPE
         );
+
+        return true;
     }
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    private static boolean putModelPropertyIfPresent(
-            ModelData.Builder builder,
-            String fieldName,
-            Object value
+    private static ModelData createGregPipeModelData(ModelData sourceModelData) {
+        ModelData innerData = sourceModelData == null ? ModelData.EMPTY : sourceModelData;
+
+        return ModelData.builder()
+                .with(MODEL_DATA, innerData)
+                .build();
+    }
+
+    private static boolean isPipeOrCoverRenderType(RenderType renderType) {
+        return renderType == RenderType.solid()
+                || renderType == RenderType.cutout()
+                || renderType == PIPE_RENDER_TYPE
+                || renderType == RenderType.translucent()
+                || renderType == RenderType.translucentMovingBlock()
+                || renderType == RenderType.tripwire()
+                || containsRenderTypeName(renderType, "solid")
+                || containsRenderTypeName(renderType, "cutout")
+                || containsRenderTypeName(renderType, "translucent")
+                || containsRenderTypeName(renderType, "tripwire");
+    }
+
+    private static boolean containsRenderTypeName(RenderType renderType, String needle) {
+        return renderType.toString().toLowerCase().contains(needle);
+    }
+
+    private static boolean renderFallbackFrame(
+            BlockRenderDispatcher dispatcher,
+            ModelBlockRenderer modelRenderer,
+            PreviewBlockAndTintGetter localLevel,
+            CompoundTag tag,
+            BlockPos localPos,
+            PoseStack poseStack,
+            VertexConsumer vertexConsumer,
+            RenderType renderType,
+            long seed
     ) {
-        try {
-            Class<?> propertiesClass = Class.forName(GT_MODEL_PROPERTIES_CLASS);
-            Field field = propertiesClass.getField(fieldName);
-            Object property = field.get(null);
+        BlockState frameState = getGregFrameState(tag);
 
-            if (!(property instanceof ModelProperty<?> modelProperty)) {
-                return false;
-            }
-
-            builder.with((ModelProperty) modelProperty, value);
-            return true;
-        } catch (Throwable ignored) {
+        if (frameState == null) {
             return false;
         }
-    }
 
-    private record GregModelDataResult(ModelData modelData, boolean usable) {
+        BakedModel frameModel = dispatcher.getBlockModel(frameState);
+
+        if (!shouldRenderFrameInPass(frameModel, frameState, renderType, seed)) {
+            return false;
+        }
+
+        modelRenderer.tesselateBlock(
+                localLevel,
+                frameModel,
+                frameState,
+                localPos,
+                poseStack,
+                vertexConsumer,
+                false,
+                RandomSource.create(seed),
+                seed,
+                OverlayTexture.NO_OVERLAY,
+                ModelData.EMPTY,
+                renderType
+        );
+
+        return true;
     }
 
     private static final class CountingVertexConsumer implements VertexConsumer {
@@ -415,7 +561,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             this.delegate = delegate;
         }
 
-        public int vertexCount() {
+        private int vertexCount() {
             return vertexCount;
         }
 
@@ -426,8 +572,8 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         }
 
         @Override
-        public VertexConsumer color(int r, int g, int b, int a) {
-            delegate.color(r, g, b, a);
+        public VertexConsumer color(int red, int green, int blue, int alpha) {
+            delegate.color(red, green, blue, alpha);
             return this;
         }
 
@@ -462,8 +608,8 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         }
 
         @Override
-        public void defaultColor(int r, int g, int b, int a) {
-            delegate.defaultColor(r, g, b, a);
+        public void defaultColor(int red, int green, int blue, int alpha) {
+            delegate.defaultColor(red, green, blue, alpha);
         }
 
         @Override
@@ -479,7 +625,9 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
     ) {
         Set<RenderType> renderTypes = new LinkedHashSet<>();
 
+        renderTypes.add(RenderType.cutout());
         renderTypes.add(PIPE_RENDER_TYPE);
+        renderTypes.add(RenderType.translucent());
 
         BlockState frameState = getGregFrameState(tag);
 
@@ -501,9 +649,13 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
     }
 
     private static RenderType toGuiSafeRenderType(RenderType renderType) {
-        String name = renderType.toString();
+        String name = renderType.toString().toLowerCase();
 
-        if (name.contains("translucent")) {
+        if (renderType == RenderType.translucent()
+                || renderType == RenderType.translucentMovingBlock()
+                || renderType == RenderType.tripwire()
+                || name.contains("translucent")
+                || name.contains("tripwire")) {
             return RenderType.entityTranslucent(TextureAtlas.LOCATION_BLOCKS);
         }
 
@@ -529,7 +681,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         return false;
     }
 
-    private static BakedModel createPipePreviewModel(
+    private static BakedModel createFallbackPipeModel(
             BakedModel baseModel,
             PipeModel pipeModel,
             int connections,
@@ -596,13 +748,13 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
         }
 
         String materialPath = frameMaterial;
-        int sep = materialPath.indexOf(':');
+        int separator = materialPath.indexOf(':');
 
-        if (sep >= 0 && sep + 1 < materialPath.length()) {
-            materialPath = materialPath.substring(sep + 1);
+        if (separator >= 0 && separator + 1 < materialPath.length()) {
+            materialPath = materialPath.substring(separator + 1);
         }
 
-        ResourceLocation frameId = new ResourceLocation(
+        ResourceLocation frameId = ResourceLocation.fromNamespaceAndPath(
                 "gtceu",
                 materialPath + "_frame"
         );

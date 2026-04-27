@@ -4,10 +4,10 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.crazyae2addons.logic.structuretool.ClonerStructureLibraryStore;
-import net.oktawia.crazyae2addons.menus.item.PortableSpatialClonerMenu;
-import net.oktawia.crazyae2addons.network.NetworkHandler;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
+import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 import java.util.function.Supplier;
 

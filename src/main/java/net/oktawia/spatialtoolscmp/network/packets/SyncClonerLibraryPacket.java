@@ -2,8 +2,8 @@ package net.oktawia.spatialtoolscmp.network.packets;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.crazyae2addons.logic.structuretool.ClonerStructureLibraryClientCache;
-import net.oktawia.crazyae2addons.logic.structuretool.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureLibraryClientCache;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 
 import java.util.ArrayList;
 import java.util.List;

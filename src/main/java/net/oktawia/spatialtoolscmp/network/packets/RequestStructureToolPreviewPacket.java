@@ -4,12 +4,12 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.crazyae2addons.items.PortableSpatialCloner;
-import net.oktawia.crazyae2addons.items.PortableSpatialStorage;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolPreviewDispatcher;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolStackState;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolUtil;
-import net.oktawia.crazyae2addons.menus.item.PortableSpatialClonerMenu;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
+import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
+import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 
 import java.util.function.Supplier;
 
@@ -35,7 +35,7 @@ public class RequestStructureToolPreviewPacket {
             ItemStack stack = ItemStack.EMPTY;
 
             if (sender.containerMenu instanceof PortableSpatialClonerMenu menu) {
-                stack = menu.getStructureHost().getItemStack();
+                stack = menu.getItemStack();
             }
 
             if (stack.isEmpty()) {

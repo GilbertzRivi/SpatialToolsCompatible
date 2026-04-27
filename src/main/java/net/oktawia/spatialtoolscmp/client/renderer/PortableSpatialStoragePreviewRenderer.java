@@ -30,12 +30,12 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.oktawia.crazyae2addons.CrazyAddons;
-import net.oktawia.crazyae2addons.items.PortableSpatialCloner;
-import net.oktawia.crazyae2addons.items.PortableSpatialStorage;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolStackState;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureToolUtil;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
+import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -572,7 +572,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     );
                 }
             } catch (Throwable t) {
-                CrazyAddons.LOGGER.debug(
+                SpatialToolsCMP.getLOGGER().debug(
                         "Preview tesselation failed for {} at {}: {}",
                         state,
                         localPos,
@@ -684,7 +684,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         OverlayTexture.NO_OVERLAY
                 );
             } catch (Throwable t) {
-                CrazyAddons.LOGGER.debug(t.getLocalizedMessage());
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
             }
 
             poseStack.popPose();
@@ -1048,7 +1048,7 @@ public class PortableSpatialStoragePreviewRenderer {
     private static TextureAtlasSprite previewWhiteSprite(Minecraft minecraft) {
         return minecraft
                 .getTextureAtlas(TextureAtlas.LOCATION_BLOCKS)
-                .apply(new ResourceLocation("minecraft", "block/white_concrete"));
+                .apply(ResourceLocation.fromNamespaceAndPath("minecraft", "block/white_concrete"));
     }
 
     private static void addBillboardLineBox(

@@ -16,11 +16,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.crazyae2addons.logic.structuretool.AbstractStructureCaptureToolItem;
-import net.oktawia.crazyae2addons.logic.structuretool.ClonerPasteContext;
-import net.oktawia.crazyae2addons.logic.structuretool.PlacementPlan;
-import net.oktawia.crazyae2addons.logic.structuretool.StructureCloneExtension;
-import net.oktawia.crazyae2addons.util.NbtUtil;
+import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
+import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
+import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
+import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
+import net.oktawia.spatialtoolscmp.util.NbtUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

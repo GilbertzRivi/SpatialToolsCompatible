@@ -30,10 +30,14 @@ import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.crazyae2addons.logic.structuretool.*;
-import net.oktawia.crazyae2addons.util.NbtUtil;
-import net.oktawia.crazyae2addons.util.StructureToolKeys;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
+import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
+import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
+import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
+import net.oktawia.spatialtoolscmp.logic.StructurePasteExtension;
+import net.oktawia.spatialtoolscmp.util.NbtUtil;
+import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;

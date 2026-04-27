@@ -8,8 +8,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
-import net.oktawia.crazyae2addons.CrazyAddons;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -141,18 +141,18 @@ public final class PreviewStructure {
             try {
                 be.clearRemoved();
             } catch (Throwable t) {
-                CrazyAddons.LOGGER.debug(t.getLocalizedMessage());
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
             }
 
             try {
                 be.onLoad();
             } catch (Throwable t) {
-                CrazyAddons.LOGGER.debug(t.getLocalizedMessage());
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
             }
 
             return be;
         } catch (Throwable t) {
-            CrazyAddons.LOGGER.debug(t.getLocalizedMessage());
+            SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
             return null;
         }
     }

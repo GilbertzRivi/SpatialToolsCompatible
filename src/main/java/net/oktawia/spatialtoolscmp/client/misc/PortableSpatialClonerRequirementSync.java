@@ -1,5 +1,7 @@
 package net.oktawia.spatialtoolscmp.client.misc;
 
+import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;

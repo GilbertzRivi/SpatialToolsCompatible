@@ -1,13 +1,5 @@
 package net.oktawia.spatialtoolscmp.items;
 
-import appeng.api.config.Actionable;
-import appeng.api.implementations.menuobjects.ItemMenuHost;
-import appeng.api.networking.IGrid;
-import appeng.api.networking.energy.IEnergyService;
-import appeng.api.networking.security.IActionSource;
-import appeng.api.stacks.AEItemKey;
-import appeng.api.storage.MEStorage;
-import appeng.api.storage.StorageHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -32,16 +24,30 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.HitResult;
-import net.oktawia.crazyae2addons.CrazyConfig;
-import net.oktawia.crazyae2addons.defs.LangDefs;
-import net.oktawia.crazyae2addons.defs.regs.CrazyMenuRegistrar;
-import net.oktawia.crazyae2addons.logic.structuretool.*;
-import net.oktawia.crazyae2addons.util.StructureToolKeys;
-import net.oktawia.crazyae2addons.util.TemplateUtil;
+import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.SpatialConfig;
+import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
+import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
+import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
+import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
+import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
+import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
+import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
+import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
@@ -61,11 +67,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
     public PortableSpatialCloner(Item.Properties properties) {
-        super(
-                CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_BASE_INTERNAL_POWER_CAPACITY::get,
-                DEFAULT_UPGRADE_SLOTS + 1,
-                properties
-        );
+        super(SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_BASE_INTERNAL_POWER_CAPACITY::get, 5, 4, properties);
     }
 
     public static ItemStack findHeld(@Nullable Player player) {
@@ -78,12 +80,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
     @Override
     protected MenuType<?> getToolMenuType() {
-        return CrazyMenuRegistrar.PORTABLE_SPATIAL_CLONER_MENU.get();
-    }
-
-    @Override
-    public ItemMenuHost getMenuHost(Player player, int inventorySlot, ItemStack stack, @Nullable BlockPos pos) {
-        return new PortableSpatialClonerHost(player, inventorySlot, stack);
+        return SpatialMenuRegistrar.PORTABLE_SPATIAL_CLONER_MENU.get();
     }
 
     @Override
@@ -102,23 +99,18 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
     }
 
     @Override
-    protected boolean isToolEnabled() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENABLED.get();
-    }
-
-    @Override
     protected double getPowerPerBlockCapture() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get();
     }
 
     @Override
     protected double getPowerPerBlockPaste() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get();
     }
 
     @Override
     protected int getMaxStructureSize() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_MAX_STRUCTURE_SIZE.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_MAX_STRUCTURE_SIZE.get();
     }
 
     @Override
@@ -225,6 +217,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
 
         BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(savedTag);
+
         double requiredPower = StructureToolUtil.calculatePreviewStructurePower(
                 savedTag,
                 energyOrigin,
@@ -705,7 +698,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
         for (ItemStack refundStack : aggregateRefundStacks(refundStacks)) {
             int count = refundStack.getCount();
-            long inserted = insertIntoMe(level, player, toolStack, refundStack, count, Actionable.MODULATE);
+            long inserted = insertIntoMe(level, player, toolStack, refundStack, count, false);
 
             if (inserted > 0) {
                 insertedIntoMe = true;
@@ -811,7 +804,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ItemStack wanted,
             long amount
     ) {
-        return insertIntoMe(level, player, toolStack, wanted, amount, Actionable.SIMULATE);
+        return insertIntoMe(level, player, toolStack, wanted, amount, true);
     }
 
     private long insertIntoMe(
@@ -820,42 +813,34 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            Actionable mode
+            boolean simulate
     ) {
         if (wanted.isEmpty() || amount <= 0) {
             return 0;
         }
 
-        MEStorage storage = getConnectedMeStorage(level, toolStack, player);
+        if (IsModLoaded.AE2) {
+            try {
+                int requested = (int) Math.min(Integer.MAX_VALUE, amount);
 
-        if (storage == null) {
-            return 0;
+                ItemStack toInsert = wanted.copy();
+                toInsert.setCount(requested);
+
+                long overflow = AE2MEOps.insert(
+                        toInsert,
+                        toolStack,
+                        level,
+                        simulate,
+                        player
+                );
+
+                return requested - Math.min(requested, overflow);
+            } catch (Throwable ignored) {
+                return 0;
+            }
         }
 
-        IEnergyService energy = getConnectedMeEnergy(level, toolStack, player);
-
-        if (energy == null) {
-            return 0;
-        }
-
-        AEItemKey key = AEItemKey.of(wanted);
-
-        if (key == null) {
-            return 0;
-        }
-
-        try {
-            return StorageHelper.poweredInsert(
-                    energy,
-                    storage,
-                    key,
-                    amount,
-                    getPasteActionSource(player),
-                    mode
-            );
-        } catch (Throwable ignored) {
-            return 0;
-        }
+        return 0;
     }
 
     private void clearStoredStructure(
@@ -1083,7 +1068,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
 
         if (left > 0) {
-            long extracted = extractFromMe(level, player, toolStack, wanted, left, Actionable.MODULATE);
+            long extracted = extractFromMe(level, player, toolStack, wanted, left, false);
 
             return extracted >= left;
         }
@@ -1149,40 +1134,6 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         return removed;
     }
 
-    protected @Nullable IGrid getConnectedGridForPaste(ServerLevel level, ItemStack toolStack, @Nullable Player player) {
-        return getLinkedGrid(toolStack, level, player);
-    }
-
-    protected @Nullable MEStorage getConnectedMeStorage(ServerLevel level, ItemStack toolStack, @Nullable Player player) {
-        IGrid grid = getConnectedGridForPaste(level, toolStack, player);
-
-        if (grid == null) {
-            return null;
-        }
-
-        var storageService = grid.getStorageService();
-
-        if (storageService == null) {
-            return null;
-        }
-
-        return storageService.getInventory();
-    }
-
-    protected @Nullable IEnergyService getConnectedMeEnergy(ServerLevel level, ItemStack toolStack, @Nullable Player player) {
-        IGrid grid = getConnectedGridForPaste(level, toolStack, player);
-
-        if (grid == null) {
-            return null;
-        }
-
-        return grid.getEnergyService();
-    }
-
-    protected IActionSource getPasteActionSource(Player player) {
-        return IActionSource.empty();
-    }
-
     protected long simulateExtractFromMe(
             ServerLevel level,
             Player player,
@@ -1190,7 +1141,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ItemStack wanted,
             long amount
     ) {
-        return extractFromMe(level, player, toolStack, wanted, amount, Actionable.SIMULATE);
+        return extractFromMe(level, player, toolStack, wanted, amount, true);
     }
 
     protected long extractFromMe(
@@ -1199,42 +1150,28 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            Actionable mode
+            boolean simulate
     ) {
         if (wanted.isEmpty() || amount <= 0) {
             return 0;
         }
 
-        MEStorage storage = getConnectedMeStorage(level, toolStack, player);
-
-        if (storage == null) {
-            return 0;
+        if (IsModLoaded.AE2) {
+            try {
+                return AE2MEOps.extract(
+                        wanted,
+                        toolStack,
+                        level,
+                        amount,
+                        simulate,
+                        player
+                );
+            } catch (Throwable ignored) {
+                return 0;
+            }
         }
 
-        IEnergyService energy = getConnectedMeEnergy(level, toolStack, player);
-
-        if (energy == null) {
-            return 0;
-        }
-
-        AEItemKey key = AEItemKey.of(wanted);
-
-        if (key == null) {
-            return 0;
-        }
-
-        try {
-            return StorageHelper.poweredExtraction(
-                    energy,
-                    storage,
-                    key,
-                    amount,
-                    getPasteActionSource(player),
-                    mode
-            );
-        } catch (Throwable ignored) {
-            return 0;
-        }
+        return 0;
     }
 
     protected Map<BlockPos, CompoundTag> parseMetadataByPos(CompoundTag savedTag) {
@@ -1356,86 +1293,6 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
     }
 
-    private final class PasteContext implements ClonerPasteContext {
-        private final ServerLevel level;
-        private final Player player;
-        private final ItemStack toolStack;
-
-        private PasteContext(ServerLevel level, Player player, ItemStack toolStack) {
-            this.level = level;
-            this.player = player;
-            this.toolStack = toolStack;
-        }
-
-        @Override
-        public long countAvailableForPaste(ItemStack wanted) {
-            return PortableSpatialCloner.this.countAvailableForPaste(level, player, toolStack, wanted);
-        }
-
-        @Override
-        public boolean canReserveForPaste(
-                Map<Item, Integer> reserved,
-                ItemStack wanted,
-                int amount
-        ) {
-            return PortableSpatialCloner.this.canReserveForPaste(
-                    level,
-                    player,
-                    toolStack,
-                    reserved,
-                    wanted,
-                    amount
-            );
-        }
-
-        @Override
-        public boolean consumeForPaste(ItemStack wanted, int amount) {
-            return PortableSpatialCloner.this.consumeForPaste(
-                    level,
-                    player,
-                    toolStack,
-                    wanted,
-                    amount
-            );
-        }
-
-        @Override
-        public boolean placeBlockAndLoadTag(
-                BlockPos pos,
-                BlockState state,
-                @Nullable CompoundTag rawBeTag
-        ) {
-            return PortableSpatialCloner.this.placeBlockAndLoadTag(
-                    level,
-                    pos,
-                    state,
-                    rawBeTag
-            );
-        }
-
-        @Override
-        public boolean hasCollision(BlockState existing, BlockState target) {
-            return PortableSpatialCloner.this.hasCollision(existing, target);
-        }
-
-        @Override
-        public ItemStack getRequiredBlockItem(BlockState state) {
-            return PortableSpatialCloner.this.getRequiredBlockItem(state);
-        }
-    }
-
-    @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag advancedTooltips) {
-        super.appendHoverText(stack, level, tooltip, advancedTooltips);
-
-        if (!CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENABLED.get()) {
-            tooltip.add(Component.translatable(LangDefs.FEATURE_DISABLED.getTranslationKey())
-                    .withStyle(ChatFormatting.RED));
-            tooltip.add(Component.translatable(LangDefs.FEATURE_DISABLED_CONFIG.getTranslationKey())
-                    .withStyle(ChatFormatting.GRAY));
-        }
-    }
-
     @Override
     protected String saveCapturedStructure(
             ServerLevel level,
@@ -1481,6 +1338,23 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
     @Override
     protected double getEnergyCostMultiplier() {
-        return CrazyConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
+    }
+
+    @Override
+    public void appendHoverText(
+            ItemStack stack,
+            @Nullable Level level,
+            List<Component> tooltip,
+            TooltipFlag flag
+    ) {
+        super.appendHoverText(stack, level, tooltip, flag);
+
+        if (IsModLoaded.AE2) {
+            if (AE2GridLinkableHandler.hasLink(stack)) {
+                tooltip.add(Component.literal("ME Grid: linked")
+                        .withStyle(ChatFormatting.AQUA));
+            }
+        }
     }
 }

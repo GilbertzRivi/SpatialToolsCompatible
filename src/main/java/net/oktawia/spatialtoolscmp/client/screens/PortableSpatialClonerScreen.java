@@ -1,9 +1,5 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
-import appeng.api.upgrades.Upgrades;
-import appeng.client.gui.style.ScreenStyle;
-import appeng.core.definitions.AEItems;
-import appeng.core.localization.GuiText;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -12,59 +8,168 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.crazyae2addons.client.misc.ClonerMaterialListWidget;
-import net.oktawia.crazyae2addons.client.misc.PortableSpatialClonerRequirementSync;
-import net.oktawia.crazyae2addons.client.misc.SearchableClonerStructureDropdownWidget;
-import net.oktawia.crazyae2addons.defs.LangDefs;
-import net.oktawia.crazyae2addons.defs.regs.CrazyItemRegistrar;
-import net.oktawia.crazyae2addons.items.PortableSpatialCloner;
-import net.oktawia.crazyae2addons.menus.item.PortableSpatialClonerMenu;
-import net.oktawia.crazyae2addons.network.NetworkHandler;
-import net.oktawia.crazyae2addons.network.packets.structures.RequestClonerLibraryPacket;
+import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.SearchableClonerStructureDropdownWidget;
+import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
+import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.RequestClonerLibraryPacket;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
-        extends AbstractPortableStructureToolScreen<C> {
+public class PortableSpatialClonerScreen
+        extends AbstractPortableStructureToolScreen<PortableSpatialClonerMenu> {
 
     private static final int PREVIEW_LEFT = 104;
     private static final int PREVIEW_TOP = 26;
     private static final int PREVIEW_WIDTH = 144;
     private static final int PREVIEW_HEIGHT = 135;
 
-    private final ClonerMaterialListWidget materialList;
-    private final SearchableClonerStructureDropdownWidget structureSelector;
+    private static final int STRUCTURE_SELECTOR_LEFT = 8;
+    private static final int STRUCTURE_SELECTOR_TOP = 26;
+    private static final int STRUCTURE_SELECTOR_WIDTH = 92;
+    private static final int STRUCTURE_SELECTOR_HEIGHT = 31;
 
-    public PortableSpatialClonerScreen(C menu, Inventory playerInventory, Component title, ScreenStyle style) {
-        super(menu, playerInventory, title, style);
+    private static final int MATERIAL_LIST_LEFT = 8;
+    private static final int MATERIAL_LIST_TOP = 60;
+    private static final int MATERIAL_LIST_WIDTH = 92;
+    private static final int MATERIAL_LIST_HEIGHT = 101;
 
-        initCommonWidgets(style, getCompatibleUpgrades());
+    private ClonerMaterialListWidget materialList;
+    private SearchableClonerStructureDropdownWidget structureSelector;
 
-        this.materialList = new ClonerMaterialListWidget(0, 0, 92, 101);
+    private boolean requestedLibrary = false;
+
+    public PortableSpatialClonerScreen(
+            PortableSpatialClonerMenu menu,
+            Inventory playerInventory,
+            Component title
+    ) {
+        super(menu, playerInventory, title);
+
+        this.imageWidth = 256;
+        this.imageHeight = 256;
+
+        this.titleLabelX = 8;
+        this.titleLabelY = 6;
+
+        this.inventoryLabelX = 47;
+        this.inventoryLabelY = 163;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+
+        initCommonWidgets(buildCompatibleUpgradesTooltip());
+
+        this.materialList = new ClonerMaterialListWidget(
+                this.leftPos + MATERIAL_LIST_LEFT,
+                this.topPos + MATERIAL_LIST_TOP,
+                MATERIAL_LIST_WIDTH,
+                MATERIAL_LIST_HEIGHT
+        );
+
         this.materialList.setCraftRequestHandler(entry -> {
             ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(entry.stack().getItem());
+
             if (itemId == null) {
                 return;
             }
 
             long missing = entry.missing();
+
             if (missing <= 0) {
                 return;
             }
 
-            getMenu().craftRequest(itemId + "|" + missing);
+            getMenu().craftRequest(itemId, missing);
         });
 
-        this.widgets.add("materials", this.materialList);
+        this.addRenderableWidget(this.materialList);
 
-        this.structureSelector = new SearchableClonerStructureDropdownWidget(0, 0,92, 31, () -> getMenu().containerId);
-        this.widgets.add("structureSelector", this.structureSelector);
+        this.structureSelector = new SearchableClonerStructureDropdownWidget(
+                this.leftPos + STRUCTURE_SELECTOR_LEFT,
+                this.topPos + STRUCTURE_SELECTOR_TOP,
+                STRUCTURE_SELECTOR_WIDTH,
+                STRUCTURE_SELECTOR_HEIGHT,
+                () -> getMenu().containerId
+        );
+
+        this.addRenderableWidget(this.structureSelector);
+
+        layoutWidgets();
 
         finishInit();
 
-        NetworkHandler.sendToServer(new RequestClonerLibraryPacket(getMenu().containerId));
+        if (!this.requestedLibrary) {
+            this.requestedLibrary = true;
+            NetworkHandler.sendToServer(new RequestClonerLibraryPacket(getMenu().containerId));
+        }
+    }
+
+    private void layoutWidgets() {
+        int left = this.leftPos;
+        int top = this.topPos;
+
+        if (this.structureSelector != null) {
+            this.structureSelector.move(
+                    left + STRUCTURE_SELECTOR_LEFT,
+                    top + STRUCTURE_SELECTOR_TOP
+            );
+            this.structureSelector.resize(
+                    STRUCTURE_SELECTOR_WIDTH,
+                    STRUCTURE_SELECTOR_HEIGHT
+            );
+        }
+
+        if (this.materialList != null) {
+            this.materialList.move(
+                    left + MATERIAL_LIST_LEFT,
+                    top + MATERIAL_LIST_TOP
+            );
+            this.materialList.resize(
+                    MATERIAL_LIST_WIDTH,
+                    MATERIAL_LIST_HEIGHT
+            );
+        }
+    }
+
+    @Override
+    protected void renderBg(
+            GuiGraphics graphics,
+            float partialTick,
+            int mouseX,
+            int mouseY
+    ) {
+        super.renderBg(graphics, partialTick, mouseX, mouseY);
+
+        graphics.blit(
+                BACKGROUND,
+                this.leftPos,
+                this.topPos,
+                0,
+                0,
+                this.imageWidth,
+                this.imageHeight,
+                256,
+                256
+        );
+
+        if (renderEmptyPreviewBehindWidgets()) {
+            renderEmptyPreviewMessage(graphics);
+        }
+    }
+
+    @Override
+    protected boolean renderEmptyPreviewBehindWidgets() {
+        return this.structureSelector != null && this.structureSelector.isOpen();
     }
 
     @Override
@@ -80,11 +185,13 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
     @Override
     protected ItemStack findRelevantStack() {
         var player = Minecraft.getInstance().player;
+
         if (player == null) {
             return ItemStack.EMPTY;
         }
 
         ItemStack stack = PortableSpatialCloner.findActive(player);
+
         if (stack.isEmpty()) {
             stack = PortableSpatialCloner.findHeld(player);
         }
@@ -94,7 +201,9 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
 
     @Override
     protected void onClearExtraState() {
-        this.materialList.setEntries(List.of());
+        if (this.materialList != null) {
+            this.materialList.setEntries(List.of());
+        }
     }
 
     @Override
@@ -104,21 +213,24 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
     }
 
     @Override
-    public void containerTick() {
+    protected void containerTick() {
         super.containerTick();
 
-        this.structureSelector.refreshFromClientCache();
+        if (this.structureSelector != null) {
+            this.structureSelector.refreshFromClientCache();
+        }
+
         syncRequirementEntries();
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (this.materialList.mouseClicked(mouseX, mouseY, button)) {
+        if (this.materialList != null && this.materialList.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.materialList);
             return true;
         }
 
-        if (this.structureSelector.mouseClicked(mouseX, mouseY, button)) {
+        if (this.structureSelector != null && this.structureSelector.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.structureSelector);
             return true;
         }
@@ -128,11 +240,11 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double delta) {
-        if (this.structureSelector.mouseScrolled(mouseX, mouseY, delta)) {
+        if (this.structureSelector != null && this.structureSelector.mouseScrolled(mouseX, mouseY, delta)) {
             return true;
         }
 
-        if (this.materialList.mouseScrolled(mouseX, mouseY, delta)) {
+        if (this.materialList != null && this.materialList.mouseScrolled(mouseX, mouseY, delta)) {
             return true;
         }
 
@@ -141,9 +253,8 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (this.structureSelector.wantsKeyboardCapture()) {
-            this.structureSelector.keyPressed(keyCode, scanCode, modifiers);
-            return true;
+        if (this.structureSelector != null && this.structureSelector.wantsKeyboardCapture()) {
+            return this.structureSelector.keyPressed(keyCode, scanCode, modifiers);
         }
 
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
@@ -151,52 +262,71 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
             return true;
         }
 
-        return true;
+        return super.keyPressed(keyCode, scanCode, modifiers);
     }
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
-        if (this.structureSelector.wantsKeyboardCapture()) {
-            this.structureSelector.charTyped(codePoint, modifiers);
+        if (this.structureSelector != null && this.structureSelector.wantsKeyboardCapture()) {
+            return this.structureSelector.charTyped(codePoint, modifiers);
         }
 
-        return true;
+        return super.charTyped(codePoint, modifiers);
     }
 
     @Override
-    protected void renderExtraOverlays(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        if (!this.structureSelector.isExpandedMouseOver(mouseX, mouseY)) {
+    protected void renderExtraOverlays(
+            GuiGraphics graphics,
+            int mouseX,
+            int mouseY,
+            float partialTick
+    ) {
+        if (this.structureSelector == null || !this.structureSelector.isExpandedMouseOver(mouseX, mouseY)) {
             renderMaterialTooltip(graphics, mouseX, mouseY);
         }
 
-        this.structureSelector.renderDropdownOverlay(graphics, mouseX, mouseY, partialTick);
+        if (this.structureSelector != null) {
+            this.structureSelector.renderDropdownOverlay(graphics, mouseX, mouseY, partialTick);
 
-        Component tooltip = this.structureSelector.getHoveredTooltip(mouseX, mouseY);
-        if (tooltip != null) {
-            graphics.renderTooltip(
-                    Minecraft.getInstance().font,
-                    tooltip,
-                    mouseX,
-                    mouseY
-            );
+            Component tooltip = this.structureSelector.getHoveredTooltip(mouseX, mouseY);
+
+            if (tooltip != null) {
+                graphics.renderTooltip(
+                        Minecraft.getInstance().font,
+                        tooltip,
+                        mouseX,
+                        mouseY
+                );
+            }
         }
     }
 
     private void syncRequirementEntries() {
-        boolean hasCraftingCard = getMenu().getStructureHost().getUpgrades().isInstalled(AEItems.CRAFTING_CARD);
+        if (this.materialList == null) {
+            return;
+        }
 
-        this.materialList.setCraftButtonsEnabled(hasCraftingCard);
+        this.materialList.setCraftButtonsEnabled(hasCraftingUpgrade());
         this.materialList.setEntries(
                 PortableSpatialClonerRequirementSync.getEntries(getMenu().containerId)
         );
     }
 
+    protected boolean hasCraftingUpgrade() {
+        return IsModLoaded.AE2 && getMenu().hasCraftingUpgradeInstalled();
+    }
+
     private void renderMaterialTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (this.materialList == null) {
+            return;
+        }
+
         if (this.materialList.isHoveringCraftButton(mouseX, mouseY)) {
             return;
         }
 
         ClonerMaterialListWidget.MaterialEntry hovered = this.materialList.getHoveredEntry(mouseX, mouseY);
+
         if (hovered == null) {
             return;
         }
@@ -230,10 +360,21 @@ public class PortableSpatialClonerScreen<C extends PortableSpatialClonerMenu>
         );
     }
 
-    private List<Component> getCompatibleUpgrades() {
-        var list = new ArrayList<Component>();
-        list.add(GuiText.CompatibleUpgrades.text());
-        list.addAll(Upgrades.getTooltipLinesForMachine(CrazyItemRegistrar.PORTABLE_SPATIAL_CLONER.get()));
-        return list;
+    @Override
+    protected Component getEmptyPreviewTitle(ItemStack stack) {
+        if (!stack.isEmpty() && !StructureToolStackState.getStructureId(stack).isBlank()) {
+            return Component.translatable(LangDefs.PREVIEW_EMPTY_LOADING.getTranslationKey());
+        }
+
+        return Component.translatable(LangDefs.PREVIEW_EMPTY_NO_SELECTION.getTranslationKey());
+    }
+
+    @Override
+    protected Component getEmptyPreviewHint(ItemStack stack) {
+        if (!stack.isEmpty() && !StructureToolStackState.getStructureId(stack).isBlank()) {
+            return Component.translatable(LangDefs.PREVIEW_EMPTY_SYNC_HINT.getTranslationKey());
+        }
+
+        return Component.translatable(LangDefs.PREVIEW_EMPTY_SELECT_HINT.getTranslationKey());
     }
 }

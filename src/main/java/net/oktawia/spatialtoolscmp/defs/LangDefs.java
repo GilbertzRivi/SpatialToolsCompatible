@@ -1,0 +1,117 @@
+package net.oktawia.spatialtoolscmp.defs;
+
+public enum LangDefs {
+
+    FLIP_VERTICAL("gui.spatialtoolscmp.flip_vertical", "Flip vertically in place"),
+    ROTATE_CLOCKWISE("gui.spatialtoolscmp.rotate_clockwise", "Rotate clockwise in place"),
+    NO_BLOCK_IN_RANGE("gui.spatialtoolscmp.no_block_in_range", "No block in range."),
+    CORNER_0_SELECTED("gui.spatialtoolscmp.corner_0_selected", "Shift Right click a block to select it."),
+    CORNER_A_SELECTED("gui.spatialtoolscmp.corner_a_selected", "Right click to select another."),
+    CORNER_B_SELECTED("gui.spatialtoolscmp.corner_b_selected", "Right click air to cut or shift click block to cancel."),
+    SELECTION_RESTARTED("gui.spatialtoolscmp.selection_restarted", "Selection restarted."),
+    FAILED_TO_SAVE_STRUCTURE("gui.spatialtoolscmp.failed_to_save_structure", "Failed to save structure."),
+    STRUCTURE_CUT_AND_SAVED("gui.spatialtoolscmp.structure_cut_and_saved", "Right click to paste."),
+    FAILED_TO_LOAD_STRUCTURE("gui.spatialtoolscmp.failed_to_load_structure", "Failed to load structure."),
+    STORED_STRUCTURE_NOT_FOUND("gui.spatialtoolscmp.stored_structure_not_found", "Stored structure not found."),
+    FAILED_TO_PASTE_STRUCTURE("gui.spatialtoolscmp.failed_to_paste_structure", "Failed to paste structure."),
+    STRUCTURE_PASTED("gui.spatialtoolscmp.structure_pasted", "Structure pasted."),
+    PASTE_COLLISION("gui.spatialtoolscmp.paste_collision", "Cannot paste structure: collision detected."),
+    OFFSET_X_TOOLTIP("gui.spatialtoolscmp.offset_x_tooltip", "X offset"),
+    OFFSET_Y_TOOLTIP("gui.spatialtoolscmp.offset_y_tooltip", "Y offset"),
+    OFFSET_Z_TOOLTIP("gui.spatialtoolscmp.offset_z_tooltip", "Z offset"),
+    OFFSET_NORTH_TOOLTIP("spatialtoolscmp.offset.north.tooltip", "Move north"),
+    OFFSET_SOUTH_TOOLTIP("spatialtoolscmp.offset.south.tooltip", "Move south"),
+    OFFSET_WEST_TOOLTIP("spatialtoolscmp.offset.west.tooltip", "Move west"),
+    OFFSET_EAST_TOOLTIP("spatialtoolscmp.offset.east.tooltip", "Move east"),
+    OFFSET_LEFT_TOOLTIP("gui.spatialtoolscmp.offset_left_tooltip", "Move left (-X)"),
+    OFFSET_RIGHT_TOOLTIP("gui.spatialtoolscmp.offset_right_tooltip", "Move right (+X)"),
+    OFFSET_UP_TOOLTIP("gui.spatialtoolscmp.offset_up_tooltip", "Move up (+Y)"),
+    OFFSET_DOWN_TOOLTIP("gui.spatialtoolscmp.offset_down_tooltip", "Move down (-Y)"),
+    OFFSET_FRONT_TOOLTIP("gui.spatialtoolscmp.offset_front_tooltip", "Move forward (+Z)"),
+    OFFSET_BACK_TOOLTIP("gui.spatialtoolscmp.offset_back_tooltip", "Move backward (-Z)"),
+    CUT_COST_PREVIEW("gui.spatialtoolscmp.cut_cost_preview", "Cut: %s FE"),
+    PASTE_COST_PREVIEW("gui.spatialtoolscmp.paste_cost_preview", "Paste: %s FE"),
+    NOT_ENOUGH_POWER("gui.spatialtoolscmp.not_enough_power", "Not enough power"),
+    NEED_FE("gui.spatialtoolscmp.need_fe", "Need: %s FE"),
+    HAVE_FE("gui.spatialtoolscmp.have_fe", "Have: %s FE"),
+    STRUCTURE_COPIED_AND_SAVED("gui.spatialtoolscmp.structure_copied_and_saved", "Structure copied and saved."),
+    REQUIRED_COUNT("gui.spatialtoolscmp.required_count", "Required: %s"),
+    FLIP_VERTICAL_AROUND_ORIGIN("gui.spatialtoolscmp.flip_vertical_around_origin", "Flip vertically around origin."),
+    ROTATE_CLOCKWISE_AROUND_ORIGIN("gui.spatialtoolscmp.rotate_clockwise_around_origin", "Rotate clockwise around origin."),
+    AVAILABLE_COUNT("gui.spatialtoolscmp.available_count", "Available: %s"),
+    STATUS_OK("gui.spatialtoolscmp.status_ok", "Status: OK"),
+    STATUS_MISSING("gui.spatialtoolscmp.status_missing", "Status: Missing"),
+    CRAFT_REQUEST_MISSING("gui.spatialtoolscmp.craft_request_missing", "Craft missing amount."),
+    STRUCTURE_TOO_LARGE("gui.spatialtoolscmp.structure_too_large", "Structure too large"),
+    STRUCTURE_SIZE("gui.spatialtoolscmp.structure_size", "Blocks: %s"),
+    STRUCTURE_SIZE_LIMIT("gui.spatialtoolscmp.structure_size_limit", "Limit: %s"),
+    STRUCTURE_GADGET_UNDO("gui.spatialtoolscmp.structure_gadget_undo", "Undo"),
+    STRUCTURE_GADGET_NOTHING_TO_UNDO("gui.spatialtoolscmp.structure_gadget_nothing_to_undo", "Nothing to undo."),
+    STRUCTURE_GADGET_UNDO_OTHER_DIMENSION("gui.spatialtoolscmp.structure_gadget_undo_other_dimension", "Undo is in another dimension."),
+    STRUCTURE_GADGET_UNDO_INVALID_CLEARED("gui.spatialtoolscmp.structure_gadget_undo_invalid_cleared", "Invalid undo data cleared."),
+    STRUCTURE_GADGET_CANNOT_UNDO_CUT("gui.spatialtoolscmp.structure_gadget_cannot_undo_cut", "Cannot undo cut."),
+    STRUCTURE_GADGET_STORED_STRUCTURE_MISSING("gui.spatialtoolscmp.structure_gadget_stored_structure_missing", "Stored structure is missing."),
+    STRUCTURE_GADGET_CUT_UNDONE("gui.spatialtoolscmp.structure_gadget_cut_undone", "Cut undone."),
+    STRUCTURE_GADGET_PASTE_UNDONE("gui.spatialtoolscmp.structure_gadget_paste_undone", "Paste undone."),
+    STRUCTURE_GADGET_STRUCTURE_CUT_BACK("gui.spatialtoolscmp.structure_gadget_structure_cut_back", "Structure cut back."),
+    STRUCTURE_GADGET_ENERGY_REFUNDED("gui.spatialtoolscmp.structure_gadget_energy_refunded", "Energy refunded."),
+    STRUCTURE_GADGET_SELECTION_CLEARED("gui.spatialtoolscmp.structure_gadget_selection_cleared", "Selection cleared."),
+    STRUCTURE_GADGET_DIMENSION_CHANGED("gui.spatialtoolscmp.structure_gadget_dimension_changed", "You changed dimension."),
+    STRUCTURE_GADGET_SELECTION_EMPTY_OR_SKIPPED("gui.spatialtoolscmp.structure_gadget_selection_empty_or_skipped", "Selected area is empty or contains only skipped blocks."),
+    STRUCTURE_GADGET_NOTHING_CAPTURED("gui.spatialtoolscmp.structure_gadget_nothing_captured", "Nothing was captured."),
+    STRUCTURE_GADGET_STORED_STRUCTURE_EMPTY("gui.spatialtoolscmp.structure_gadget_stored_structure_empty", "Stored structure is empty."),
+    STRUCTURE_GADGET_INVALID_STRUCTURE_CLEARED("gui.spatialtoolscmp.structure_gadget_invalid_structure_cleared", "The invalid structure was cleared."),
+    STRUCTURE_GADGET_UNDO_HINT("gui.spatialtoolscmp.structure_gadget_undo_hint", "Hold in offhand and right click to undo"),
+    STRUCTURE_GADGET_COPY_PASTE_UNDONE("gui.spatialtoolscmp.structure_gadget_copy_paste_undone", "Copy paste undone."),
+    STRUCTURE_GADGET_ITEMS_REFUNDED("gui.spatialtoolscmp.structure_gadget_items_refunded", "Items refunded."),
+    STRUCTURE_GADGET_UNDO_NO_SPACE("gui.spatialtoolscmp.structure_gadget_undo_no_space", "Not enough space for refunded items."),
+    STRUCTURE_GADGET_UNDO_WORLD_CHANGED("gui.spatialtoolscmp.structure_gadget_undo_world_changed", "Cannot undo: pasted blocks were changed."),
+    STRUCTURE_GADGET_UNDO_NOTHING_PLACED("gui.spatialtoolscmp.structure_gadget_undo_nothing_placed", "Undo data contains no placed blocks."),
+    STRUCTURE_GADGET_SKIPPED("gui.spatialtoolscmp.structure_gadget_skipped", "Skipped: %s"),
+    STRUCTURE_GADGET_PLACED_SKIPPED("gui.spatialtoolscmp.structure_gadget_placed_skipped", "Placed: %s, skipped: %s"),
+    STRUCTURE_GADGET_ITEMS_REFUNDED_TO_ME("gui.spatialtoolscmp.structure_gadget_items_refunded_to_me", "Items returned to ME storage."),
+    STRUCTURE_GADGET_CLONER_EMPTY("gui.spatialtoolscmp.structure_gadget_cloner_empty", "<empty>"),
+    STRUCTURE_GADGET_CLONER_SEARCH("gui.spatialtoolscmp.structure_gadget_cloner_search", "Search..."),
+    STRUCTURE_GADGET_CLONER_SELECT("gui.spatialtoolscmp.structure_gadget_cloner_select", "Select"),
+    STRUCTURE_GADGET_CLONER_RENAME("gui.spatialtoolscmp.structure_gadget_cloner_rename", "Rename"),
+    STRUCTURE_GADGET_CLONER_NAME("gui.spatialtoolscmp.structure_gadget_cloner_name", "Name"),
+    STRUCTURE_GADGET_CLONER_NOT_FOUND("gui.spatialtoolscmp.structure_gadget_cloner_not_found", "Structure not found."),
+    STRUCTURE_GADGET_CLONER_EXPORT("gui.spatialtoolscmp.structure_gadget_cloner_export", "Export"),
+    STRUCTURE_GADGET_CLONER_IMPORT("gui.spatialtoolscmp.structure_gadget_cloner_import", "Import"),
+    STRUCTURE_GADGET_CLONER_EXPORT_TOOLTIP("gui.spatialtoolscmp.structure_gadget_cloner_export_tooltip", "Exports selected structure to a file you can send to someone."),
+    STRUCTURE_GADGET_CLONER_IMPORT_TOOLTIP("gui.spatialtoolscmp.structure_gadget_cloner_import_tooltip", "Lets you choose a structure file exported with Export."),
+    FLIP_EAST_WEST("gui.spatialtoolscmp.flip_east_west", "Flip East/West"),
+    FLIP_EAST_WEST_AROUND_ORIGIN("gui.spatialtoolscmp.flip_east_west_around_origin", "Flip East/West around origin"),
+    FLIP_NORTH_SOUTH("gui.spatialtoolscmp.flip_north_south", "Flip North/South"),
+    FLIP_NORTH_SOUTH_AROUND_ORIGIN("gui.spatialtoolscmp.flip_north_south_around_origin", "Flip North/South around origin"),
+    MOD_NAME("gui.spatialtoolscmp.mod_name", "Spatial Tools Compatible"),
+    STRUCTURE_TOOL_HOLD_TO_OPEN("tooltip.spatialtoolscmp.structure_tool.hold_to_open", "Hold Shift + Right Click to Open"),
+    STRUCTURE_TOOL_STORED_ENERGY("tooltip.spatialtoolscmp.structure_tool.stored_energy", "Stored Energy: %s/%s FE (%s)"),
+    STRUCTURE_TOOL_ENERGY_VALUE("tooltip.spatialtoolscmp.structure_tool.energy_value", "%s"),
+    STRUCTURE_TOOL_ENERGY_PERCENT("tooltip.spatialtoolscmp.structure_tool.energy_percent", "%s%%"),
+    VALID_UPGRADES("gui.spatialtoolscmp.valid_upgrades", "Valid Upgrades:"),
+    AE2_NOT_INSTALLED("spatialtoolscmp.ae2_not_installed", "AE2 not installed"),
+    NOT_AVAILABLE("spatialtoolscmp.not_available", "Not available"),
+    PREVIEW_EMPTY_NO_STRUCTURE("spatialtoolscmp.preview.empty.no_structure", "No structure"),
+    PREVIEW_EMPTY_NO_SELECTION("spatialtoolscmp.preview.empty.no_selection", "No selection"),
+    PREVIEW_EMPTY_LOADING("spatialtoolscmp.preview.empty.loading", "Loading..."),
+    PREVIEW_EMPTY_CAPTURE_HINT("spatialtoolscmp.preview.empty.capture_hint", "Select corners to capture."),
+    PREVIEW_EMPTY_SELECT_HINT("spatialtoolscmp.preview.empty.select_hint", "Pick one from library or capture new."),
+    PREVIEW_EMPTY_SYNC_HINT("spatialtoolscmp.preview.empty.sync_hint", "Waiting for data.");
+
+    private final String key;
+    private final String value;
+
+    LangDefs(String key, String value) {
+        this.key = key;
+        this.value = value;
+    }
+
+    public String getTranslationKey() {
+        return key;
+    }
+
+    public String getEnglishText() {
+        return value;
+    }
+}

@@ -4,7 +4,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.client.model.data.ModelData;
-import net.oktawia.crazyae2addons.CrazyAddons;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 public final class PreviewRenderModelDataHelper {
 
@@ -30,7 +30,7 @@ public final class PreviewRenderModelDataHelper {
                         ModelData.EMPTY
                 );
             } catch (Throwable t) {
-                CrazyAddons.LOGGER.debug(t.getLocalizedMessage());
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
                 baseData = ModelData.EMPTY;
             }
 
@@ -43,7 +43,7 @@ public final class PreviewRenderModelDataHelper {
                 ModelData modelData = blockEntity.getModelData();
                 return modelData != null ? modelData : baseData;
             } catch (Throwable t) {
-                CrazyAddons.LOGGER.debug(t.getLocalizedMessage());
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
                 return baseData;
             }
         });

@@ -2,11 +2,11 @@ package net.oktawia.spatialtoolscmp.client.misc;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
-import net.oktawia.crazyae2addons.CrazyAddons;
-import net.oktawia.crazyae2addons.logic.structuretool.ClonerStructureLibraryStore;
-import net.oktawia.crazyae2addons.network.NetworkHandler;
-import net.oktawia.crazyae2addons.network.packets.structures.ExportClonerStructurePacket;
-import net.oktawia.crazyae2addons.network.packets.structures.ImportClonerStructurePacket;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.ExportClonerStructurePacket;
+import net.oktawia.spatialtoolscmp.network.packets.ImportClonerStructurePacket;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Files;
@@ -49,7 +49,7 @@ public final class ClonerStructureFileTransferClient {
             pendingExportPath = Path.of(stripQuotes(selected.trim()));
             pendingExportPath = ensurePathExtension(pendingExportPath);
         } catch (Throwable e) {
-            CrazyAddons.LOGGER.debug("invalid cloner structure export path", e);
+            SpatialToolsCMP.getLOGGER().debug("invalid cloner structure export path", e);
             pendingExportPath = null;
             return;
         }
@@ -66,7 +66,7 @@ public final class ClonerStructureFileTransferClient {
         try {
             Files.write(pendingExportPath, bytes);
         } catch (Throwable e) {
-            CrazyAddons.LOGGER.debug("failed to export cloner structure", e);
+            SpatialToolsCMP.getLOGGER().debug("failed to export cloner structure", e);
         } finally {
             pendingExportPath = null;
         }
@@ -104,7 +104,7 @@ public final class ClonerStructureFileTransferClient {
                     bytes
             ));
         } catch (Throwable e) {
-            CrazyAddons.LOGGER.debug("failed to import cloner structure", e);
+            SpatialToolsCMP.getLOGGER().debug("failed to import cloner structure", e);
         }
     }
 
