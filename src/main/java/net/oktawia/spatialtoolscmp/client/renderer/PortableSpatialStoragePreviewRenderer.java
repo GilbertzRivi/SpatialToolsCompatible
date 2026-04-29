@@ -39,7 +39,11 @@ import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
 
 public class PortableSpatialStoragePreviewRenderer {
 

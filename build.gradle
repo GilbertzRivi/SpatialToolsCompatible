@@ -154,7 +154,7 @@ dependencies {
     // Compat
     compileOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
     compileOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    compileOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.3.0") { transitive = false }
+    compileOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.5.2") { transitive = false }
     compileOnly fg.deobf("curse.maven:mekanism-268560:6552911")
     // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
@@ -167,7 +167,7 @@ dependencies {
     runtimeOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
     runtimeOnly fg.deobf("curse.maven:guideme-1173950:6489464")
     runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.3.0") { transitive = false }
+    runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.5.2") { transitive = false }
     runtimeOnly fg.deobf("curse.maven:framedblocks-441647:7386520")
 
     // Runtime utils

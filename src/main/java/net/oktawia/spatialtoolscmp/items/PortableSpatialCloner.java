@@ -30,29 +30,19 @@ import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
-import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
-import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
-import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
-import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
-import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
-import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
-import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
-import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.logic.*;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
     private static final String CLONER_UNDO_DIMENSION_KEY = "clonerUndoDimension";
     private static final String CLONER_UNDO_BLOCKS_KEY = "clonerUndoBlocks";
+    private static final String CLONER_UNDO_ID_KEY = "clonerUndoId";
 
     private static final String CLONER_UNDO_POS_X_KEY = "x";
     private static final String CLONER_UNDO_POS_Y_KEY = "y";
@@ -372,9 +362,9 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
     }
 
     private void undoLastClonerPaste(ServerLevel level, Player player, ItemStack toolStack) {
-        CompoundTag tag = toolStack.getTag();
+        CompoundTag stackTag = toolStack.getTag();
 
-        if (tag == null || !tag.contains(CLONER_UNDO_BLOCKS_KEY, Tag.TAG_LIST)) {
+        if (stackTag == null || !stackTag.contains(CLONER_UNDO_ID_KEY, Tag.TAG_STRING)) {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
@@ -384,7 +374,21 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        String undoDimension = tag.getString(CLONER_UNDO_DIMENSION_KEY);
+        CompoundTag undoTag = loadClonerUndoTag(level, toolStack);
+
+        if (undoTag == null || !undoTag.contains(CLONER_UNDO_BLOCKS_KEY, Tag.TAG_LIST)) {
+            clearClonerUndoPaste(level, toolStack);
+
+            showHud(
+                    player,
+                    HUD_TIME_MEDIUM,
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
+            );
+            return;
+        }
+
+        String undoDimension = undoTag.getString(CLONER_UNDO_DIMENSION_KEY);
         String currentDimension = level.dimension().location().toString();
 
         if (!currentDimension.equals(undoDimension)) {
@@ -397,10 +401,10 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        List<ClonerUndoPlacedBlock> undoBlocks = readClonerUndoPaste(toolStack);
+        List<ClonerUndoPlacedBlock> undoBlocks = readClonerUndoPaste(undoTag);
 
         if (undoBlocks.isEmpty()) {
-            clearClonerUndoPaste(toolStack);
+            clearClonerUndoPaste(level, toolStack);
 
             showHud(
                     player,
@@ -452,7 +456,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             }
         }
 
-        clearClonerUndoPaste(toolStack);
+        clearClonerUndoPaste(level, toolStack);
 
         if (shouldRefundItems) {
             showHud(
@@ -481,9 +485,11 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             List<ClonerUndoPlacedBlock> placedBlocks
     ) {
-        CompoundTag tag = toolStack.getOrCreateTag();
+        clearClonerUndoPaste(level, toolStack);
 
-        tag.putString(CLONER_UNDO_DIMENSION_KEY, level.dimension().location().toString());
+        CompoundTag undoTag = new CompoundTag();
+
+        undoTag.putString(CLONER_UNDO_DIMENSION_KEY, level.dimension().location().toString());
 
         ListTag blocksTag = new ListTag();
 
@@ -518,17 +524,23 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             blocksTag.add(blockTag);
         }
 
-        tag.put(CLONER_UNDO_BLOCKS_KEY, blocksTag);
+        undoTag.put(CLONER_UNDO_BLOCKS_KEY, blocksTag);
+
+        String undoId = UUID.randomUUID().toString();
+
+        try {
+            StructureToolStructureStore.save(level.getServer(), undoId, undoTag);
+            toolStack.getOrCreateTag().putString(CLONER_UNDO_ID_KEY, undoId);
+        } catch (IOException ignored) {
+        }
     }
 
-    private List<ClonerUndoPlacedBlock> readClonerUndoPaste(ItemStack toolStack) {
-        CompoundTag tag = toolStack.getTag();
-
-        if (tag == null || !tag.contains(CLONER_UNDO_BLOCKS_KEY, Tag.TAG_LIST)) {
+    private List<ClonerUndoPlacedBlock> readClonerUndoPaste(CompoundTag undoTag) {
+        if (!undoTag.contains(CLONER_UNDO_BLOCKS_KEY, Tag.TAG_LIST)) {
             return List.of();
         }
 
-        ListTag blocksTag = tag.getList(CLONER_UNDO_BLOCKS_KEY, Tag.TAG_COMPOUND);
+        ListTag blocksTag = undoTag.getList(CLONER_UNDO_BLOCKS_KEY, Tag.TAG_COMPOUND);
         List<ClonerUndoPlacedBlock> out = new ArrayList<>();
 
         for (int i = 0; i < blocksTag.size(); i++) {
@@ -571,6 +583,47 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
 
         return out;
+    }
+
+    private CompoundTag loadClonerUndoTag(ServerLevel level, ItemStack toolStack) {
+        CompoundTag tag = toolStack.getTag();
+
+        if (tag == null || !tag.contains(CLONER_UNDO_ID_KEY, Tag.TAG_STRING)) {
+            return null;
+        }
+
+        String undoId = tag.getString(CLONER_UNDO_ID_KEY);
+
+        if (undoId.isBlank()) {
+            return null;
+        }
+
+        try {
+            return StructureToolStructureStore.load(level.getServer(), undoId);
+        } catch (IOException ignored) {
+            return null;
+        }
+    }
+
+    private void clearClonerUndoPaste(ServerLevel level, ItemStack toolStack) {
+        CompoundTag tag = toolStack.getTag();
+
+        if (tag == null) {
+            return;
+        }
+
+        if (tag.contains(CLONER_UNDO_ID_KEY, Tag.TAG_STRING)) {
+            String undoId = tag.getString(CLONER_UNDO_ID_KEY);
+
+            if (!undoId.isBlank()) {
+                try {
+                    StructureToolStructureStore.delete(level.getServer(), undoId);
+                } catch (IOException ignored) {
+                }
+            }
+        }
+
+        clearClonerUndoPaste(toolStack);
     }
 
     private void clearClonerUndoPaste(ItemStack toolStack) {

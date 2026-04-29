@@ -1,7 +1,9 @@
 package net.oktawia.spatialtoolscmp.defs;
 
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
+import net.minecraft.world.level.block.Blocks;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -28,6 +30,23 @@ public class SpatialItemRecipes {
     }
 
     public static void registerRecipes() {
+        recipe("portable_spatial_storage")
+                .shaped(" B /DLD/CSC")
+                .define('L', Blocks.REDSTONE_LAMP)
+                .define('D', Items.DIAMOND)
+                .define('S', Items.NETHER_STAR)
+                .define('B', Items.STONE_BUTTON)
+                .define('C', Blocks.CHEST)
+                .output(SpatialItemRegistrar.PORTABLE_SPATIAL_STORAGE.get())
+                .register();
+        recipe("portable_spatial_cloner")
+                .shaped(" L /DSD/EEE")
+                .define('L', Blocks.REDSTONE_LAMP)
+                .define('D', Items.DIAMOND)
+                .define('S', SpatialItemRegistrar.PORTABLE_SPATIAL_STORAGE.get())
+                .define('E', Items.ENDER_PEARL)
+                .output(SpatialItemRegistrar.PORTABLE_SPATIAL_CLONER.get())
+                .register();
     }
 
     public static class Builder {
