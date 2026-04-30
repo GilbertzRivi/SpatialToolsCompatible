@@ -313,7 +313,9 @@ public class PortableSpatialClonerScreen
     }
 
     protected boolean hasCraftingUpgrade() {
-        return IsModLoaded.AE2 && getMenu().hasCraftingUpgradeInstalled();
+        return !PortableSpatialCloner.hasItemHandlerLink(findRelevantStack())
+                && IsModLoaded.AE2
+                && getMenu().hasCraftingUpgradeInstalled();
     }
 
     private void renderMaterialTooltip(GuiGraphics graphics, int mouseX, int mouseY) {

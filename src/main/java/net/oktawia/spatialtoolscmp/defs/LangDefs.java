@@ -97,7 +97,13 @@ public enum LangDefs {
     PREVIEW_EMPTY_LOADING("spatialtoolscmp.preview.empty.loading", "Loading..."),
     PREVIEW_EMPTY_CAPTURE_HINT("spatialtoolscmp.preview.empty.capture_hint", "Select corners to capture."),
     PREVIEW_EMPTY_SELECT_HINT("spatialtoolscmp.preview.empty.select_hint", "Pick one from library or capture new."),
-    PREVIEW_EMPTY_SYNC_HINT("spatialtoolscmp.preview.empty.sync_hint", "Waiting for data.");
+    PREVIEW_EMPTY_SYNC_HINT("spatialtoolscmp.preview.empty.sync_hint", "Waiting for data."),
+    PORTABLE_SPATIAL_CLONER_LINK_STORAGE_TOOLTIP("item.spatialtoolscmp.portable_spatial_cloner.link_storage_tooltip", "Shift right-click to link to a storage"),
+    PORTABLE_SPATIAL_CLONER_LINKED_TO("item.spatialtoolscmp.portable_spatial_cloner.linked_to", "Linked to %s"),
+    PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2("item.spatialtoolscmp.portable_spatial_cloner.linked_to_ae2", "Linked to %s (AE2)"),
+    PORTABLE_SPATIAL_CLONER_LINK_DIMENSION("item.spatialtoolscmp.portable_spatial_cloner.link_dimension", "(%s)"),
+    PORTABLE_SPATIAL_CLONER_NO_ITEM_HANDLER("item.spatialtoolscmp.portable_spatial_cloner.no_item_handler", "No item handler found"),
+    PORTABLE_SPATIAL_CLONER_SHIFT_FOR_DETAILS("item.spatialtoolscmp.portable_spatial_cloner.shift_for_details", "Shift for details...");
 
     private final String key;
     private final String value;

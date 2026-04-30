@@ -33,6 +33,8 @@ public final class AE2GridLinkableHandler implements IGridLinkableHandler {
 
     @Override
     public void link(ItemStack stack, GlobalPos pos) {
+        PortableSpatialCloner.clearItemHandlerLink(stack);
+
         CompoundTag tag = stack.getOrCreateTag();
         CompoundTag linkTag = new CompoundTag();
 

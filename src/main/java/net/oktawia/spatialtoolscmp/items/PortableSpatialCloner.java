@@ -1,11 +1,19 @@
 package net.oktawia.spatialtoolscmp.items;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -24,6 +32,9 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.HitResult;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.items.IItemHandler;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
@@ -52,6 +63,11 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
     private static final String CLONER_UNDO_REFUNDS_KEY = "refunds";
     private static final String CLONER_UNDO_REFUND_STACK_KEY = "stack";
     private static final String CLONER_UNDO_REFUND_COUNT_KEY = "count";
+
+    private static final String ITEM_HANDLER_LINK_KEY = "itemHandlerLink";
+    private static final String ITEM_HANDLER_LINK_DIM_KEY = "dim";
+    private static final String ITEM_HANDLER_LINK_POS_KEY = "pos";
+    private static final String ITEM_HANDLER_LINK_SIDE_KEY = "side";
 
     private static final int CLONER_UNDO_CLEAR_FLAGS =
             Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
@@ -124,6 +140,20 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         Player player = context.getPlayer();
 
         if (context.getHand() == InteractionHand.OFF_HAND && isToolEnabled() && player != null) {
+            if (player.isShiftKeyDown()) {
+                if (!level.isClientSide()) {
+                    tryLinkItemHandlerStorage(
+                            (ServerLevel) level,
+                            player,
+                            context.getItemInHand(),
+                            context.getClickedPos(),
+                            context.getClickedFace()
+                    );
+                }
+
+                return InteractionResult.sidedSuccess(level.isClientSide());
+            }
+
             if (!level.isClientSide()) {
                 undoLastClonerPaste((ServerLevel) level, player, context.getItemInHand());
             }
@@ -872,6 +902,10 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return 0;
         }
 
+        if (hasItemHandlerLink(toolStack)) {
+            return insertIntoLinkedItemHandler(level, toolStack, wanted, amount, simulate);
+        }
+
         if (IsModLoaded.AE2) {
             try {
                 int requested = (int) Math.min(Integer.MAX_VALUE, amount);
@@ -1209,6 +1243,10 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return 0;
         }
 
+        if (hasItemHandlerLink(toolStack)) {
+            return extractFromLinkedItemHandler(level, toolStack, wanted, amount, simulate);
+        }
+
         if (IsModLoaded.AE2) {
             try {
                 return AE2MEOps.extract(
@@ -1225,6 +1263,254 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
 
         return 0;
+    }
+
+    private void tryLinkItemHandlerStorage(
+            ServerLevel level,
+            Player player,
+            ItemStack toolStack,
+            BlockPos pos,
+            @Nullable Direction side
+    ) {
+        BlockEntity blockEntity = level.getBlockEntity(pos);
+
+        if (blockEntity == null || !hasItemHandlerCapability(blockEntity, side)) {
+            showHud(
+                    player,
+                    HUD_TIME_MEDIUM,
+                    red(Component.translatable(LangDefs.PORTABLE_SPATIAL_CLONER_NO_ITEM_HANDLER.getTranslationKey())),
+                    cyan(Component.translatable(
+                            LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
+                            level.dimension().location().toString()
+                    ))
+            );
+            return;
+        }
+
+        setItemHandlerLink(toolStack, level, pos, side);
+        unlinkAe2IfPresent(toolStack);
+
+        showHud(
+                player,
+                HUD_TIME_MEDIUM,
+                cyan(Component.translatable(
+                        LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO.getTranslationKey(),
+                        formatBlockPos(pos)
+                )),
+                cyan(Component.translatable(
+                        LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
+                        level.dimension().location().toString()
+                ))
+        );
+    }
+
+    private static boolean hasItemHandlerCapability(BlockEntity blockEntity, @Nullable Direction side) {
+        LazyOptional<IItemHandler> sided = blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, side);
+
+        if (sided.isPresent()) {
+            return true;
+        }
+
+        return side != null && blockEntity.getCapability(ForgeCapabilities.ITEM_HANDLER, null).isPresent();
+    }
+
+    private static void setItemHandlerLink(
+            ItemStack stack,
+            ServerLevel level,
+            BlockPos pos,
+            @Nullable Direction side
+    ) {
+        CompoundTag linkTag = new CompoundTag();
+
+        linkTag.putString(ITEM_HANDLER_LINK_DIM_KEY, level.dimension().location().toString());
+        linkTag.put(ITEM_HANDLER_LINK_POS_KEY, NbtUtils.writeBlockPos(pos));
+
+        if (side != null) {
+            linkTag.putString(ITEM_HANDLER_LINK_SIDE_KEY, side.getName());
+        }
+
+        stack.getOrCreateTag().put(ITEM_HANDLER_LINK_KEY, linkTag);
+    }
+
+    public static void clearItemHandlerLink(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+
+        if (tag != null) {
+            tag.remove(ITEM_HANDLER_LINK_KEY);
+        }
+    }
+
+    public static boolean hasItemHandlerLink(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+
+        return tag != null && tag.contains(ITEM_HANDLER_LINK_KEY, Tag.TAG_COMPOUND);
+    }
+
+    @Nullable
+    private static ItemHandlerLink getItemHandlerLink(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+
+        if (tag == null || !tag.contains(ITEM_HANDLER_LINK_KEY, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        CompoundTag linkTag = tag.getCompound(ITEM_HANDLER_LINK_KEY);
+
+        if (!linkTag.contains(ITEM_HANDLER_LINK_DIM_KEY, Tag.TAG_STRING)
+                || !linkTag.contains(ITEM_HANDLER_LINK_POS_KEY, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        ResourceLocation dimId = ResourceLocation.tryParse(linkTag.getString(ITEM_HANDLER_LINK_DIM_KEY));
+
+        if (dimId == null) {
+            return null;
+        }
+
+        ResourceKey<Level> dimension = ResourceKey.create(Registries.DIMENSION, dimId);
+        BlockPos pos = NbtUtils.readBlockPos(linkTag.getCompound(ITEM_HANDLER_LINK_POS_KEY));
+
+        Direction side = null;
+
+        if (linkTag.contains(ITEM_HANDLER_LINK_SIDE_KEY, Tag.TAG_STRING)) {
+            side = Direction.byName(linkTag.getString(ITEM_HANDLER_LINK_SIDE_KEY));
+        }
+
+        return new ItemHandlerLink(GlobalPos.of(dimension, pos), side);
+    }
+
+    @Nullable
+    private IItemHandler getLinkedItemHandler(ServerLevel level, ItemStack toolStack) {
+        ItemHandlerLink link = getItemHandlerLink(toolStack);
+
+        if (link == null) {
+            return null;
+        }
+
+        ServerLevel targetLevel = level.getServer().getLevel(link.pos().dimension());
+
+        if (targetLevel == null) {
+            return null;
+        }
+
+        BlockEntity blockEntity = targetLevel.getBlockEntity(link.pos().pos());
+
+        if (blockEntity == null) {
+            return null;
+        }
+
+        IItemHandler sided = blockEntity
+                .getCapability(ForgeCapabilities.ITEM_HANDLER, link.side())
+                .orElse(null);
+
+        if (sided != null) {
+            return sided;
+        }
+
+        if (link.side() != null) {
+            return blockEntity
+                    .getCapability(ForgeCapabilities.ITEM_HANDLER, null)
+                    .orElse(null);
+        }
+
+        return null;
+    }
+
+    private long insertIntoLinkedItemHandler(
+            ServerLevel level,
+            ItemStack toolStack,
+            ItemStack wanted,
+            long amount,
+            boolean simulate
+    ) {
+        if (wanted.isEmpty() || amount <= 0) {
+            return 0;
+        }
+
+        IItemHandler handler = getLinkedItemHandler(level, toolStack);
+
+        if (handler == null) {
+            return 0;
+        }
+
+        int requested = (int) Math.min(Integer.MAX_VALUE, amount);
+
+        ItemStack remainder = wanted.copy();
+        remainder.setCount(requested);
+
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (remainder.isEmpty()) {
+                break;
+            }
+
+            remainder = handler.insertItem(slot, remainder, simulate);
+        }
+
+        return requested - remainder.getCount();
+    }
+
+    private long extractFromLinkedItemHandler(
+            ServerLevel level,
+            ItemStack toolStack,
+            ItemStack wanted,
+            long amount,
+            boolean simulate
+    ) {
+        if (wanted.isEmpty() || amount <= 0) {
+            return 0;
+        }
+
+        IItemHandler handler = getLinkedItemHandler(level, toolStack);
+
+        if (handler == null) {
+            return 0;
+        }
+
+        long remaining = amount;
+        long extracted = 0;
+
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            if (remaining <= 0) {
+                break;
+            }
+
+            ItemStack inSlot = handler.getStackInSlot(slot);
+
+            if (inSlot.isEmpty()) {
+                continue;
+            }
+
+            if (!ItemStack.isSameItemSameTags(inSlot, wanted)) {
+                continue;
+            }
+
+            int request = (int) Math.min(Integer.MAX_VALUE, remaining);
+            ItemStack pulled = handler.extractItem(slot, request, simulate);
+
+            if (pulled.isEmpty()) {
+                continue;
+            }
+
+            extracted += pulled.getCount();
+            remaining -= pulled.getCount();
+        }
+
+        return extracted;
+    }
+
+    private void unlinkAe2IfPresent(ItemStack toolStack) {
+        if (!IsModLoaded.AE2) {
+            return;
+        }
+
+        try {
+            AE2GridLinkableHandler.INSTANCE.unlink(toolStack);
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static String formatBlockPos(BlockPos pos) {
+        return "x" + pos.getX() + ", y" + pos.getY() + ", z" + pos.getZ();
     }
 
     protected Map<BlockPos, CompoundTag> parseMetadataByPos(CompoundTag savedTag) {
@@ -1389,6 +1675,12 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
     }
 
+    private record ItemHandlerLink(
+            GlobalPos pos,
+            @Nullable Direction side
+    ) {
+    }
+
     @Override
     protected double getEnergyCostMultiplier() {
         return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
@@ -1403,11 +1695,109 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
     ) {
         super.appendHoverText(stack, level, tooltip, flag);
 
+        if (!Screen.hasShiftDown()) {
+            tooltip.add(Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_SHIFT_FOR_DETAILS.getTranslationKey()
+            ).withStyle(ChatFormatting.DARK_GRAY));
+
+            return;
+        }
+
+        tooltip.add(Component.translatable(
+                LangDefs.PORTABLE_SPATIAL_CLONER_LINK_STORAGE_TOOLTIP.getTranslationKey()
+        ).withStyle(ChatFormatting.GRAY));
+
+        ItemHandlerLink itemHandlerLink = getItemHandlerLink(stack);
+
+        if (itemHandlerLink != null) {
+            tooltip.add(Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO.getTranslationKey(),
+                    formatBlockPos(itemHandlerLink.pos().pos())
+            ).withStyle(ChatFormatting.AQUA));
+
+            tooltip.add(Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
+                    itemHandlerLink.pos().dimension().location().toString()
+            ).withStyle(ChatFormatting.GRAY));
+
+            return;
+        }
+
         if (IsModLoaded.AE2) {
-            if (AE2GridLinkableHandler.hasLink(stack)) {
-                tooltip.add(Component.literal("ME Grid: linked")
-                        .withStyle(ChatFormatting.AQUA));
+            try {
+                GlobalPos ae2Pos = AE2GridLinkableHandler.getLinkedPos(stack);
+
+                if (ae2Pos != null) {
+                    tooltip.add(Component.translatable(
+                            LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2.getTranslationKey(),
+                            formatBlockPos(ae2Pos.pos())
+                    ).withStyle(ChatFormatting.AQUA));
+
+                    tooltip.add(Component.translatable(
+                            LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
+                            ae2Pos.dimension().location().toString()
+                    ).withStyle(ChatFormatting.GRAY));
+                }
+            } catch (Throwable ignored) {
             }
         }
+    }
+
+    public static long countLinkedItemHandlerStorage(
+            ServerLevel level,
+            ItemStack toolStack,
+            ItemStack wanted
+    ) {
+        if (level == null || toolStack.isEmpty() || wanted.isEmpty()) {
+            return 0L;
+        }
+
+        ItemHandlerLink link = getItemHandlerLink(toolStack);
+
+        if (link == null) {
+            return 0L;
+        }
+
+        ServerLevel targetLevel = level.getServer().getLevel(link.pos().dimension());
+
+        if (targetLevel == null) {
+            return 0L;
+        }
+
+        BlockEntity blockEntity = targetLevel.getBlockEntity(link.pos().pos());
+
+        if (blockEntity == null) {
+            return 0L;
+        }
+
+        IItemHandler handler = blockEntity
+                .getCapability(ForgeCapabilities.ITEM_HANDLER, link.side())
+                .orElse(null);
+
+        if (handler == null && link.side() != null) {
+            handler = blockEntity
+                    .getCapability(ForgeCapabilities.ITEM_HANDLER, null)
+                    .orElse(null);
+        }
+
+        if (handler == null) {
+            return 0L;
+        }
+
+        long total = 0L;
+
+        for (int slot = 0; slot < handler.getSlots(); slot++) {
+            ItemStack inSlot = handler.getStackInSlot(slot);
+
+            if (inSlot.isEmpty()) {
+                continue;
+            }
+
+            if (ItemStack.isSameItemSameTags(inSlot, wanted)) {
+                total += inSlot.getCount();
+            }
+        }
+
+        return total;
     }
 }

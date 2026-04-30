@@ -333,7 +333,13 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             boolean craftable = false;
 
             if (getPlayer().level() instanceof ServerLevel serverLevel) {
-                if (IsModLoaded.AE2) {
+                if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) {
+                    available += PortableSpatialCloner.countLinkedItemHandlerStorage(
+                            serverLevel,
+                            getItemStack(),
+                            stack
+                    );
+                } else if (IsModLoaded.AE2) {
                     try {
                         available += AE2MEOps.getAmount(
                                 stack,

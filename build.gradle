@@ -182,6 +182,8 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:ftb-chunks-forge-314906:6431735")
     runtimeOnly fg.deobf("curse.maven:ftb-library-forge-404465:7296748")
     runtimeOnly fg.deobf("curse.maven:ftb-teams-forge-404468:6130786")
+    runtimeOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
+    runtimeOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
 }
 
 tasks.named('processResources', ProcessResources).configure {
