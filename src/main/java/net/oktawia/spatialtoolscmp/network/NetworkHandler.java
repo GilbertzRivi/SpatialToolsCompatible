@@ -103,6 +103,12 @@ public final class NetworkHandler {
                 .decoder(RequestClonerCraftingPacket::decode)
                 .consumerMainThread(RequestClonerCraftingPacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(SetClonerNestedInventoryModePacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SetClonerNestedInventoryModePacket::encode)
+                .decoder(SetClonerNestedInventoryModePacket::decode)
+                .consumerMainThread(SetClonerNestedInventoryModePacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object packet) {

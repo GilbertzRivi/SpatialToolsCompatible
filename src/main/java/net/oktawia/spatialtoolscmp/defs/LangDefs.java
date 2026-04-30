@@ -103,7 +103,12 @@ public enum LangDefs {
     PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2("item.spatialtoolscmp.portable_spatial_cloner.linked_to_ae2", "Linked to %s (AE2)"),
     PORTABLE_SPATIAL_CLONER_LINK_DIMENSION("item.spatialtoolscmp.portable_spatial_cloner.link_dimension", "(%s)"),
     PORTABLE_SPATIAL_CLONER_NO_ITEM_HANDLER("item.spatialtoolscmp.portable_spatial_cloner.no_item_handler", "No item handler found"),
-    PORTABLE_SPATIAL_CLONER_SHIFT_FOR_DETAILS("item.spatialtoolscmp.portable_spatial_cloner.shift_for_details", "Shift for details...");
+    PORTABLE_SPATIAL_CLONER_SHIFT_FOR_DETAILS("item.spatialtoolscmp.portable_spatial_cloner.shift_for_details", "Shift for details..."),
+    PORTABLE_SPATIAL_CLONER_NESTED_MODE_NONE_TOOLTIP("item.spatialtoolscmp.portable_spatial_cloner.nested_mode_none_tooltip", "Don't use resources from nested inventories (shulker boxes etc)"),
+    PORTABLE_SPATIAL_CLONER_NESTED_MODE_PLAYER_TOOLTIP("item.spatialtoolscmp.portable_spatial_cloner.nested_mode_player_tooltip", "Use resources from nested inventories that are in my inventory"),
+    PORTABLE_SPATIAL_CLONER_NESTED_MODE_CONNECTED_TOOLTIP("item.spatialtoolscmp.portable_spatial_cloner.nested_mode_connected_tooltip", "Use resources from nested inventories that are in connected storage (AE2 is ignored)"),
+    PORTABLE_SPATIAL_CLONER_NESTED_MODE_BOTH_TOOLTIP("item.spatialtoolscmp.portable_spatial_cloner.nested_mode_both_tooltip", "Use resources from nested inventories that are in my inventory or connected storage"),
+    PORTABLE_SPATIAL_CLONER_NESTED_MODE_AE2_IGNORED_TOOLTIP("item.spatialtoolscmp.portable_spatial_cloner.nested_mode_ae2_ignored_tooltip", "Nested inventories stored inside AE2 are ignored");
 
     private final String key;
     private final String value;

@@ -156,6 +156,8 @@ dependencies {
     compileOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
     compileOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.5.2") { transitive = false }
     compileOnly fg.deobf("curse.maven:mekanism-268560:6552911")
+    compileOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
+    compileOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
     // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:6420945")
@@ -169,6 +171,8 @@ dependencies {
     runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
     runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.5.2") { transitive = false }
     runtimeOnly fg.deobf("curse.maven:framedblocks-441647:7386520")
+    runtimeOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
+    runtimeOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
 
     // Runtime utils
     runtimeOnly fg.deobf("curse.maven:jade-324717:6106101")
@@ -183,7 +187,6 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:ftb-library-forge-404465:7296748")
     runtimeOnly fg.deobf("curse.maven:ftb-teams-forge-404468:6130786")
     runtimeOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
-    runtimeOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
 }
 
 tasks.named('processResources', ProcessResources).configure {

@@ -1,5 +1,6 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
@@ -9,9 +10,12 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.IconButtonWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.SearchableClonerStructureDropdownWidget;
+import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
@@ -41,8 +45,15 @@ public class PortableSpatialClonerScreen
     private static final int MATERIAL_LIST_WIDTH = 92;
     private static final int MATERIAL_LIST_HEIGHT = 101;
 
+    private static final int NESTED_MODE_BUTTON_LEFT = 154;
+    private static final int NESTED_MODE_BUTTON_TOP = 6;
+    private static final int NESTED_MODE_BUTTON_SIZE = 16;
+
+    private static final int NESTED_MODE_TOOLTIP_MAX_CHARS = 28;
+
     private ClonerMaterialListWidget materialList;
     private SearchableClonerStructureDropdownWidget structureSelector;
+    private IconButtonWidget nestedInventoryModeButton;
 
     private boolean requestedLibrary = false;
 
@@ -104,6 +115,17 @@ public class PortableSpatialClonerScreen
 
         this.addRenderableWidget(this.structureSelector);
 
+        this.nestedInventoryModeButton = new IconButtonWidget(
+                this.leftPos + NESTED_MODE_BUTTON_LEFT,
+                this.topPos + NESTED_MODE_BUTTON_TOP,
+                NESTED_MODE_BUTTON_SIZE,
+                NESTED_MODE_BUTTON_SIZE,
+                iconForNestedInventoryMode(getNestedInventoryMode()),
+                button -> getMenu().cycleNestedInventoryMode()
+        );
+
+        this.addRenderableWidget(this.nestedInventoryModeButton);
+
         layoutWidgets();
 
         finishInit();
@@ -137,6 +159,17 @@ public class PortableSpatialClonerScreen
             this.materialList.resize(
                     MATERIAL_LIST_WIDTH,
                     MATERIAL_LIST_HEIGHT
+            );
+        }
+
+        if (this.nestedInventoryModeButton != null) {
+            this.nestedInventoryModeButton.setPosition(
+                    left + NESTED_MODE_BUTTON_LEFT,
+                    top + NESTED_MODE_BUTTON_TOP
+            );
+            this.nestedInventoryModeButton.resize(
+                    NESTED_MODE_BUTTON_SIZE,
+                    NESTED_MODE_BUTTON_SIZE
             );
         }
     }
@@ -220,11 +253,20 @@ public class PortableSpatialClonerScreen
             this.structureSelector.refreshFromClientCache();
         }
 
+        if (this.nestedInventoryModeButton != null) {
+            this.nestedInventoryModeButton.setIcon(iconForNestedInventoryMode(getNestedInventoryMode()));
+        }
+
         syncRequirementEntries();
     }
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.nestedInventoryModeButton != null && this.nestedInventoryModeButton.mouseClicked(mouseX, mouseY, button)) {
+            this.setFocused(this.nestedInventoryModeButton);
+            return true;
+        }
+
         if (this.materialList != null && this.materialList.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.materialList);
             return true;
@@ -285,6 +327,8 @@ public class PortableSpatialClonerScreen
             renderMaterialTooltip(graphics, mouseX, mouseY);
         }
 
+        renderNestedInventoryModeTooltip(graphics, mouseX, mouseY);
+
         if (this.structureSelector != null) {
             this.structureSelector.renderDropdownOverlay(graphics, mouseX, mouseY, partialTick);
 
@@ -316,6 +360,82 @@ public class PortableSpatialClonerScreen
         return !PortableSpatialCloner.hasItemHandlerLink(findRelevantStack())
                 && IsModLoaded.AE2
                 && getMenu().hasCraftingUpgradeInstalled();
+    }
+
+    private PortableSpatialCloner.NestedInventoryResourceMode getNestedInventoryMode() {
+        return PortableSpatialCloner.getNestedInventoryResourceMode(findRelevantStack());
+    }
+
+    private static Icon iconForNestedInventoryMode(PortableSpatialCloner.NestedInventoryResourceMode mode) {
+        return switch (mode) {
+            case NONE -> Icon.CROSS;
+            case PLAYER -> Icon.PLAYER_INV;
+            case CONNECTED -> Icon.EXTERNAL_INV;
+            case BOTH -> Icon.CHECK;
+        };
+    }
+
+    private List<Component> tooltipForNestedInventoryMode(PortableSpatialCloner.NestedInventoryResourceMode mode) {
+        List<Component> lines = new ArrayList<>();
+
+        Component mainTooltip = switch (mode) {
+            case NONE -> Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_NONE_TOOLTIP.getTranslationKey()
+            );
+            case PLAYER -> Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_PLAYER_TOOLTIP.getTranslationKey()
+            );
+            case CONNECTED -> Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_CONNECTED_TOOLTIP.getTranslationKey()
+            );
+            case BOTH -> Component.translatable(
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_BOTH_TOOLTIP.getTranslationKey()
+            );
+        };
+
+        addWrappedTooltipLines(lines, mainTooltip);
+
+        if (mode.useConnectedNested() && isLinkedToAe2()) {
+            addWrappedTooltipLines(
+                    lines,
+                    Component.translatable(
+                            LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_AE2_IGNORED_TOOLTIP.getTranslationKey()
+                    ).withStyle(ChatFormatting.DARK_GRAY)
+            );
+        }
+
+        return lines;
+    }
+
+    private boolean isLinkedToAe2() {
+        if (!IsModLoaded.AE2) {
+            return false;
+        }
+
+        ItemStack stack = findRelevantStack();
+
+        if (stack.isEmpty() || PortableSpatialCloner.hasItemHandlerLink(stack)) {
+            return false;
+        }
+
+        try {
+            return AE2GridLinkableHandler.getLinkedPos(stack) != null;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private void renderNestedInventoryModeTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (this.nestedInventoryModeButton == null || !this.nestedInventoryModeButton.isMouseOver(mouseX, mouseY)) {
+            return;
+        }
+
+        graphics.renderComponentTooltip(
+                Minecraft.getInstance().font,
+                tooltipForNestedInventoryMode(getNestedInventoryMode()),
+                mouseX,
+                mouseY
+        );
     }
 
     private void renderMaterialTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -378,5 +498,48 @@ public class PortableSpatialClonerScreen
         }
 
         return Component.translatable(LangDefs.PREVIEW_EMPTY_SELECT_HINT.getTranslationKey());
+    }
+
+    private static void addWrappedTooltipLines(List<Component> lines, Component component) {
+        addWrappedTooltipLines(lines, component, NESTED_MODE_TOOLTIP_MAX_CHARS);
+    }
+
+    private static void addWrappedTooltipLines(List<Component> lines, Component component, int maxChars) {
+        if (component == null) {
+            return;
+        }
+
+        String text = component.getString().trim();
+
+        if (text.isBlank()) {
+            return;
+        }
+
+        int max = Math.max(8, maxChars);
+        String remaining = text;
+
+        while (remaining.length() > max) {
+            int split = remaining.lastIndexOf(' ', max);
+
+            if (split <= 0) {
+                split = remaining.indexOf(' ', max);
+
+                if (split <= 0) {
+                    break;
+                }
+            }
+
+            String line = remaining.substring(0, split).trim();
+
+            if (!line.isBlank()) {
+                lines.add(Component.literal(line).withStyle(component.getStyle()));
+            }
+
+            remaining = remaining.substring(split + 1).trim();
+        }
+
+        if (!remaining.isBlank()) {
+            lines.add(Component.literal(remaining).withStyle(component.getStyle()));
+        }
     }
 }

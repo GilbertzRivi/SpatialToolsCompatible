@@ -43,11 +43,9 @@ import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.spatialtoolscmp.IsModLoaded;
-import net.oktawia.spatialtoolscmp.SpatialConfig;
-import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.items.helpers.ToolCaptureFilter;
+import net.oktawia.spatialtoolscmp.items.helpers.ToolPowerManager;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
@@ -70,9 +68,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
     protected static final double POWER_PER_BLOCK_PASTE = 1.0D;
 
-    protected static final String CURRENT_POWER_NBT_KEY = "internalCurrentPower";
-    protected static final String POWER_UPGRADES_NBT_KEY = "internalPowerUpgradeInventory";
-
     private static final String WAS_HELD_IN_HAND_NBT_KEY = "wasHeldInHand";
     private static final String SELECTION_DIMENSION_NBT_KEY = "selectionDimension";
 
@@ -84,13 +79,13 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     private static final int CUT_CLEAR_FLAGS =
             Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
-    private final IntSupplier basePowerCapacitySupplier;
-
     @Getter
     private final int powerUpgradeSlots;
 
     @Getter
     private final int maxPowerUpgrades;
+
+    protected final ToolPowerManager powerManager;
 
     protected AbstractStructureCaptureToolItem(
             IntSupplier basePowerCapacitySupplier,
@@ -100,9 +95,9 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     ) {
         super(properties.stacksTo(1));
 
-        this.basePowerCapacitySupplier = basePowerCapacitySupplier == null ? () -> 0 : basePowerCapacitySupplier;
         this.powerUpgradeSlots = Math.max(0, powerUpgradeSlots);
         this.maxPowerUpgrades = Mth.clamp(maxPowerUpgrades, 0, this.powerUpgradeSlots);
+        this.powerManager = new ToolPowerManager(basePowerCapacitySupplier, this.powerUpgradeSlots, this.maxPowerUpgrades);
     }
 
     @Override
@@ -162,204 +157,63 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     }
 
     protected boolean tryUsePower(Player player, ItemStack stack, double amount) {
-        if (player.isCreative()) {
-            return true;
-        }
-
-        if (amount <= 0.0D) {
-            return true;
-        }
-
-        int required = (int) Math.ceil(amount);
-
-        if (getInternalPowerStored(stack) < required) {
-            return false;
-        }
-
-        int extracted = extractInternalPower(stack, required, false);
-        return extracted >= required;
+        return powerManager.tryUse(player, stack, amount);
     }
 
     protected int getInternalPowerCapacity(ItemStack stack) {
-        int base = Math.max(0, this.basePowerCapacitySupplier.getAsInt());
-        int upgrades = getInstalledPowerUpgrades(stack);
-
-        long capacity = base + (long) base * upgrades;
-        return (int) Math.min(Integer.MAX_VALUE, capacity);
+        return powerManager.getCapacity(stack);
     }
 
     protected int getInternalPowerStored(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return 0;
-        }
-
-        CompoundTag tag = stack.getTag();
-
-        if (tag == null || !tag.contains(CURRENT_POWER_NBT_KEY, Tag.TAG_ANY_NUMERIC)) {
-            return 0;
-        }
-
-        return Mth.clamp(
-                tag.getInt(CURRENT_POWER_NBT_KEY),
-                0,
-                getInternalPowerCapacity(stack)
-        );
+        return powerManager.getStored(stack);
     }
 
     protected int extractInternalPower(ItemStack stack, double amount, boolean simulate) {
-        if (stack == null || stack.isEmpty() || amount <= 0.0D) {
-            return 0;
-        }
-
-        int requested = (int) Math.ceil(amount);
-        int stored = getInternalPowerStored(stack);
-        int extracted = Math.min(stored, requested);
-
-        if (!simulate && extracted > 0) {
-            stack.getOrCreateTag().putInt(CURRENT_POWER_NBT_KEY, stored - extracted);
-        }
-
-        return extracted;
+        return powerManager.extract(stack, amount, simulate);
     }
 
     protected int receiveInternalPower(ItemStack stack, double amount, boolean simulate) {
-        if (stack == null || stack.isEmpty() || amount <= 0.0D) {
-            return 0;
-        }
-
-        int requested = (int) Math.ceil(amount);
-        int capacity = getInternalPowerCapacity(stack);
-        int stored = getInternalPowerStored(stack);
-        int received = Math.min(capacity - stored, requested);
-
-        if (!simulate && received > 0) {
-            stack.getOrCreateTag().putInt(CURRENT_POWER_NBT_KEY, stored + received);
-        }
-
-        return received;
-    }
-
-    protected void refundEnergy(ItemStack stack, double amount) {
-        receiveInternalPower(stack, amount, false);
-    }
-
-    protected double getCurrentPower(ItemStack stack) {
-        return getInternalPowerStored(stack);
-    }
-
-    protected double getMaxPower(ItemStack stack) {
-        return getInternalPowerCapacity(stack);
-    }
-
-    protected double getChargeRate(ItemStack stack) {
-        return getInternalPowerCapacity(stack);
+        return powerManager.receive(stack, amount, simulate);
     }
 
     protected int getInstalledPowerUpgrades(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return 0;
-        }
-
-        CompoundTag tag = stack.getTag();
-
-        if (tag == null || !tag.contains(POWER_UPGRADES_NBT_KEY, Tag.TAG_COMPOUND)) {
-            return 0;
-        }
-
-        CompoundTag inventoryTag = tag.getCompound(POWER_UPGRADES_NBT_KEY);
-
-        if (!inventoryTag.contains("Items", Tag.TAG_LIST)) {
-            return 0;
-        }
-
-        ListTag items = inventoryTag.getList("Items", Tag.TAG_COMPOUND);
-        int upgrades = 0;
-
-        for (int i = 0; i < items.size(); i++) {
-            CompoundTag row = items.getCompound(i);
-            int slot = row.getInt("Slot");
-
-            if (slot < 0 || slot >= this.maxPowerUpgrades) {
-                continue;
-            }
-
-            if (!row.contains("Stack", Tag.TAG_COMPOUND)) {
-                continue;
-            }
-
-            ItemStack stored = ItemStack.of(row.getCompound("Stack"));
-
-            if (isValidPowerUpgradeItem(stored)) {
-                upgrades++;
-            }
-        }
-
-        return Mth.clamp(upgrades, 0, this.maxPowerUpgrades);
+        return powerManager.getInstalledUpgrades(stack);
     }
 
     public static boolean isValidPowerUpgradeItem(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return false;
-        }
-
-        ResourceLocation stackId = ForgeRegistries.ITEMS.getKey(stack.getItem());
-
-        if (stackId == null) {
-            return false;
-        }
-
-        for (ResourceLocation configuredId : getConfiguredPowerUpgradeItemIds()) {
-            if (stackId.equals(configuredId)) {
-                return true;
-            }
-        }
-
-        return false;
+        return ToolPowerManager.isValidPowerUpgradeItem(stack);
     }
 
     public static List<ResourceLocation> getConfiguredPowerUpgradeItemIds() {
-        LinkedHashSet<ResourceLocation> ids = new LinkedHashSet<>();
-
-        for (String rawId : SpatialConfig.COMMON.ENERGY_UPGRADE_ITEMS.get()) {
-            ResourceLocation id = ResourceLocation.tryParse(rawId);
-
-            if (id != null) {
-                ids.add(id);
-            }
-        }
-
-        return List.copyOf(ids);
+        return ToolPowerManager.getConfiguredPowerUpgradeItemIds();
     }
 
     public static List<ItemStack> getConfiguredPowerUpgradeItemStacks() {
-        ArrayList<ItemStack> stacks = new ArrayList<>();
-
-        for (ResourceLocation id : getConfiguredPowerUpgradeItemIds()) {
-            Item item = ForgeRegistries.ITEMS.getValue(id);
-
-            if (item == null || item == Items.AIR) {
-                continue;
-            }
-
-            stacks.add(new ItemStack(item));
-        }
-
-        return List.copyOf(stacks);
+        return ToolPowerManager.getConfiguredPowerUpgradeItemStacks();
     }
 
     public static boolean isValidCraftingUpgradeItem(ItemStack stack) {
-        if (stack.isEmpty()) {
-            return false;
-        }
-        if (IsModLoaded.AE2) {
-            return AE2Compat.isCraftingUpgradeItem(stack);
-        }
+        return ToolPowerManager.isValidCraftingUpgradeItem(stack);
+    }
 
-        return false;
+    public int getCraftingUpgradeSlotIndex() {
+        return powerManager.getCraftingUpgradeSlotIndex();
+    }
+
+    public boolean hasCraftingUpgradeSlot() {
+        return powerManager.hasCraftingUpgradeSlot();
+    }
+
+    public boolean isCraftingUpgradeSlot(int slot) {
+        return powerManager.isCraftingUpgradeSlot(slot);
+    }
+
+    public boolean hasInstalledCraftingUpgrade(ItemStack stack) {
+        return powerManager.hasInstalledCraftingUpgrade(stack);
     }
 
     protected void showNotEnoughPower(Player player, ItemStack stack, double required) {
-        int current = getInternalPowerStored(stack);
+        int current = powerManager.getStored(stack);
         int needed = (int) Math.ceil(required);
 
         showHud(
@@ -375,13 +229,13 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     public void inventoryTick(ItemStack stack, Level level, Entity entity, int slotId, boolean isSelected) {
         super.inventoryTick(stack, level, entity, slotId, isSelected);
 
-        clampStoredEnergy(stack);
+        powerManager.clamp(stack);
 
         if (level.isClientSide() || !(entity instanceof Player player)) {
             return;
         }
 
-        boolean isHeldNow = isHeldInHand(player, stack);
+        boolean isHeldNow = player.getMainHandItem() == stack || player.getOffhandItem() == stack;
         CompoundTag tag = stack.getOrCreateTag();
         boolean wasHeldBefore = tag.getBoolean(WAS_HELD_IN_HAND_NBT_KEY);
 
@@ -394,19 +248,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         if (isHeldNow) {
             ensureSelectionDimensionOrClear(level, player, stack, true);
         }
-    }
-
-    private void clampStoredEnergy(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return;
-        }
-
-        int stored = getInternalPowerStored(stack);
-        stack.getOrCreateTag().putInt(CURRENT_POWER_NBT_KEY, stored);
-    }
-
-    protected boolean isHeldInHand(Player player, ItemStack stack) {
-        return player.getMainHandItem() == stack || player.getOffhandItem() == stack;
     }
 
     protected static ShowHudMessagePacket.Line cyan(Component text) {
@@ -455,6 +296,18 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
     protected static boolean isTemplateEmpty(CompoundTag templateTag) {
         return TemplateUtil.parseRawBlocksFromTag(templateTag).isEmpty();
+    }
+
+    protected static boolean shouldSkipStructureToolBlock(Level level, BlockPos pos, BlockState state) {
+        return ToolCaptureFilter.shouldSkipStructureToolBlock(level, pos, state);
+    }
+
+    protected static CompoundTag filterUncapturableBlocksFromTemplate(
+            Level level,
+            BlockPos worldOrigin,
+            CompoundTag templateTag
+    ) {
+        return ToolCaptureFilter.filterUncapturableBlocksFromTemplate(level, worldOrigin, templateTag);
     }
 
     private boolean ensureSelectionDimensionOrClear(
@@ -507,13 +360,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         return false;
     }
 
-    private static void rememberSelectionDimension(ItemStack stack, Level level) {
-        stack.getOrCreateTag().putString(
-                SELECTION_DIMENSION_NBT_KEY,
-                level.dimension().location().toString()
-        );
-    }
-
     private static void clearSelectionDimension(ItemStack stack) {
         CompoundTag tag = stack.getTag();
 
@@ -522,159 +368,17 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         }
     }
 
+    private static void rememberSelectionDimension(ItemStack stack, Level level) {
+        stack.getOrCreateTag().putString(
+                SELECTION_DIMENSION_NBT_KEY,
+                level.dimension().location().toString()
+        );
+    }
+
     protected static void clearSelectionState(ItemStack stack) {
         StructureToolStackState.clearSelection(stack);
         StructureToolStackState.resetPreviewSideMap(stack);
         clearSelectionDimension(stack);
-    }
-
-    protected static boolean shouldSkipStructureToolBlock(
-            Level level,
-            BlockPos pos,
-            BlockState state
-    ) {
-        if (state.isAir()) {
-            return false;
-        }
-
-        if (state.is(Blocks.BEDROCK)
-                || state.is(Blocks.NETHER_PORTAL)
-                || state.is(Blocks.END_PORTAL)
-                || state.is(Blocks.END_GATEWAY)
-                || state.is(Blocks.BARRIER)
-                || state.is(Blocks.COMMAND_BLOCK)
-                || state.is(Blocks.CHAIN_COMMAND_BLOCK)
-                || state.is(Blocks.REPEATING_COMMAND_BLOCK)
-                || state.is(Blocks.STRUCTURE_BLOCK)
-                || state.is(Blocks.STRUCTURE_VOID)
-                || state.is(Blocks.JIGSAW)) {
-            return true;
-        }
-
-        try {
-            return state.getDestroySpeed(level, pos) < 0.0F;
-        } catch (Throwable ignored) {
-            return false;
-        }
-    }
-
-    protected static CompoundTag filterUncapturableBlocksFromTemplate(
-            Level level,
-            BlockPos worldOrigin,
-            CompoundTag templateTag
-    ) {
-        CompoundTag filtered = templateTag.copy();
-        List<TemplateUtil.BlockInfo> parsedBlocks = TemplateUtil.parseRawBlocksFromTag(filtered);
-
-        if (parsedBlocks.isEmpty()) {
-            return filtered;
-        }
-
-        Set<BlockPos> skippedLocalPositions = new HashSet<>();
-
-        for (TemplateUtil.BlockInfo info : parsedBlocks) {
-            BlockPos localPos = info.pos();
-            BlockPos worldPos = worldOrigin.offset(localPos);
-
-            if (shouldSkipStructureToolBlock(level, worldPos, info.state())) {
-                skippedLocalPositions.add(localPos);
-            }
-        }
-
-        if (skippedLocalPositions.isEmpty()) {
-            return filtered;
-        }
-
-        removeTemplateBlockEntriesAt(filtered, skippedLocalPositions);
-        removeCloneMetadataEntriesAt(filtered, skippedLocalPositions);
-
-        return filtered;
-    }
-
-    private static void removeTemplateBlockEntriesAt(
-            CompoundTag templateTag,
-            Set<BlockPos> skippedLocalPositions
-    ) {
-        if (!templateTag.contains("blocks", Tag.TAG_LIST)) {
-            return;
-        }
-
-        ListTag oldBlocks = templateTag.getList("blocks", Tag.TAG_COMPOUND);
-        ListTag newBlocks = new ListTag();
-
-        for (int i = 0; i < oldBlocks.size(); i++) {
-            CompoundTag blockEntry = oldBlocks.getCompound(i);
-            BlockPos localPos = readTemplateBlockPos(blockEntry);
-
-            if (localPos == null || !skippedLocalPositions.contains(localPos)) {
-                newBlocks.add(blockEntry.copy());
-            }
-        }
-
-        templateTag.put("blocks", newBlocks);
-    }
-
-    private static void removeCloneMetadataEntriesAt(
-            CompoundTag templateTag,
-            Set<BlockPos> skippedLocalPositions
-    ) {
-        if (!templateTag.contains(StructureToolKeys.CLONE_METADATA_KEY, Tag.TAG_COMPOUND)) {
-            return;
-        }
-
-        CompoundTag cloneMetadata = templateTag.getCompound(StructureToolKeys.CLONE_METADATA_KEY).copy();
-
-        if (!cloneMetadata.contains(StructureToolKeys.CLONE_METADATA_BLOCKS_KEY, Tag.TAG_LIST)) {
-            templateTag.put(StructureToolKeys.CLONE_METADATA_KEY, cloneMetadata);
-            return;
-        }
-
-        ListTag oldBlocks = cloneMetadata.getList(StructureToolKeys.CLONE_METADATA_BLOCKS_KEY, Tag.TAG_COMPOUND);
-        ListTag newBlocks = new ListTag();
-
-        for (int i = 0; i < oldBlocks.size(); i++) {
-            CompoundTag blockEntry = oldBlocks.getCompound(i);
-            BlockPos localPos = readCloneMetadataBlockPos(blockEntry);
-
-            if (localPos == null || !skippedLocalPositions.contains(localPos)) {
-                newBlocks.add(blockEntry.copy());
-            }
-        }
-
-        cloneMetadata.put(StructureToolKeys.CLONE_METADATA_BLOCKS_KEY, newBlocks);
-        templateTag.put(StructureToolKeys.CLONE_METADATA_KEY, cloneMetadata);
-    }
-
-    private static @Nullable BlockPos readTemplateBlockPos(CompoundTag blockEntry) {
-        if (!blockEntry.contains("pos", Tag.TAG_LIST)) {
-            return null;
-        }
-
-        ListTag posTag = blockEntry.getList("pos", Tag.TAG_INT);
-
-        if (posTag.size() < 3) {
-            return null;
-        }
-
-        return new BlockPos(
-                posTag.getInt(0),
-                posTag.getInt(1),
-                posTag.getInt(2)
-        );
-    }
-
-    private static @Nullable BlockPos readCloneMetadataBlockPos(CompoundTag blockEntry) {
-        if (!blockEntry.contains(StructureToolKeys.CLONE_KEY_POS, Tag.TAG_COMPOUND)) {
-            return null;
-        }
-
-        CompoundTag posTag = blockEntry.getCompound(StructureToolKeys.CLONE_KEY_POS);
-
-        return new BlockPos(
-                posTag.getInt("x"),
-                posTag.getInt("y"),
-                posTag.getInt("z")
-        );
     }
 
     @Override
@@ -858,6 +562,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         showHud(player, Component.translatable(LangDefs.CORNER_B_SELECTED.getTranslationKey()));
     }
 
+    // --- Structure capture ---
+
     protected void captureStructure(ServerLevel level, Player player, ItemStack stack) {
         BlockPos a = StructureToolStackState.getSelectionA(stack);
         BlockPos b = StructureToolStackState.getSelectionB(stack);
@@ -985,24 +691,12 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             return null;
         }
 
-        CapturedStructureResult result = new CapturedStructureResult(
-                id,
-                savedTag,
-                min,
-                max,
-                origin,
-                usedPower
-        );
+        CapturedStructureResult result = new CapturedStructureResult(id, savedTag, min, max, origin, usedPower);
 
         afterStructureCaptured(level, player, stack, result);
 
         if (removeBlocks) {
-            removeCapturedBlocksWithoutDrops(
-                    level,
-                    min,
-                    savedTag,
-                    filterUncapturable
-            );
+            removeCapturedBlocksWithoutDrops(level, min, savedTag, filterUncapturable);
         }
 
         if (player instanceof ServerPlayer serverPlayer) {
@@ -1056,12 +750,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 continue;
             }
 
-            level.setBlock(
-                    worldPos,
-                    air,
-                    CUT_CLEAR_FLAGS,
-                    0
-            );
+            level.setBlock(worldPos, air, CUT_CLEAR_FLAGS, 0);
         }
     }
 
@@ -1149,13 +838,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     }
 
     private static void addBaseBlockRequirement(ServerLevel level, BlockPos pos, RequirementAccumulator requirements) {
-        BlockHitResult hit = new BlockHitResult(
-                Vec3.atCenterOf(pos),
-                Direction.UP,
-                pos,
-                false
-        );
-
+        BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
 
         if (!picked.isEmpty()) {
@@ -1233,7 +916,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             }
 
             ItemStack copy = stack.copy();
-
             copy.setCount(1);
             copy.setTag(null);
 
@@ -1250,6 +932,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             this.count = count;
         }
     }
+
+    // --- Structure save / tooltip / bar ---
 
     protected String saveCapturedStructure(
             ServerLevel level,
@@ -1330,14 +1014,12 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             return 0x555555;
         }
 
-        float ratio = Mth.clamp(
-                getInternalPowerStored(stack) / (float) capacity,
-                0.0F,
-                1.0F
-        );
+        float ratio = Mth.clamp(getInternalPowerStored(stack) / (float) capacity, 0.0F, 1.0F);
 
         return Mth.hsvToRgb(ratio / 3.0F, 1.0F, 1.0F);
     }
+
+    // --- Capability provider ---
 
     private final class ToolCapabilityProvider implements ICapabilityProvider {
 
@@ -1364,58 +1046,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
             return LazyOptional.empty();
         }
-    }
-
-    public int getCraftingUpgradeSlotIndex() {
-        return this.powerUpgradeSlots > this.maxPowerUpgrades
-                ? this.maxPowerUpgrades
-                : -1;
-    }
-
-    public boolean hasCraftingUpgradeSlot() {
-        return getCraftingUpgradeSlotIndex() >= 0;
-    }
-
-    public boolean isCraftingUpgradeSlot(int slot) {
-        return slot == getCraftingUpgradeSlotIndex();
-    }
-
-    public boolean hasInstalledCraftingUpgrade(ItemStack stack) {
-        int craftingSlot = getCraftingUpgradeSlotIndex();
-
-        if (craftingSlot < 0 || stack == null || stack.isEmpty()) {
-            return false;
-        }
-
-        CompoundTag tag = stack.getTag();
-
-        if (tag == null || !tag.contains(POWER_UPGRADES_NBT_KEY, Tag.TAG_COMPOUND)) {
-            return false;
-        }
-
-        CompoundTag inventoryTag = tag.getCompound(POWER_UPGRADES_NBT_KEY);
-
-        if (!inventoryTag.contains("Items", Tag.TAG_LIST)) {
-            return false;
-        }
-
-        ListTag items = inventoryTag.getList("Items", Tag.TAG_COMPOUND);
-
-        for (int i = 0; i < items.size(); i++) {
-            CompoundTag row = items.getCompound(i);
-
-            if (row.getInt("Slot") != craftingSlot) {
-                continue;
-            }
-
-            if (!row.contains("Stack", Tag.TAG_COMPOUND)) {
-                continue;
-            }
-
-            return isValidCraftingUpgradeItem(ItemStack.of(row.getCompound("Stack")));
-        }
-
-        return false;
     }
 
     private final class StackEnergyStorage implements IEnergyStorage {
@@ -1509,7 +1139,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
             sanitize();
             saveToStack();
-            clampStoredEnergy(this.containerStack);
+            powerManager.clamp(this.containerStack);
         }
 
         private void loadFromStack() {
@@ -1522,11 +1152,11 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
                 CompoundTag tag = this.containerStack.getTag();
 
-                if (tag == null || !tag.contains(POWER_UPGRADES_NBT_KEY, Tag.TAG_COMPOUND)) {
+                if (tag == null || !tag.contains(ToolPowerManager.POWER_UPGRADES_NBT_KEY, Tag.TAG_COMPOUND)) {
                     return;
                 }
 
-                CompoundTag inventoryTag = tag.getCompound(POWER_UPGRADES_NBT_KEY);
+                CompoundTag inventoryTag = tag.getCompound(ToolPowerManager.POWER_UPGRADES_NBT_KEY);
 
                 if (!inventoryTag.contains("Items", Tag.TAG_LIST)) {
                     return;
@@ -1589,7 +1219,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             }
 
             inventoryTag.put("Items", items);
-            this.containerStack.getOrCreateTag().put(POWER_UPGRADES_NBT_KEY, inventoryTag);
+            this.containerStack.getOrCreateTag().put(ToolPowerManager.POWER_UPGRADES_NBT_KEY, inventoryTag);
         }
 
         private void sanitize() {
@@ -1607,7 +1237,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
                 if (stack.getCount() != 1) {
                     ItemStack copy = stack.copy();
-
                     copy.setCount(1);
                     this.stacks.set(slot, copy);
                 }

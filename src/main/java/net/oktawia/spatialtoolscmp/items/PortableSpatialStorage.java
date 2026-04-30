@@ -443,6 +443,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
+        removeUndoPlacedBlocks(level, undoBlocks);
+
         String newId;
 
         try {
@@ -452,10 +454,11 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        removeUndoPlacedBlocks(level, undoBlocks);
-
         StructureToolStackState.setStructureId(stack, newId);
         clearSelectionState(stack);
+
+        restorePreviewTransformFromTemplate(stack, undoTemplate);
+        syncToolStackToClient(player);
 
         if (player instanceof ServerPlayer serverPlayer) {
             StructureToolPreviewDispatcher.sendPreviewToPlayer(serverPlayer, undoTemplate);
@@ -470,6 +473,23 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_PASTE_UNDONE.getTranslationKey())),
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_STRUCTURE_CUT_BACK.getTranslationKey()))
         );
+    }
+
+    private static void restorePreviewTransformFromTemplate(ItemStack stack, CompoundTag templateTag) {
+        CompoundTag stackTag = stack.getOrCreateTag();
+
+        TemplateUtil.setTemplateOffset(stackTag, TemplateUtil.getTemplateOffset(templateTag));
+        TemplateUtil.setEnergyOrigin(stackTag, TemplateUtil.getEnergyOrigin(templateTag));
+        TemplateUtil.copyPreviewTransformState(templateTag, stackTag);
+    }
+
+    private static void syncToolStackToClient(Player player) {
+        player.getInventory().setChanged();
+
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.containerMenu.broadcastChanges();
+            serverPlayer.inventoryMenu.broadcastChanges();
+        }
     }
 
     private void storeUndoCut(
@@ -723,8 +743,12 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     ) {
         List<StorageUndoPlacedBlock> out = new ArrayList<>();
 
-        for (TemplateUtil.BlockInfo blockInfo : TemplateUtil.parseBlocksFromTag(templateTag)) {
-            BlockPos worldPos = worldPosForTemplateBlock(templateTag, origin, blockInfo.pos());
+        BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(templateTag);
+        BlockPos templateOffset = TemplateUtil.getTemplateOffset(templateTag);
+        BlockPos placementOrigin = origin.subtract(energyOrigin).offset(templateOffset);
+
+        for (TemplateUtil.BlockInfo blockInfo : TemplateUtil.parseRawBlocksFromTag(templateTag)) {
+            BlockPos worldPos = placementOrigin.offset(blockInfo.pos());
             BlockState currentState = level.getBlockState(worldPos);
 
             if (currentState.isAir()) {
@@ -739,7 +763,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
         return out;
     }
-
     private @Nullable BlockBounds computeBounds(List<StorageUndoPlacedBlock> placedBlocks) {
         if (placedBlocks.isEmpty()) {
             return null;
@@ -771,20 +794,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         );
     }
 
-    private BlockPos worldPosForTemplateBlock(
-            CompoundTag templateTag,
-            BlockPos origin,
-            BlockPos localPos
-    ) {
-        BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(templateTag);
-        BlockPos templateOffset = TemplateUtil.getTemplateOffset(templateTag);
-
-        return origin
-                .subtract(energyOrigin)
-                .offset(templateOffset)
-                .offset(localPos);
-    }
-
     private void clearStoredStructure(
             ServerLevel level,
             Player player,
@@ -809,13 +818,17 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     }
 
     private boolean hasPlacementCollision(ServerLevel level, CompoundTag templateTag, BlockPos origin) {
-        List<TemplateUtil.BlockInfo> blocks = TemplateUtil.parseBlocksFromTag(templateTag);
+        List<TemplateUtil.BlockInfo> blocks = TemplateUtil.parseRawBlocksFromTag(templateTag);
 
         int minBuildY = level.getMinBuildHeight();
         int maxBuildY = level.getMaxBuildHeight();
 
+        BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(templateTag);
+        BlockPos templateOffset = TemplateUtil.getTemplateOffset(templateTag);
+        BlockPos placementOrigin = origin.subtract(energyOrigin).offset(templateOffset);
+
         for (TemplateUtil.BlockInfo blockInfo : blocks) {
-            BlockPos worldPos = worldPosForTemplateBlock(templateTag, origin, blockInfo.pos());
+            BlockPos worldPos = placementOrigin.offset(blockInfo.pos());
 
             if (worldPos.getY() < minBuildY || worldPos.getY() >= maxBuildY) {
                 return true;

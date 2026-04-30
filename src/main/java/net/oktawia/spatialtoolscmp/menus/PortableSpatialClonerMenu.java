@@ -17,6 +17,7 @@ import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.SetClonerNestedInventoryModePacket;
 import net.oktawia.spatialtoolscmp.network.packets.RequestClonerCraftingPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerLibraryPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerRequirementStatusPacket;
@@ -172,6 +173,35 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
         }
     }
 
+    public void cycleNestedInventoryMode() {
+        PortableSpatialCloner.NestedInventoryResourceMode next =
+                PortableSpatialCloner.getNestedInventoryResourceMode(getItemStack()).next();
+
+        PortableSpatialCloner.setNestedInventoryResourceMode(getItemStack(), next);
+
+        if (isClientSide()) {
+            NetworkHandler.sendToServer(new SetClonerNestedInventoryModePacket(
+                    this.containerId,
+                    next.id()
+            ));
+            return;
+        }
+
+        syncRequirementsToClient();
+    }
+
+    public void setNestedInventoryMode(PortableSpatialCloner.NestedInventoryResourceMode mode) {
+        if (mode == null) {
+            return;
+        }
+
+        PortableSpatialCloner.setNestedInventoryResourceMode(getItemStack(), mode);
+
+        if (!isClientSide()) {
+            syncRequirementsToClient();
+        }
+    }
+
     public void craftRequest(ResourceLocation itemId, long amount) {
         if (itemId == null || amount <= 0) {
             return;
@@ -187,34 +217,6 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
         }
 
         handleCraftRequest(itemId, amount);
-    }
-
-    public void craftRequest(String format) {
-        if (format == null || format.isBlank()) {
-            return;
-        }
-
-        String[] parts = format.split("\\|");
-
-        if (parts.length < 2) {
-            return;
-        }
-
-        ResourceLocation itemId = ResourceLocation.tryParse(parts[0]);
-
-        if (itemId == null) {
-            return;
-        }
-
-        long amount;
-
-        try {
-            amount = Long.parseLong(parts[1]);
-        } catch (NumberFormatException ignored) {
-            return;
-        }
-
-        craftRequest(itemId, amount);
     }
 
     public void handleCraftRequest(ResourceLocation itemId, long amount) {
@@ -235,6 +237,10 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
         }
 
         if (!hasCraftingUpgradeInstalled()) {
+            return;
+        }
+
+        if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) {
             return;
         }
 
@@ -312,6 +318,9 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
 
         List<SyncClonerRequirementStatusPacket.Entry> out = new ArrayList<>();
 
+        PortableSpatialCloner.NestedInventoryResourceMode nestedMode =
+                PortableSpatialCloner.getNestedInventoryResourceMode(getItemStack());
+
         for (int i = 0; i < requirements.size(); i++) {
             CompoundTag row = requirements.getCompound(i);
 
@@ -333,12 +342,29 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             boolean craftable = false;
 
             if (getPlayer().level() instanceof ServerLevel serverLevel) {
+                if (nestedMode.usePlayerNested()) {
+                    available += PortableSpatialCloner.countNestedInventoryInPlayerInventory(
+                            serverLevel,
+                            getPlayer(),
+                            getItemStack(),
+                            stack
+                    );
+                }
+
                 if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) {
                     available += PortableSpatialCloner.countLinkedItemHandlerStorage(
                             serverLevel,
                             getItemStack(),
                             stack
                     );
+
+                    if (nestedMode.useConnectedNested()) {
+                        available += PortableSpatialCloner.countNestedInventoryInLinkedItemHandlerStorage(
+                                serverLevel,
+                                getItemStack(),
+                                stack
+                        );
+                    }
                 } else if (IsModLoaded.AE2) {
                     try {
                         available += AE2MEOps.getAmount(
