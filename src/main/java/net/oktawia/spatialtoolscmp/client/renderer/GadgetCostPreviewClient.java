@@ -21,9 +21,9 @@ import net.minecraftforge.fml.common.Mod;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
-import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
@@ -57,6 +57,7 @@ public class GadgetCostPreviewClient {
         currentColor = COLOR_CYAN;
 
         Minecraft mc = Minecraft.getInstance();
+
         if (mc.player == null || mc.level == null) {
             resetCaches();
             return;
@@ -69,12 +70,13 @@ public class GadgetCostPreviewClient {
 
         ItemStack held = mc.player.getMainHandItem();
 
-        if (!isStructureTool(held) || !(held.getItem() instanceof AbstractStructureCaptureToolItem tool)) {
+        if (!isStructureTool(held) || !(held.getItem() instanceof AbstractStructureCaptureToolItem)) {
             resetCaches();
             return;
         }
 
         double effectivePowerPerBlock = getEffectivePowerPerBlock(held);
+
         if (effectivePowerPerBlock <= 0.0D) {
             resetCaches();
             return;
@@ -85,12 +87,21 @@ public class GadgetCostPreviewClient {
         if (StructureToolStackState.hasStructure(held)) {
             CAPTURE_COST_CACHE.invalidate();
 
-            BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
-            if (hit.getType() != HitResult.Type.BLOCK) {
-                return;
+            BlockPos anchor = StructureToolStackState.getAnchorIfValid(
+                    held,
+                    mc.level.dimension()
+            );
+
+            if (anchor == null) {
+                BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
+
+                if (hit.getType() != HitResult.Type.BLOCK) {
+                    return;
+                }
             }
 
             long cost = computePastePreviewCostAE(held, effectivePowerPerBlock);
+
             if (cost <= 0) {
                 return;
             }
@@ -99,25 +110,36 @@ public class GadgetCostPreviewClient {
                     LangDefs.PASTE_COST_PREVIEW.getTranslationKey(),
                     String.format("%,d", cost)
             );
+
             currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
             return;
         }
 
         invalidatePasteCache();
 
-        BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
-        if (hit.getType() != HitResult.Type.BLOCK) {
-            return;
-        }
-
         BlockPos selectionA = StructureToolStackState.getSelectionA(held);
+
         if (selectionA == null) {
             CAPTURE_COST_CACHE.invalidate();
             return;
         }
 
         BlockPos selectionB = StructureToolStackState.getSelectionB(held);
-        BlockPos previewB = selectionB == null ? hit.getBlockPos().immutable() : selectionB.immutable();
+        BlockPos previewB;
+
+        if (selectionB != null) {
+            previewB = selectionB.immutable();
+        } else if (StructureToolStackState.isBlockInFrontSelectionMode(held)) {
+            previewB = StructureToolStackState.getBlockInFrontSelectionPos(mc.player).immutable();
+        } else {
+            BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
+
+            if (hit.getType() != HitResult.Type.BLOCK) {
+                return;
+            }
+
+            previewB = hit.getBlockPos().immutable();
+        }
 
         long cost = CAPTURE_COST_CACHE.getOrUpdate(
                 mc.level.dimension(),
@@ -136,6 +158,7 @@ public class GadgetCostPreviewClient {
                 LangDefs.CUT_COST_PREVIEW.getTranslationKey(),
                 String.format("%,d", cost)
         );
+
         currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
     }
 
@@ -169,12 +192,14 @@ public class GadgetCostPreviewClient {
         }
 
         String structureId = StructureToolStackState.getStructureId(stack);
+
         if (structureId == null || structureId.isBlank()) {
             invalidatePasteCache();
             return 0L;
         }
 
         PreviewStructure structure = PortableSpatialStoragePreviewSync.cacheGet(structureId);
+
         if (structure == null || structure.blocks().isEmpty()) {
             invalidatePasteCache();
             return 0L;
@@ -237,6 +262,7 @@ public class GadgetCostPreviewClient {
         }
 
         Minecraft mc = Minecraft.getInstance();
+
         if (mc.player == null || mc.options.hideGui) {
             return;
         }
@@ -277,6 +303,16 @@ public class GadgetCostPreviewClient {
         }
 
         return (long) Math.ceil(value);
+    }
+
+    private static long getStoredEnergy(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return 0L;
+        }
+
+        return stack.getCapability(ForgeCapabilities.ENERGY)
+                .map(IEnergyStorage::getEnergyStored)
+                .orElse(0);
     }
 
     private static final class SelectionCostCache {
@@ -449,6 +485,7 @@ public class GadgetCostPreviewClient {
                     mutablePos.set(x, y, z);
 
                     BlockState state = level.getBlockState(mutablePos);
+
                     if (state.isAir()) {
                         continue;
                     }
@@ -599,15 +636,5 @@ public class GadgetCostPreviewClient {
 
             return new CuboidBounds(ix1, iy1, iz1, ix2, iy2, iz2);
         }
-    }
-
-    private static long getStoredEnergy(ItemStack stack) {
-        if (stack == null || stack.isEmpty()) {
-            return 0L;
-        }
-
-        return stack.getCapability(ForgeCapabilities.ENERGY)
-                .map(IEnergyStorage::getEnergyStored)
-                .orElse(0);
     }
 }

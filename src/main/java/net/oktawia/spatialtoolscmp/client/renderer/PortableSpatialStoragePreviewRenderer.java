@@ -159,17 +159,11 @@ public class PortableSpatialStoragePreviewRenderer {
                 return;
             }
 
-            BlockHitResult hit = StructureToolUtil.rayTrace(
-                    minecraft.level,
-                    minecraft.player,
-                    MAX_DISTANCE
-            );
+            BlockPos anchor = resolvePreviewAnchor(minecraft, stack);
 
-            if (hit.getType() != HitResult.Type.BLOCK) {
+            if (anchor == null) {
                 return;
             }
-
-            BlockPos anchor = hit.getBlockPos().relative(hit.getDirection());
 
             CompoundTag stackTag = stack.getTag();
             BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(stackTag);
@@ -256,20 +250,39 @@ public class PortableSpatialStoragePreviewRenderer {
         BlockPos selectionB = StructureToolStackState.getSelectionB(stack);
 
         if (selectionA == null) {
+            if (StructureToolStackState.isBlockInFrontSelectionMode(stack)) {
+                BlockPos previewPos = StructureToolStackState
+                        .getBlockInFrontSelectionPos(minecraft.player)
+                        .immutable();
+
+                renderSelectionPreview(
+                        minecraft,
+                        poseStack,
+                        previewPos,
+                        previewPos
+                );
+            }
+
             return;
         }
 
         BlockPos previewB = selectionB;
 
         if (previewB == null) {
-            BlockHitResult hit = StructureToolUtil.rayTrace(
-                    minecraft.level,
-                    minecraft.player,
-                    MAX_DISTANCE
-            );
+            if (StructureToolStackState.isBlockInFrontSelectionMode(stack)) {
+                previewB = StructureToolStackState
+                        .getBlockInFrontSelectionPos(minecraft.player)
+                        .immutable();
+            } else {
+                BlockHitResult hit = StructureToolUtil.rayTrace(
+                        minecraft.level,
+                        minecraft.player,
+                        MAX_DISTANCE
+                );
 
-            if (hit.getType() == HitResult.Type.BLOCK) {
-                previewB = hit.getBlockPos();
+                if (hit.getType() == HitResult.Type.BLOCK) {
+                    previewB = hit.getBlockPos();
+                }
             }
         }
 
@@ -281,6 +294,29 @@ public class PortableSpatialStoragePreviewRenderer {
                     previewB
             );
         }
+    }
+
+    private static BlockPos resolvePreviewAnchor(Minecraft minecraft, ItemStack stack) {
+        BlockPos anchored = StructureToolStackState.getAnchorIfValid(
+                stack,
+                minecraft.level.dimension()
+        );
+
+        if (anchored != null) {
+            return anchored;
+        }
+
+        BlockHitResult hit = StructureToolUtil.rayTrace(
+                minecraft.level,
+                minecraft.player,
+                MAX_DISTANCE
+        );
+
+        if (hit.getType() != HitResult.Type.BLOCK) {
+            return null;
+        }
+
+        return hit.getBlockPos().relative(hit.getDirection()).immutable();
     }
 
     private static boolean isStructureTool(ItemStack stack) {
@@ -878,22 +914,24 @@ public class PortableSpatialStoragePreviewRenderer {
                     sprite,
                     a,
                     1.00f,
-                    0.90f,
-                    0.20f,
+                    0.10f,
+                    0.10f,
                     1.00f
             );
 
-            renderCornerMarker(
-                    quads,
-                    matrix,
-                    camera,
-                    sprite,
-                    b,
-                    0.20f,
-                    1.00f,
-                    0.85f,
-                    1.00f
-            );
+            if (!a.equals(b)) {
+                renderCornerMarker(
+                        quads,
+                        matrix,
+                        camera,
+                        sprite,
+                        b,
+                        0.20f,
+                        1.00f,
+                        0.20f,
+                        1.00f
+                );
+            }
         } finally {
             bufferSource.endBatch(lineRenderType);
         }

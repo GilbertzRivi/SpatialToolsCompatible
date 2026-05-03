@@ -109,6 +109,12 @@ public final class NetworkHandler {
                 .decoder(SetClonerNestedInventoryModePacket::decode)
                 .consumerMainThread(SetClonerNestedInventoryModePacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(StructureToolContextActionPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(StructureToolContextActionPacket::encode)
+                .decoder(StructureToolContextActionPacket::decode)
+                .consumerMainThread(StructureToolContextActionPacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object packet) {

@@ -483,7 +483,49 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         NbtUtil.copyByteIfPresent(from, to, "allowInputFromOutputSideItems");
         NbtUtil.copyByteIfPresent(from, to, "allowInputFromOutputSideFluids");
 
-        NbtUtil.copyTagIfPresent(from, to, "lockedFluid");
+        copyGregLockedFluidSettings(from, to);
+    }
+
+    private static void copyGregLockedFluidSettings(CompoundTag from, CompoundTag to) {
+        copyGregLockedFluidSettingsRecursive(from, to);
+    }
+
+    private static void copyGregLockedFluidSettingsRecursive(CompoundTag from, CompoundTag to) {
+        for (String key : from.getAllKeys()) {
+            Tag value = from.get(key);
+
+            if (value == null) {
+                continue;
+            }
+
+            if (isGregLockedFluidKey(key)) {
+                to.put(key, value.copy());
+                continue;
+            }
+
+            if (value instanceof CompoundTag childFrom) {
+                CompoundTag childTo = to.contains(key, Tag.TAG_COMPOUND)
+                        ? to.getCompound(key).copy()
+                        : new CompoundTag();
+
+                copyGregLockedFluidSettingsRecursive(childFrom, childTo);
+
+                if (!childTo.isEmpty()) {
+                    to.put(key, childTo);
+                }
+            }
+        }
+    }
+
+    private static boolean isGregLockedFluidKey(String key) {
+        String normalized = key.toLowerCase(Locale.ROOT);
+
+        return normalized.equals("lockedfluid")
+                || normalized.equals("lockedfluids")
+                || normalized.equals("lockedfluidname")
+                || normalized.equals("lockedfluidstack")
+                || normalized.equals("filterfluid")
+                || normalized.equals("fluidfilter");
     }
 
     private static void collectGregCoverRequirements(

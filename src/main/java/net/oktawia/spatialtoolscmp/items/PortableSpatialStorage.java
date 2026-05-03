@@ -164,6 +164,13 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     @Override
     protected void onUseWithStoredStructure(ServerLevel level, Player player, ItemStack stack) {
+        BlockPos anchoredOrigin = StructureToolStackState.getAnchorIfValid(stack, level.dimension());
+
+        if (anchoredOrigin != null) {
+            paste(level, player, stack, anchoredOrigin);
+            return;
+        }
+
         BlockHitResult hit = rayTrace(level, player, 50.0D);
 
         if (hit.getType() == HitResult.Type.BLOCK) {
@@ -181,7 +188,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             ItemStack stack,
             BlockPos clickedFacePos
     ) {
-        paste(level, player, stack, clickedFacePos);
+        BlockPos anchoredOrigin = StructureToolStackState.getAnchorIfValid(stack, level.dimension());
+        paste(level, player, stack, anchoredOrigin == null ? clickedFacePos : anchoredOrigin);
     }
 
     private void paste(ServerLevel level, Player player, ItemStack stack, BlockPos origin) {

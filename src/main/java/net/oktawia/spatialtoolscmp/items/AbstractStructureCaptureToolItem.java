@@ -1,5 +1,6 @@
 package net.oktawia.spatialtoolscmp.items;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -43,6 +44,7 @@ import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkHooks;
+import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.helpers.ToolCaptureFilter;
 import net.oktawia.spatialtoolscmp.items.helpers.ToolPowerManager;
@@ -395,14 +397,42 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             }
 
             boolean hasStructure = StructureToolStackState.hasStructure(stack);
+            boolean blockInFrontMode = StructureToolStackState.isBlockInFrontSelectionMode(stack);
+            boolean completeSelection = hasCompleteSelection(stack);
 
             if (player.isShiftKeyDown()) {
+                if (!hasStructure && blockInFrontMode && !completeSelection) {
+                    selectNextCornerAt(
+                            (ServerLevel) level,
+                            player,
+                            stack,
+                            StructureToolStackState.getBlockInFrontSelectionPos(player).immutable()
+                    );
+
+                    return InteractionResultHolder.success(stack);
+                }
+
                 openMenu(player, hand);
                 return InteractionResultHolder.success(stack);
             }
 
             if (hasStructure) {
                 onUseWithStoredStructure((ServerLevel) level, player, stack);
+                return InteractionResultHolder.success(stack);
+            }
+
+            if (blockInFrontMode) {
+                if (completeSelection) {
+                    captureStructure((ServerLevel) level, player, stack);
+                } else {
+                    selectNextCornerAt(
+                            (ServerLevel) level,
+                            player,
+                            stack,
+                            StructureToolStackState.getBlockInFrontSelectionPos(player).immutable()
+                    );
+                }
+
                 return InteractionResultHolder.success(stack);
             }
 
@@ -434,6 +464,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         ItemStack stack = context.getItemInHand();
         BlockPos clickedPos = context.getClickedPos();
         boolean hasStructure = StructureToolStackState.hasStructure(stack);
+        boolean blockInFrontMode = StructureToolStackState.isBlockInFrontSelectionMode(stack);
+        boolean completeSelection = hasCompleteSelection(stack);
 
         if (!level.isClientSide() && !ensureSelectionDimensionOrClear(level, player, stack, true)) {
             return InteractionResult.sidedSuccess(level.isClientSide());
@@ -448,29 +480,19 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 return InteractionResult.sidedSuccess(level.isClientSide());
             }
 
-            BlockPos selectionA = StructureToolStackState.getSelectionA(stack);
-            BlockPos selectionB = StructureToolStackState.getSelectionB(stack);
+            BlockPos selectedPos = StructureToolStackState.resolveSelectionPos(
+                    stack,
+                    player,
+                    clickedPos
+            ).immutable();
 
-            if (selectionA == null) {
-                StructureToolStackState.setSelectionA(stack, clickedPos.immutable());
-
-                if (!level.isClientSide()) {
-                    rememberSelectionDimension(stack, level);
-                    showHud(player, Component.translatable(LangDefs.CORNER_A_SELECTED.getTranslationKey()));
-                }
-            } else if (selectionB == null) {
-                StructureToolStackState.setSelectionB(stack, clickedPos.immutable());
-                StructureToolStackState.setSourceFacing(stack, player.getDirection());
-
-                if (!level.isClientSide()) {
-                    showHud(player, Component.translatable(LangDefs.CORNER_B_SELECTED.getTranslationKey()));
-                }
-            } else {
-                clearSelectionState(stack);
-
-                if (!level.isClientSide()) {
-                    showHud(player, Component.translatable(LangDefs.SELECTION_RESTARTED.getTranslationKey()));
-                }
+            if (!level.isClientSide()) {
+                selectNextCornerAt(
+                        (ServerLevel) level,
+                        player,
+                        stack,
+                        selectedPos
+                );
             }
 
             return InteractionResult.sidedSuccess(level.isClientSide());
@@ -489,11 +511,56 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             return InteractionResult.sidedSuccess(level.isClientSide());
         }
 
+        if (blockInFrontMode) {
+            if (!completeSelection && !level.isClientSide()) {
+                selectNextCornerAt(
+                        (ServerLevel) level,
+                        player,
+                        stack,
+                        StructureToolStackState.getBlockInFrontSelectionPos(player).immutable()
+                );
+            }
+
+            return InteractionResult.sidedSuccess(level.isClientSide());
+        }
+
         if (!level.isClientSide() && isWaitingForSecondCorner(stack)) {
             selectSecondCorner((ServerLevel) level, player, stack);
         }
 
         return InteractionResult.sidedSuccess(level.isClientSide());
+    }
+
+    protected static boolean hasCompleteSelection(ItemStack stack) {
+        return !StructureToolStackState.hasStructure(stack)
+                && StructureToolStackState.getSelectionA(stack) != null
+                && StructureToolStackState.getSelectionB(stack) != null;
+    }
+
+    protected void selectNextCornerAt(ServerLevel level, Player player, ItemStack stack, BlockPos pos) {
+        if (!ensureSelectionDimensionOrClear(level, player, stack, true)) {
+            return;
+        }
+
+        BlockPos selectionA = StructureToolStackState.getSelectionA(stack);
+        BlockPos selectionB = StructureToolStackState.getSelectionB(stack);
+
+        if (selectionA == null) {
+            StructureToolStackState.setSelectionA(stack, pos.immutable());
+            rememberSelectionDimension(stack, level);
+            showHud(player, Component.translatable(LangDefs.CORNER_A_SELECTED.getTranslationKey()));
+            return;
+        }
+
+        if (selectionB == null) {
+            StructureToolStackState.setSelectionB(stack, pos.immutable());
+            StructureToolStackState.setSourceFacing(stack, player.getDirection());
+            showHud(player, Component.translatable(LangDefs.CORNER_B_SELECTED.getTranslationKey()));
+            return;
+        }
+
+        clearSelectionState(stack);
+        showHud(player, Component.translatable(LangDefs.SELECTION_RESTARTED.getTranslationKey()));
     }
 
     protected void onUseWithStoredStructure(ServerLevel level, Player player, ItemStack stack) {
@@ -548,21 +615,26 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             return;
         }
 
-        BlockHitResult hit = StructureToolUtil.rayTrace(level, player, 50.0D);
+        BlockPos pos;
 
-        if (hit.getType() != HitResult.Type.BLOCK) {
-            showHud(player, Component.translatable(LangDefs.NO_BLOCK_IN_RANGE.getTranslationKey()));
-            return;
+        if (StructureToolStackState.isBlockInFrontSelectionMode(stack)) {
+            pos = StructureToolStackState.getBlockInFrontSelectionPos(player).immutable();
+        } else {
+            BlockHitResult hit = StructureToolUtil.rayTrace(level, player, 50.0D);
+
+            if (hit.getType() != HitResult.Type.BLOCK) {
+                showHud(player, Component.translatable(LangDefs.NO_BLOCK_IN_RANGE.getTranslationKey()));
+                return;
+            }
+
+            pos = hit.getBlockPos().immutable();
         }
 
-        BlockPos pos = hit.getBlockPos().immutable();
         StructureToolStackState.setSelectionB(stack, pos);
         StructureToolStackState.setSourceFacing(stack, player.getDirection());
 
         showHud(player, Component.translatable(LangDefs.CORNER_B_SELECTED.getTranslationKey()));
     }
-
-    // --- Structure capture ---
 
     protected void captureStructure(ServerLevel level, Player player, ItemStack stack) {
         BlockPos a = StructureToolStackState.getSelectionA(stack);
@@ -950,6 +1022,12 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         int stored = getInternalPowerStored(stack);
         int capacity = getInternalPowerCapacity(stack);
+
+        tooltip.add(Component.translatable(LangDefs.HOTKEY_TOOLTIP.getTranslationKey())
+                        .copy().withStyle(ChatFormatting.GRAY)
+                .append(StructureToolContextMenuClient.OPEN_CONTEXT_MENU.getKey().getDisplayName()
+                        .copy().withStyle(ChatFormatting.AQUA)
+        ));
 
         tooltip.add(Component.translatable(
                 LangDefs.STRUCTURE_TOOL_HOLD_TO_OPEN.getTranslationKey()

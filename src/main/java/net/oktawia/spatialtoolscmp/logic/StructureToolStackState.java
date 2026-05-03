@@ -4,7 +4,11 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.UUID;
@@ -18,9 +22,47 @@ public final class StructureToolStackState {
     private static final String TAG_STRUCTURE_ID = "structure_id";
     private static final String TAG_CLONER_LIBRARY_OWNER = "cloner_library_owner";
 
+    private static final String TAG_ANCHOR_ENABLED = "anchor_enabled";
+    private static final String TAG_ANCHOR_POS = "anchor_pos";
+    private static final String TAG_ANCHOR_DIMENSION = "anchor_dimension";
+
+    private static final String TAG_SELECTION_MODE = "selection_mode";
+
     public static final String TAG_PREVIEW_SIDE_MAP = "crazy_preview_side_map";
 
     private StructureToolStackState() {
+    }
+
+    public enum SelectionMode {
+        DEFAULT(0),
+        BLOCK_IN_FRONT(1);
+
+        private final int id;
+
+        SelectionMode(int id) {
+            this.id = id;
+        }
+
+        public int id() {
+            return this.id;
+        }
+
+        public SelectionMode next() {
+            return switch (this) {
+                case DEFAULT -> BLOCK_IN_FRONT;
+                case BLOCK_IN_FRONT -> DEFAULT;
+            };
+        }
+
+        public static SelectionMode byId(int id) {
+            for (SelectionMode mode : values()) {
+                if (mode.id == id) {
+                    return mode;
+                }
+            }
+
+            return DEFAULT;
+        }
     }
 
     public static void setSelectionA(ItemStack stack, @Nullable BlockPos pos) {
@@ -77,6 +119,7 @@ public final class StructureToolStackState {
         setStructureId(stack, null);
         setClonerLibraryOwner(stack, null);
         resetPreviewSideMap(stack);
+        clearAnchor(stack);
     }
 
     public static BlockPos getSelectionA(ItemStack stack) {
@@ -136,6 +179,127 @@ public final class StructureToolStackState {
 
     public static void clearStructure(ItemStack stack) {
         setStructureId(stack, null);
+        clearAnchor(stack);
+    }
+
+    public static void setAnchor(ItemStack stack, ResourceKey<Level> dimension, BlockPos pos) {
+        if (stack == null || stack.isEmpty() || dimension == null || pos == null) {
+            return;
+        }
+
+        CompoundTag tag = stack.getOrCreateTag();
+
+        tag.putBoolean(TAG_ANCHOR_ENABLED, true);
+        tag.putString(TAG_ANCHOR_DIMENSION, dimension.location().toString());
+        setPos(stack, TAG_ANCHOR_POS, pos.immutable());
+    }
+
+    public static void clearAnchor(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        CompoundTag tag = stack.getOrCreateTag();
+
+        tag.remove(TAG_ANCHOR_ENABLED);
+        tag.remove(TAG_ANCHOR_DIMENSION);
+        tag.remove(TAG_ANCHOR_POS);
+    }
+
+    public static boolean isAnchorEnabled(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return false;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        if (tag == null || !tag.getBoolean(TAG_ANCHOR_ENABLED)) {
+            return false;
+        }
+
+        return getPos(stack, TAG_ANCHOR_POS) != null;
+    }
+
+    public static @Nullable BlockPos getAnchorPos(ItemStack stack) {
+        if (!isAnchorEnabled(stack)) {
+            return null;
+        }
+
+        return getPos(stack, TAG_ANCHOR_POS);
+    }
+
+    public static boolean isAnchorInDimension(ItemStack stack, ResourceKey<Level> dimension) {
+        if (!isAnchorEnabled(stack) || dimension == null) {
+            return false;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        if (tag == null || !tag.contains(TAG_ANCHOR_DIMENSION, Tag.TAG_STRING)) {
+            return false;
+        }
+
+        return dimension.location().toString().equals(tag.getString(TAG_ANCHOR_DIMENSION));
+    }
+
+    public static @Nullable BlockPos getAnchorIfValid(ItemStack stack, ResourceKey<Level> dimension) {
+        if (!isAnchorInDimension(stack, dimension)) {
+            return null;
+        }
+
+        return getAnchorPos(stack);
+    }
+
+    public static SelectionMode getSelectionMode(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return SelectionMode.DEFAULT;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        if (tag == null || !tag.contains(TAG_SELECTION_MODE, Tag.TAG_ANY_NUMERIC)) {
+            return SelectionMode.DEFAULT;
+        }
+
+        return SelectionMode.byId(tag.getInt(TAG_SELECTION_MODE));
+    }
+
+    public static void setSelectionMode(ItemStack stack, SelectionMode mode) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        stack.getOrCreateTag().putInt(
+                TAG_SELECTION_MODE,
+                mode == null ? SelectionMode.DEFAULT.id() : mode.id()
+        );
+    }
+
+    public static SelectionMode cycleSelectionMode(ItemStack stack) {
+        SelectionMode next = getSelectionMode(stack).next();
+        setSelectionMode(stack, next);
+        return next;
+    }
+
+    public static boolean isBlockInFrontSelectionMode(ItemStack stack) {
+        return getSelectionMode(stack) == SelectionMode.BLOCK_IN_FRONT;
+    }
+
+    public static BlockPos getBlockInFrontSelectionPos(Player player) {
+        Vec3 eye = player.getEyePosition();
+        Vec3 look = player.getLookAngle();
+
+        Vec3 target = eye.add(look.normalize().scale(3.0D));
+
+        return BlockPos.containing(target);
+    }
+
+    public static BlockPos resolveSelectionPos(ItemStack stack, Player player, BlockPos clickedPos) {
+        if (isBlockInFrontSelectionMode(stack)) {
+            return getBlockInFrontSelectionPos(player).immutable();
+        }
+
+        return clickedPos.immutable();
     }
 
     public static int[] getPreviewSideMap(ItemStack stack) {
@@ -202,5 +366,37 @@ public final class StructureToolStackState {
         }
 
         return new BlockPos(arr[0], arr[1], arr[2]);
+    }
+
+    public static boolean hasAnySelection(ItemStack stack) {
+        return getSelectionA(stack) != null || getSelectionB(stack) != null;
+    }
+
+    public static boolean hasSelectionA(ItemStack stack) {
+        return getSelectionA(stack) != null;
+    }
+
+    public static boolean hasSelectionB(ItemStack stack) {
+        return getSelectionB(stack) != null;
+    }
+
+    public static void moveSelectionA(ItemStack stack, int dx, int dy, int dz) {
+        BlockPos current = getSelectionA(stack);
+
+        if (current == null) {
+            return;
+        }
+
+        setSelectionA(stack, current.offset(dx, dy, dz));
+    }
+
+    public static void moveSelectionB(ItemStack stack, int dx, int dy, int dz) {
+        BlockPos current = getSelectionB(stack);
+
+        if (current == null) {
+            return;
+        }
+
+        setSelectionB(stack, current.offset(dx, dy, dz));
     }
 }

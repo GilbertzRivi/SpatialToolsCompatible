@@ -237,6 +237,13 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
     @Override
     protected void onUseWithStoredStructure(ServerLevel level, Player player, ItemStack stack) {
+        BlockPos anchoredOrigin = StructureToolStackState.getAnchorIfValid(stack, level.dimension());
+
+        if (anchoredOrigin != null) {
+            pasteBestEffort(level, player, stack, anchoredOrigin);
+            return;
+        }
+
         var hit = StructureToolUtil.rayTrace(level, player, 50.0D);
 
         if (hit.getType() != HitResult.Type.BLOCK) {
@@ -250,7 +257,8 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
     @Override
     protected void onUseOnWithStoredStructure(ServerLevel level, Player player, ItemStack stack, BlockPos clickedFacePos) {
-        pasteBestEffort(level, player, stack, clickedFacePos);
+        BlockPos anchoredOrigin = StructureToolStackState.getAnchorIfValid(stack, level.dimension());
+        pasteBestEffort(level, player, stack, anchoredOrigin == null ? clickedFacePos : anchoredOrigin);
     }
 
     protected void pasteBestEffort(ServerLevel level, Player player, ItemStack toolStack, BlockPos origin) {

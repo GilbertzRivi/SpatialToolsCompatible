@@ -4,12 +4,17 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.IItemHandlerModifiable;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.compat.CuriosOps;
 import net.oktawia.spatialtoolscmp.compat.SophisticatedStorageOps;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
@@ -17,6 +22,7 @@ import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public final class ClonerInventoryAccess {
 
@@ -480,20 +486,33 @@ public final class ClonerInventoryAccess {
 
         long total = 0L;
 
-        for (ItemStack containerStack : player.getInventory().items) {
-            if (shouldSkipNestedContainerStack(containerStack, toolStack)) {
-                continue;
-            }
+        total += countNestedInventoryInStacks(
+                level,
+                player.getInventory().items,
+                toolStack,
+                wanted
+        );
 
-            total += countNestedInventoryInStack(level, containerStack, wanted);
-        }
+        total += countNestedInventoryInStacks(
+                level,
+                player.getInventory().armor,
+                toolStack,
+                wanted
+        );
 
-        for (ItemStack containerStack : player.getInventory().offhand) {
-            if (shouldSkipNestedContainerStack(containerStack, toolStack)) {
-                continue;
-            }
+        total += countNestedInventoryInStacks(
+                level,
+                player.getInventory().offhand,
+                toolStack,
+                wanted
+        );
 
-            total += countNestedInventoryInStack(level, containerStack, wanted);
+        if (IsModLoaded.CURIOS) {
+            total += CuriosOps.countNested(
+                    player,
+                    stack -> shouldSkipNestedContainerStack(stack, toolStack),
+                    stack -> countNestedInventoryInStack(level, stack, wanted)
+            );
         }
 
         return total;
@@ -623,36 +642,125 @@ public final class ClonerInventoryAccess {
         long remaining = amount;
         long extracted = 0L;
 
-        for (ItemStack containerStack : player.getInventory().items) {
-            if (remaining <= 0) {
-                break;
-            }
+        long pulledFromMain = extractNestedFromStacks(
+                level,
+                player.getInventory().items,
+                toolStack,
+                wanted,
+                remaining,
+                simulate
+        );
 
-            if (shouldSkipNestedContainerStack(containerStack, toolStack)) {
-                continue;
-            }
+        extracted += pulledFromMain;
+        remaining -= pulledFromMain;
 
-            long pulled = extractNestedFromStack(level, containerStack, wanted, remaining, simulate);
-            extracted += pulled;
-            remaining -= pulled;
+        if (remaining > 0) {
+            long pulledFromArmor = extractNestedFromStacks(
+                    level,
+                    player.getInventory().armor,
+                    toolStack,
+                    wanted,
+                    remaining,
+                    simulate
+            );
+
+            extracted += pulledFromArmor;
+            remaining -= pulledFromArmor;
         }
 
-        for (ItemStack containerStack : player.getInventory().offhand) {
-            if (remaining <= 0) {
-                break;
-            }
+        if (remaining > 0) {
+            long pulledFromOffhand = extractNestedFromStacks(
+                    level,
+                    player.getInventory().offhand,
+                    toolStack,
+                    wanted,
+                    remaining,
+                    simulate
+            );
 
-            if (shouldSkipNestedContainerStack(containerStack, toolStack)) {
-                continue;
-            }
+            extracted += pulledFromOffhand;
+            remaining -= pulledFromOffhand;
+        }
 
-            long pulled = extractNestedFromStack(level, containerStack, wanted, remaining, simulate);
-            extracted += pulled;
-            remaining -= pulled;
+        if (remaining > 0 && IsModLoaded.CURIOS) {
+            long pulledFromCurios = CuriosOps.extractNested(
+                    player,
+                    stack -> shouldSkipNestedContainerStack(stack, toolStack),
+                    (stack, requested, sim) -> extractNestedFromStack(
+                            level,
+                            stack,
+                            wanted,
+                            requested,
+                            sim
+                    ),
+                    remaining,
+                    simulate
+            );
+
+            extracted += pulledFromCurios;
+            remaining -= pulledFromCurios;
         }
 
         if (!simulate && extracted > 0L) {
             player.getInventory().setChanged();
+        }
+
+        return extracted;
+    }
+
+    private static long countNestedInventoryInStacks(
+            ServerLevel level,
+            Iterable<ItemStack> stacks,
+            ItemStack toolStack,
+            ItemStack wanted
+    ) {
+        long total = 0L;
+
+        for (ItemStack containerStack : stacks) {
+            if (shouldSkipNestedContainerStack(containerStack, toolStack)) {
+                continue;
+            }
+
+            total += countNestedInventoryInStack(level, containerStack, wanted);
+        }
+
+        return total;
+    }
+
+    private static long extractNestedFromStacks(
+            ServerLevel level,
+            Iterable<ItemStack> stacks,
+            ItemStack toolStack,
+            ItemStack wanted,
+            long amount,
+            boolean simulate
+    ) {
+        long remaining = amount;
+        long extracted = 0L;
+
+        for (ItemStack containerStack : stacks) {
+            if (remaining <= 0) {
+                break;
+            }
+
+            if (shouldSkipNestedContainerStack(containerStack, toolStack)) {
+                continue;
+            }
+
+            long pulled = extractNestedFromStack(
+                    level,
+                    containerStack,
+                    wanted,
+                    remaining,
+                    simulate
+            );
+
+            if (pulled <= 0L) {
+                continue;
+            }
+
+            extracted += pulled;
+            remaining -= pulled;
         }
 
         return extracted;

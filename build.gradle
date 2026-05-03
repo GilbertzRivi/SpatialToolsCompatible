@@ -159,6 +159,9 @@ dependencies {
     compileOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
     compileOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
     compileOnly fg.deobf("net.oktawia:faststone:0.1.0")
+    compileOnly fg.deobf("curse.maven:sophisticated-backpacks-422301:8031675")
+    compileOnly fg.deobf("curse.maven:curios-309927:6418456")
+
     // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:6420945")
@@ -175,6 +178,8 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
     runtimeOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
     runtimeOnly fg.deobf("net.oktawia:faststone:0.1.0")
+    runtimeOnly fg.deobf("curse.maven:sophisticated-backpacks-422301:8031675")
+    runtimeOnly fg.deobf("curse.maven:curios-309927:6418456")
 
     // Runtime utils
     runtimeOnly fg.deobf("curse.maven:jade-324717:6106101")
