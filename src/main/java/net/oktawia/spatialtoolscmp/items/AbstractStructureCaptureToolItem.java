@@ -791,7 +791,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                         }
                     }
 
-                    if (!requirementsHandled) {
+                    if (!requirementsHandled || be == null) {
                         addBaseBlockRequirement(level, worldPos, requirements);
                     }
 

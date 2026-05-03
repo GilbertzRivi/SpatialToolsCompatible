@@ -17,6 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
+import net.oktawia.spatialtoolscmp.items.helpers.ClonerBlockPlacer;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
@@ -586,5 +587,105 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         copy.setCount(Math.max(1, stack.getCount()));
 
         return copy;
+    }
+
+    @Override
+    public boolean collectUndoRefunds(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be,
+            List<ItemStack> refunds
+    ) {
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (be instanceof CableBusBlockEntity || isAe2CableBusTag(currentTag)) {
+            collectCableBusUndoRefunds(currentTag, refunds);
+            return true;
+        }
+
+        if (!(be instanceof AEBaseBlockEntity) && !(be instanceof IUpgradeableObject)) {
+            return false;
+        }
+
+        ItemStack baseItem = normalizeSingle(ClonerBlockPlacer.getRequiredBlockItem(state));
+
+        if (!baseItem.isEmpty()) {
+            refunds.add(baseItem);
+        }
+
+        if (be instanceof IUpgradeableObject upgradable) {
+            IUpgradeInventory upgrades = upgradable.getUpgrades();
+
+            if (!upgrades.isEmpty()) {
+                for (ItemStack upgrade : upgrades) {
+                    if (!upgrade.isEmpty()) {
+                        refunds.add(upgrade.copy());
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    @Nullable
+    private static CompoundTag saveCurrentTag(@Nullable BlockEntity be) {
+        if (be == null) {
+            return null;
+        }
+
+        try {
+            return be.saveWithFullMetadata();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static void collectCableBusUndoRefunds(
+            @Nullable CompoundTag rawBeTag,
+            List<ItemStack> refunds
+    ) {
+        if (rawBeTag == null) {
+            return;
+        }
+
+        for (String key : StructureToolKeys.AE2_CABLE_BUS_KEYS) {
+            if (!rawBeTag.contains(key)) {
+                continue;
+            }
+
+            collectNestedSavedItemStacks(rawBeTag.get(key), refunds);
+        }
+    }
+
+    private static void collectNestedSavedItemStacks(
+            @Nullable Tag tag,
+            List<ItemStack> refunds
+    ) {
+        if (tag == null) {
+            return;
+        }
+
+        if (tag instanceof CompoundTag compoundTag) {
+            ItemStack stack = NbtUtil.tryReadSavedItemStack(compoundTag);
+
+            if (!stack.isEmpty()) {
+                refunds.add(stack);
+                return;
+            }
+
+            for (String key : compoundTag.getAllKeys()) {
+                collectNestedSavedItemStacks(compoundTag.get(key), refunds);
+            }
+
+            return;
+        }
+
+        if (tag instanceof ListTag listTag) {
+            for (int i = 0; i < listTag.size(); i++) {
+                collectNestedSavedItemStacks(listTag.get(i), refunds);
+            }
+        }
     }
 }

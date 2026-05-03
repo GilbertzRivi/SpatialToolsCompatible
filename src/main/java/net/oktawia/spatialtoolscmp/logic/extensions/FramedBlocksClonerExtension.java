@@ -272,4 +272,70 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
         return copy;
     }
+
+    @Override
+    public boolean collectUndoRefunds(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be,
+            List<ItemStack> refunds
+    ) {
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (!isFramedBlock(state, currentTag)) {
+            return false;
+        }
+
+        addBaseBlockRefund(level, pos, refunds);
+
+        if (currentTag != null && currentTag.contains(NBT_CAMO, Tag.TAG_COMPOUND)) {
+            ItemStack camoItem = getCamoRequirement(currentTag.getCompound(NBT_CAMO));
+
+            if (!camoItem.isEmpty()) {
+                refunds.add(camoItem);
+            }
+        }
+
+        return true;
+    }
+
+    @Nullable
+    private static CompoundTag saveCurrentTag(@Nullable BlockEntity be) {
+        if (be == null) {
+            return null;
+        }
+
+        try {
+            return be.saveWithFullMetadata();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static void addBaseBlockRefund(
+            ServerLevel level,
+            BlockPos pos,
+            List<ItemStack> refunds
+    ) {
+        BlockHitResult hit = new BlockHitResult(
+                Vec3.atCenterOf(pos),
+                Direction.UP,
+                pos,
+                false
+        );
+
+        ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
+
+        if (!picked.isEmpty()) {
+            refunds.add(picked);
+            return;
+        }
+
+        Item item = level.getBlockState(pos).getBlock().asItem();
+
+        if (item != Items.AIR) {
+            refunds.add(new ItemStack(item));
+        }
+    }
 }

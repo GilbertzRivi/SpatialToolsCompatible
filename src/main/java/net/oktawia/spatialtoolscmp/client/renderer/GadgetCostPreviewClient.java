@@ -13,6 +13,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderGuiOverlayEvent;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -78,7 +80,7 @@ public class GadgetCostPreviewClient {
             return;
         }
 
-        int energy = 1_000_000;
+        long energy = getStoredEnergy(held);
 
         if (StructureToolStackState.hasStructure(held)) {
             CAPTURE_COST_CACHE.invalidate();
@@ -597,5 +599,15 @@ public class GadgetCostPreviewClient {
 
             return new CuboidBounds(ix1, iy1, iz1, ix2, iy2, iz2);
         }
+    }
+
+    private static long getStoredEnergy(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return 0L;
+        }
+
+        return stack.getCapability(ForgeCapabilities.ENERGY)
+                .map(IEnergyStorage::getEnergyStored)
+                .orElse(0);
     }
 }

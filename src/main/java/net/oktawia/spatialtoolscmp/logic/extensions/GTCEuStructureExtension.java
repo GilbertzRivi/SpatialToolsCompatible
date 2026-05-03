@@ -290,7 +290,14 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             }
 
             List<ItemStack> attachItems = new ArrayList<>();
-            collectGregAttachItems(sideTag, item -> attachItems.add(normalizeSingle(item)));
+
+            collectGregAttachItems(sideTag, item -> {
+                ItemStack normalized = normalizeCostStack(item);
+
+                if (!normalized.isEmpty()) {
+                    attachItems.add(normalized);
+                }
+            });
 
             boolean keepSide = true;
 
@@ -299,7 +306,13 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                     keepSide = false;
                 } else {
                     for (ItemStack attachItem : attachItems) {
-                        if (!ctx.canReserveForPaste(reserved, attachItem, 1)) {
+                        int amount = Math.max(1, attachItem.getCount());
+
+                        ItemStack wanted = attachItem.copy();
+                        wanted.setCount(1);
+                        wanted.setTag(null);
+
+                        if (!ctx.canReserveForPaste(reserved, wanted, amount)) {
                             keepSide = false;
                             break;
                         }
@@ -317,6 +330,21 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         return filteredCover;
+    }
+
+    private static ItemStack normalizeCostStack(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack cost = stack.copy();
+
+        int amount = Math.max(1, cost.getCount());
+
+        cost.setCount(amount);
+        cost.setTag(null);
+
+        return cost;
     }
 
     private static CompoundTag collectGregMetadata(
@@ -373,13 +401,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "currentParallel");
             NbtUtil.copyTagIfPresent(rawBeTag, machineTag, "circuitInventory");
 
-            if (rawBeTag.contains("recipeLogic", Tag.TAG_COMPOUND)) {
-                CompoundTag recipeLogic = sanitizeGregRecipeLogic(rawBeTag.getCompound("recipeLogic"));
-
-                if (!recipeLogic.isEmpty()) {
-                    machineTag.put("recipeLogic", recipeLogic);
-                }
-            }
+            copyGregMachineSideConfig(rawBeTag, machineTag);
 
             CompoundTag dataStick = collectGregDataStick(be);
 
@@ -448,23 +470,20 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
     }
 
-    private static CompoundTag sanitizeGregRecipeLogic(CompoundTag rawRecipeLogic) {
-        CompoundTag out = rawRecipeLogic.copy();
+    private static void copyGregMachineSideConfig(CompoundTag from, CompoundTag to) {
+        NbtUtil.copyTagIfPresent(from, to, "outputFacingItems");
+        NbtUtil.copyTagIfPresent(from, to, "outputFacingFluids");
 
-        out.remove("progress");
-        out.remove("duration");
-        out.remove("isActive");
-        out.remove("totalContinuousRunningTime");
-        out.remove("chance_cache");
-        out.remove("eut");
-        out.remove("cwut");
-        out.remove("item");
-        out.remove("fluid");
-        out.remove("tick");
-        out.remove("block_state");
-        out.remove("consecutiveRecipes");
+        NbtUtil.copyTagIfPresent(from, to, "inputFacingItems");
+        NbtUtil.copyTagIfPresent(from, to, "inputFacingFluids");
 
-        return out;
+        NbtUtil.copyByteIfPresent(from, to, "autoOutputItems");
+        NbtUtil.copyByteIfPresent(from, to, "autoOutputFluids");
+
+        NbtUtil.copyByteIfPresent(from, to, "allowInputFromOutputSideItems");
+        NbtUtil.copyByteIfPresent(from, to, "allowInputFromOutputSideFluids");
+
+        NbtUtil.copyTagIfPresent(from, to, "lockedFluid");
     }
 
     private static void collectGregCoverRequirements(
@@ -516,9 +535,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         NbtUtil.copyIntIfPresent(machineData, out, "currentParallel");
         NbtUtil.copyTagIfPresent(machineData, out, "circuitInventory");
 
-        if (machineData.contains("recipeLogic", Tag.TAG_COMPOUND)) {
-            out.put("recipeLogic", machineData.getCompound("recipeLogic").copy());
-        }
+        copyGregMachineSideConfig(machineData, out);
 
         if (machineData.contains("dataStick", Tag.TAG_COMPOUND)) {
             out.put("dataStick", machineData.getCompound("dataStick").copy());
@@ -952,15 +969,18 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         if (tag instanceof CompoundTag compoundTag) {
-            if (compoundTag.contains("attachItem", Tag.TAG_COMPOUND)) {
-                ItemStack stack = NbtUtil.tryReadSavedItemStack(compoundTag.getCompound("attachItem"));
-
-                if (!stack.isEmpty()) {
-                    sink.accept(stack);
-                }
-            }
+            collectNamedCostItem(compoundTag, "attachItem", sink);
+            collectNamedCostItem(compoundTag, "filterItem", sink);
 
             for (String key : compoundTag.getAllKeys()) {
+                if ("attachItem".equals(key) || "filterItem".equals(key)) {
+                    continue;
+                }
+
+                if ("matches".equals(key)) {
+                    continue;
+                }
+
                 collectGregAttachItems(compoundTag.get(key), sink);
             }
 
@@ -972,6 +992,51 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 collectGregAttachItems(listTag.get(i), sink);
             }
         }
+    }
+
+    private static void collectNamedCostItem(
+            CompoundTag parent,
+            String key,
+            java.util.function.Consumer<ItemStack> sink
+    ) {
+        if (!parent.contains(key, Tag.TAG_COMPOUND)) {
+            return;
+        }
+
+        ItemStack stack = readCostItemStack(parent.getCompound(key));
+
+        if (!stack.isEmpty()) {
+            sink.accept(stack);
+        }
+    }
+
+    private static ItemStack readCostItemStack(CompoundTag tag) {
+        if (tag == null || tag.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack stack = NbtUtil.tryReadSavedItemStack(tag);
+
+        if (stack.isEmpty()) {
+            try {
+                stack = ItemStack.of(tag.copy());
+            } catch (Throwable ignored) {
+                return ItemStack.EMPTY;
+            }
+        }
+
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack cost = stack.copy();
+
+        int amount = Math.max(1, cost.getCount());
+
+        cost.setCount(amount);
+        cost.setTag(null);
+
+        return cost;
     }
 
     private record PendingBlockInit(BlockPos pos, CompoundTag blockEntityTag) {
@@ -986,6 +1051,80 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             this.level = level;
             this.blocks = blocks;
             this.delayTicks = delayTicks;
+        }
+    }
+
+    @Override
+    public boolean collectUndoRefunds(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be,
+            List<ItemStack> refunds
+    ) {
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (!handlesRequirements(state, currentTag) && !isGregBlockEntityTag(currentTag)) {
+            return false;
+        }
+
+        addBaseBlockRefund(level, pos, refunds);
+
+        if (currentTag == null) {
+            return true;
+        }
+
+        if (currentTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+            collectGregCoverRequirements(currentTag.getCompound(NBT_COVER), refunds::add);
+        }
+
+        if (isGregPipeTag(currentTag) && currentTag.contains("frameMaterial", Tag.TAG_STRING)) {
+            ItemStack frameItem = getGregFrameItem(currentTag.getString("frameMaterial"));
+
+            if (!frameItem.isEmpty()) {
+                refunds.add(frameItem);
+            }
+        }
+
+        return true;
+    }
+
+    @Nullable
+    private static CompoundTag saveCurrentTag(@Nullable BlockEntity be) {
+        if (be == null) {
+            return null;
+        }
+
+        try {
+            return be.saveWithFullMetadata();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
+
+    private static void addBaseBlockRefund(
+            ServerLevel level,
+            BlockPos pos,
+            List<ItemStack> refunds
+    ) {
+        BlockHitResult hit = new BlockHitResult(
+                Vec3.atCenterOf(pos),
+                Direction.UP,
+                pos,
+                false
+        );
+
+        ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
+
+        if (!picked.isEmpty()) {
+            refunds.add(picked);
+            return;
+        }
+
+        Item item = level.getBlockState(pos).getBlock().asItem();
+
+        if (item != Items.AIR) {
+            refunds.add(new ItemStack(item));
         }
     }
 }

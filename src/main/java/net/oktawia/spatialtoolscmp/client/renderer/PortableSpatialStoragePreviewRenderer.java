@@ -48,7 +48,10 @@ import java.util.Set;
 public class PortableSpatialStoragePreviewRenderer {
 
     private static final double MAX_DISTANCE = 50.0D;
-    private static final int PREVIEW_BUFFER_SIZE = 2_097_152;
+    private static final int PREVIEW_BUFFER_SIZE = 262_144;
+
+    private final BufferBuilder previewBufferBuilder = new BufferBuilder(PREVIEW_BUFFER_SIZE);
+    private final MultiBufferSource.BufferSource previewBufferSource = MultiBufferSource.immediate(previewBufferBuilder);
 
     private enum PreviewPass {
         SOLID,
@@ -471,15 +474,16 @@ public class PortableSpatialStoragePreviewRenderer {
         poseStack.pushPose();
         poseStack.translate(origin.getX(), origin.getY(), origin.getZ());
 
-        emitPreviewGeometry(
-                buffer,
-                poseStack,
-                bufferSource.getBuffer(renderType)
-        );
-
-        bufferSource.endBatch(renderType);
-
-        poseStack.popPose();
+        try {
+            emitPreviewGeometry(
+                    buffer,
+                    poseStack,
+                    bufferSource.getBuffer(renderType)
+            );
+        } finally {
+            bufferSource.endBatch(renderType);
+            poseStack.popPose();
+        }
     }
 
     private static void emitPreviewGeometry(
@@ -660,61 +664,63 @@ public class PortableSpatialStoragePreviewRenderer {
         RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
         RenderSystem.setShaderTexture(0, TextureAtlas.LOCATION_BLOCKS);
 
-        for (PreviewBlock previewBlock : structure.surfaceBlocks()) {
-            BlockEntity be = blockEntities.get(previewBlock.pos());
+        try {
+            for (PreviewBlock previewBlock : structure.surfaceBlocks()) {
+                BlockEntity be = blockEntities.get(previewBlock.pos());
 
-            if (be == null) {
-                continue;
+                if (be == null) {
+                    continue;
+                }
+
+                BlockEntityRenderer<BlockEntity> renderer = beDispatcher.getRenderer(be);
+
+                if (renderer == null) {
+                    continue;
+                }
+
+                BlockPos worldPos = origin.offset(previewBlock.pos());
+
+                poseStack.pushPose();
+                poseStack.translate(worldPos.getX(), worldPos.getY(), worldPos.getZ());
+
+                try {
+                    renderer.render(
+                            be,
+                            partialTick,
+                            poseStack,
+                            previewSource,
+                            LightTexture.FULL_BRIGHT,
+                            OverlayTexture.NO_OVERLAY
+                    );
+                } catch (Throwable t) {
+                    SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
+                } finally {
+                    poseStack.popPose();
+                }
             }
+        } finally {
+            for (RenderType renderType : usedRenderTypes) {
+                String renderTypeName = renderType.toString().toLowerCase();
 
-            BlockEntityRenderer<BlockEntity> renderer = beDispatcher.getRenderer(be);
+                if (renderType == RenderType.translucent()
+                        || renderType == RenderType.translucentMovingBlock()
+                        || renderType == RenderType.tripwire()
+                        || renderTypeName.contains("translucent")
+                        || renderTypeName.contains("tripwire")) {
+                    RenderSystem.enableBlend();
+                    RenderSystem.defaultBlendFunc();
+                    RenderSystem.depthMask(false);
+                } else {
+                    RenderSystem.disableBlend();
+                    RenderSystem.depthMask(true);
+                }
 
-            if (renderer == null) {
-                continue;
+                bufferSource.endBatch(renderType);
             }
-
-            BlockPos worldPos = origin.offset(previewBlock.pos());
-
-            poseStack.pushPose();
-            poseStack.translate(worldPos.getX(), worldPos.getY(), worldPos.getZ());
-
-            try {
-                renderer.render(
-                        be,
-                        partialTick,
-                        poseStack,
-                        previewSource,
-                        LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY
-                );
-            } catch (Throwable t) {
-                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
-            }
-
-            poseStack.popPose();
-        }
-
-        for (RenderType renderType : usedRenderTypes) {
-            String renderTypeName = renderType.toString().toLowerCase();
-
-            if (renderType == RenderType.translucent()
-                    || renderType == RenderType.translucentMovingBlock()
-                    || renderType == RenderType.tripwire()
-                    || renderTypeName.contains("translucent")
-                    || renderTypeName.contains("tripwire")) {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-                RenderSystem.depthMask(false);
-            } else {
-                RenderSystem.disableBlend();
-                RenderSystem.depthMask(true);
-            }
-
-            bufferSource.endBatch(renderType);
         }
     }
 
-    private static void renderLineBoxes(
+    private void renderLineBoxes(
             Minecraft minecraft,
             PoseStack poseStack,
             PreviewStructure structure,
@@ -737,46 +743,48 @@ public class PortableSpatialStoragePreviewRenderer {
         Vec3 camera = minecraft.gameRenderer.getMainCamera().getPosition();
         TextureAtlasSprite sprite = previewWhiteSprite(minecraft);
 
-        for (PreviewBlock previewBlock : structure.blocks()) {
-            BlockPos worldPos = origin.offset(previewBlock.pos());
-            BlockState currentState = minecraft.level.getBlockState(worldPos);
+        try {
+            for (PreviewBlock previewBlock : structure.blocks()) {
+                BlockPos worldPos = origin.offset(previewBlock.pos());
+                BlockState currentState = minecraft.level.getBlockState(worldPos);
 
-            if (currentState.canBeReplaced() || currentState.isAir()) {
-                continue;
+                if (currentState.canBeReplaced() || currentState.isAir()) {
+                    continue;
+                }
+
+                BlockState previewState = previewBlock.state();
+
+                boolean sameBlock = currentState.equals(previewState);
+                boolean blueInfoBox = markSameBlocksAsBlue && sameBlock;
+
+                float red = blueInfoBox ? 0.20f : 1.00f;
+                float green = blueInfoBox ? 0.85f : 0.00f;
+                float blue = blueInfoBox ? 1.00f : 0.00f;
+
+                addBillboardLineBox(
+                        quads,
+                        matrix,
+                        camera,
+                        sprite,
+                        worldPos.getX(),
+                        worldPos.getY(),
+                        worldPos.getZ(),
+                        worldPos.getX() + 1.0f,
+                        worldPos.getY() + 1.0f,
+                        worldPos.getZ() + 1.0f,
+                        0.0085f,
+                        red,
+                        green,
+                        blue,
+                        1.0f
+                );
             }
-
-            BlockState previewState = previewBlock.state();
-
-            boolean sameBlock = currentState.equals(previewState);
-            boolean blueInfoBox = markSameBlocksAsBlue && sameBlock;
-
-            float red = blueInfoBox ? 0.20f : 1.00f;
-            float green = blueInfoBox ? 0.85f : 0.00f;
-            float blue = blueInfoBox ? 1.00f : 0.00f;
-
-            addBillboardLineBox(
-                    quads,
-                    matrix,
-                    camera,
-                    sprite,
-                    worldPos.getX(),
-                    worldPos.getY(),
-                    worldPos.getZ(),
-                    worldPos.getX() + 1.0f,
-                    worldPos.getY() + 1.0f,
-                    worldPos.getZ() + 1.0f,
-                    0.0085f,
-                    red,
-                    green,
-                    blue,
-                    1.0f
-            );
+        } finally {
+            bufferSource.endBatch(renderType);
         }
-
-        bufferSource.endBatch(renderType);
     }
 
-    private static void renderSelectionPreview(
+    private void renderSelectionPreview(
             Minecraft minecraft,
             PoseStack poseStack,
             BlockPos a,
@@ -809,23 +817,25 @@ public class PortableSpatialStoragePreviewRenderer {
 
         VertexConsumer fill = bufferSource.getBuffer(PreviewRenderTypes.SELECTION_FILL);
 
-        addVisibleSelectionFillBoxColor(
-                minecraft,
-                poseStack,
-                fill,
-                x1,
-                y1,
-                z1,
-                x2,
-                y2,
-                z2,
-                0.20f,
-                0.85f,
-                1.00f,
-                0.14f
-        );
-
-        bufferSource.endBatch(PreviewRenderTypes.SELECTION_FILL);
+        try {
+            addVisibleSelectionFillBoxColor(
+                    minecraft,
+                    poseStack,
+                    fill,
+                    x1,
+                    y1,
+                    z1,
+                    x2,
+                    y2,
+                    z2,
+                    0.20f,
+                    0.85f,
+                    1.00f,
+                    0.14f
+            );
+        } finally {
+            bufferSource.endBatch(PreviewRenderTypes.SELECTION_FILL);
+        }
 
         RenderType lineRenderType = RenderType.translucent();
 
@@ -842,49 +852,51 @@ public class PortableSpatialStoragePreviewRenderer {
         Vec3 camera = minecraft.gameRenderer.getMainCamera().getPosition();
         TextureAtlasSprite sprite = previewWhiteSprite(minecraft);
 
-        addBillboardLineBox(
-                quads,
-                matrix,
-                camera,
-                sprite,
-                x1,
-                y1,
-                z1,
-                x2,
-                y2,
-                z2,
-                0.0085f,
-                0.20f,
-                0.85f,
-                1.00f,
-                1.00f
-        );
+        try {
+            addBillboardLineBox(
+                    quads,
+                    matrix,
+                    camera,
+                    sprite,
+                    x1,
+                    y1,
+                    z1,
+                    x2,
+                    y2,
+                    z2,
+                    0.0085f,
+                    0.20f,
+                    0.85f,
+                    1.00f,
+                    1.00f
+            );
 
-        renderCornerMarker(
-                quads,
-                matrix,
-                camera,
-                sprite,
-                a,
-                1.00f,
-                0.90f,
-                0.20f,
-                1.00f
-        );
+            renderCornerMarker(
+                    quads,
+                    matrix,
+                    camera,
+                    sprite,
+                    a,
+                    1.00f,
+                    0.90f,
+                    0.20f,
+                    1.00f
+            );
 
-        renderCornerMarker(
-                quads,
-                matrix,
-                camera,
-                sprite,
-                b,
-                0.20f,
-                1.00f,
-                0.85f,
-                1.00f
-        );
-
-        bufferSource.endBatch(lineRenderType);
+            renderCornerMarker(
+                    quads,
+                    matrix,
+                    camera,
+                    sprite,
+                    b,
+                    0.20f,
+                    1.00f,
+                    0.85f,
+                    1.00f
+            );
+        } finally {
+            bufferSource.endBatch(lineRenderType);
+        }
     }
 
     private static void addVisibleSelectionFillBoxColor(
@@ -1230,8 +1242,8 @@ public class PortableSpatialStoragePreviewRenderer {
                 .endVertex();
     }
 
-    private static MultiBufferSource.BufferSource previewBufferSource() {
-        return MultiBufferSource.immediate(new BufferBuilder(PREVIEW_BUFFER_SIZE));
+    private MultiBufferSource.BufferSource previewBufferSource() {
+        return previewBufferSource;
     }
 
     private static void resetPreviewRenderState(

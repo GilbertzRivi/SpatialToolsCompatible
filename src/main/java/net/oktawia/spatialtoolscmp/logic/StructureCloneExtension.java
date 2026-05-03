@@ -4,11 +4,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface StructureCloneExtension {
@@ -39,4 +41,14 @@ public interface StructureCloneExtension {
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata
     );
+
+    default boolean collectUndoRefunds(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be,
+            List<ItemStack> refunds
+    ) {
+        return false;
+    }
 }

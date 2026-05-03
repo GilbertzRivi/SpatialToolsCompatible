@@ -100,6 +100,10 @@ public final class ClonerBlockPlacer {
     ) {
         BlockState oldState = level.getBlockState(worldPos);
 
+        if (hasCollision(oldState, stateToPlace)) {
+            return false;
+        }
+
         if (level.getBlockEntity(worldPos) != null) {
             level.removeBlockEntity(worldPos);
         }
@@ -135,7 +139,11 @@ public final class ClonerBlockPlacer {
     }
 
     public static boolean hasCollision(BlockState existing, BlockState target) {
-        return !(existing.isAir() || existing.canBeReplaced() || existing.equals(target));
+        if (existing.equals(target)) {
+            return true;
+        }
+
+        return !(existing.isAir() || existing.canBeReplaced());
     }
 
     public static ItemStack getRequiredBlockItem(BlockState state) {

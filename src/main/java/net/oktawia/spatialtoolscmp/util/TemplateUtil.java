@@ -26,6 +26,10 @@ public final class TemplateUtil {
 
     private static final String AE2_CABLE_BUS_ID = "ae2:cable_bus";
 
+    private static final String FASTSTONE_ID_PREFIX = "faststonelogic:";
+    private static final String FASTSTONE_META_KEY = "Faststone";
+    private static final String FASTSTONE_FULL_BE_TAG_KEY = "FullBlockEntityTag";
+
     private static final String KEY_NORTH = "north";
     private static final String KEY_SOUTH = "south";
     private static final String KEY_EAST = "east";
@@ -34,6 +38,13 @@ public final class TemplateUtil {
     private static final String KEY_DOWN = "down";
     private static final String KEY_CABLE = "cable";
     private static final String KEY_COVER = "cover";
+
+    private static final String KEY_PARTS = "Parts";
+    private static final String KEY_REDSTONE_OUTPUTS = "RedstoneOutputs";
+    private static final String KEY_PORT_STATES = "PortStates";
+    private static final String KEY_PORT_COLORS = "PortColors";
+    private static final String KEY_INPUTS = "Inputs";
+    private static final String KEY_OUTPUTS = "Outputs";
 
     public static final String TEMPLATE_OFFSET_X_KEY = "crazy_template_offset_x";
     public static final String TEMPLATE_OFFSET_Y_KEY = "crazy_template_offset_y";
@@ -706,6 +717,16 @@ public final class TemplateUtil {
                 );
             }
 
+            if (blockEntry.contains(FASTSTONE_META_KEY, Tag.TAG_COMPOUND)) {
+                blockEntry.put(
+                        FASTSTONE_META_KEY,
+                        transformFaststoneCloneMetadata(
+                                blockEntry.getCompound(FASTSTONE_META_KEY),
+                                cableBusTransform
+                        )
+                );
+            }
+
             if (blockEntry.contains(StructureToolKeys.CLONE_KEY_GREG, Tag.TAG_COMPOUND)) {
                 CompoundTag gregTag = blockEntry.getCompound(StructureToolKeys.CLONE_KEY_GREG).copy();
 
@@ -779,11 +800,86 @@ public final class TemplateUtil {
             return transformCableBusTag(tag, transform);
         }
 
+        if (isFaststoneBlockEntityTag(tag)) {
+            return transformFaststoneBlockEntityTag(tag, transform);
+        }
+
         if (!id.isBlank() && id.startsWith(StructureToolKeys.GTCEU_ID_PREFIX)) {
             return transformGregBlockEntityTag(tag, transform);
         }
 
         return tag.copy();
+    }
+
+    private static boolean isFaststoneBlockEntityTag(CompoundTag tag) {
+        String id = tag.getString("id");
+
+        if (id.startsWith(FASTSTONE_ID_PREFIX)) {
+            return true;
+        }
+
+        if (tag.contains(KEY_PORT_STATES, Tag.TAG_COMPOUND)
+                && tag.contains(KEY_PORT_COLORS, Tag.TAG_COMPOUND)
+                && tag.contains(KEY_INPUTS, Tag.TAG_COMPOUND)
+                && tag.contains(KEY_OUTPUTS, Tag.TAG_COMPOUND)) {
+            return true;
+        }
+
+        return tag.contains(KEY_PARTS, Tag.TAG_COMPOUND)
+                && tag.contains(KEY_REDSTONE_OUTPUTS, Tag.TAG_COMPOUND);
+    }
+
+    private static CompoundTag transformFaststoneBlockEntityTag(
+            CompoundTag tag,
+            CableBusTransform transform
+    ) {
+        CompoundTag result = tag.copy();
+
+        remapFaststoneDirectionalCompound(result, KEY_PARTS, transform);
+        remapFaststoneDirectionalCompound(result, KEY_REDSTONE_OUTPUTS, transform);
+        remapFaststoneDirectionalCompound(result, KEY_PORT_STATES, transform);
+        remapFaststoneDirectionalCompound(result, KEY_PORT_COLORS, transform);
+        remapFaststoneDirectionalCompound(result, KEY_INPUTS, transform);
+        remapFaststoneDirectionalCompound(result, KEY_OUTPUTS, transform);
+
+        return result;
+    }
+
+    private static void remapFaststoneDirectionalCompound(
+            CompoundTag tag,
+            String key,
+            CableBusTransform transform
+    ) {
+        if (!tag.contains(key, Tag.TAG_COMPOUND)) {
+            return;
+        }
+
+        tag.put(
+                key,
+                transformDirectionalMetadataTag(
+                        tag.getCompound(key),
+                        transform
+                )
+        );
+    }
+
+    private static CompoundTag transformFaststoneCloneMetadata(
+            CompoundTag metadata,
+            CableBusTransform transform
+    ) {
+        CompoundTag result = metadata.copy();
+
+        if (result.contains(FASTSTONE_FULL_BE_TAG_KEY, Tag.TAG_COMPOUND)) {
+            result.put(
+                    FASTSTONE_FULL_BE_TAG_KEY,
+                    transformFaststoneBlockEntityTag(
+                            result.getCompound(FASTSTONE_FULL_BE_TAG_KEY),
+                            transform
+                    )
+            );
+        }
+
+        return result;
     }
 
     private static CompoundTag transformGregBlockEntityTag(CompoundTag tag, CableBusTransform transform) {
@@ -1145,6 +1241,14 @@ public final class TemplateUtil {
                 ? mirrored
                 : remapHorizontalDirectionProperties(mirrored, sourceFacing.getAxis());
 
+        CableBusTransform transform = sourceFacing.getAxis() == Direction.Axis.Z
+                ? CableBusTransform.FLIP_H_AXIS_Z
+                : CableBusTransform.FLIP_H_AXIS_X;
+
+        if (!hasDirectionalBooleanPropertyChange(state, result)) {
+            result = remapDirectionalBooleanProperties(result, transform);
+        }
+
         return remapFramedTypePropertyIfUnchanged(state, result, FramedTypeTransform.FLIP_H);
     }
 
@@ -1240,6 +1344,10 @@ public final class TemplateUtil {
         result = remapFramedProperties(result, FramedPropertyTransform.FLIP_V);
         result = remapFramedTypePropertyIfUnchanged(state, result, FramedTypeTransform.FLIP_V);
 
+        if (!hasDirectionalBooleanPropertyChange(state, result)) {
+            result = remapDirectionalBooleanProperties(result, CableBusTransform.FLIP_V);
+        }
+
         return result;
     }
 
@@ -1260,6 +1368,17 @@ public final class TemplateUtil {
             case COUNTERCLOCKWISE_90 -> FramedPropertyTransform.ROTATE_CCW;
             case NONE -> null;
         };
+
+        CableBusTransform booleanTransform = switch (rotation) {
+            case CLOCKWISE_90 -> CableBusTransform.ROTATE_CW;
+            case CLOCKWISE_180 -> CableBusTransform.ROTATE_180;
+            case COUNTERCLOCKWISE_90 -> CableBusTransform.ROTATE_CCW;
+            case NONE -> CableBusTransform.NONE;
+        };
+
+        if (!hasDirectionalBooleanPropertyChange(state, result)) {
+            result = remapDirectionalBooleanProperties(result, booleanTransform);
+        }
 
         return framedTransform == null
                 ? result
@@ -1315,6 +1434,103 @@ public final class TemplateUtil {
             };
             case NONE -> direction;
         };
+    }
+
+    private static BlockState remapDirectionalBooleanProperties(
+            BlockState state,
+            CableBusTransform transform
+    ) {
+        if (transform == CableBusTransform.NONE) {
+            return state;
+        }
+
+        Map<Direction, Boolean> values = new EnumMap<>(Direction.class);
+
+        for (Direction direction : Direction.values()) {
+            Property<?> property = state.getBlock()
+                    .getStateDefinition()
+                    .getProperty(directionKey(direction));
+
+            if (property == null) {
+                continue;
+            }
+
+            Object value = getPropertyValue(state, property);
+
+            if (value instanceof Boolean bool) {
+                values.put(direction, bool);
+            }
+        }
+
+        if (values.isEmpty()) {
+            return state;
+        }
+
+        BlockState result = state;
+
+        for (Direction direction : values.keySet()) {
+            Property<?> property = result.getBlock()
+                    .getStateDefinition()
+                    .getProperty(directionKey(direction));
+
+            if (property != null) {
+                result = setUnchecked(result, property, false);
+            }
+        }
+
+        for (Map.Entry<Direction, Boolean> entry : values.entrySet()) {
+            if (!entry.getValue()) {
+                continue;
+            }
+
+            Direction mappedDirection = mapCableBusSide(entry.getKey(), transform);
+            Property<?> property = result.getBlock()
+                    .getStateDefinition()
+                    .getProperty(directionKey(mappedDirection));
+
+            if (property != null) {
+                result = setUnchecked(result, property, true);
+            }
+        }
+
+        return result;
+    }
+
+    private static boolean hasDirectionalBooleanPropertyChange(
+            BlockState before,
+            BlockState after
+    ) {
+        for (Direction direction : Direction.values()) {
+            Property<?> property = before.getBlock()
+                    .getStateDefinition()
+                    .getProperty(directionKey(direction));
+
+            if (property == null) {
+                continue;
+            }
+
+            Object beforeValue = getPropertyValue(before, property);
+
+            if (!(beforeValue instanceof Boolean)) {
+                continue;
+            }
+
+            Property<?> afterProperty = after.getBlock()
+                    .getStateDefinition()
+                    .getProperty(directionKey(direction));
+
+            if (afterProperty == null) {
+                continue;
+            }
+
+            Object afterValue = getPropertyValue(after, afterProperty);
+
+            if (!Objects.equals(beforeValue, afterValue)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static BlockState remapPropertyValues(BlockState state, String propertyName, Map<String, String> mapping) {

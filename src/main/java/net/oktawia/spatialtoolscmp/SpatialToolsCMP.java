@@ -18,24 +18,16 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.RegisterEvent;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtensions;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialStoragePreviewRenderer;
-import net.oktawia.spatialtoolscmp.client.renderer.extensions.AE2BlockRenderExtension;
-import net.oktawia.spatialtoolscmp.client.renderer.extensions.FramedBlocksRenderExtension;
-import net.oktawia.spatialtoolscmp.client.renderer.extensions.GTCEuBlockRenderExtension;
-import net.oktawia.spatialtoolscmp.client.renderer.extensions.MekanismBlockRenderExtension;
+import net.oktawia.spatialtoolscmp.client.renderer.extensions.*;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
 import net.oktawia.spatialtoolscmp.defs.SpatialCreativeTabRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialScreenRegistrar;
-import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
-import net.oktawia.spatialtoolscmp.logic.extensions.AE2ClonerExtension;
-import net.oktawia.spatialtoolscmp.logic.extensions.FramedBlocksClonerExtension;
-import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuStructureExtension;
-import net.oktawia.spatialtoolscmp.logic.extensions.MekanismClonerExtension;
+import net.oktawia.spatialtoolscmp.logic.extensions.*;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import org.slf4j.Logger;
-import net.oktawia.spatialtoolscmp.compat.ae2.AE2CL;
 
 @Mod(SpatialToolsCMP.MODID)
 public class SpatialToolsCMP {
@@ -79,6 +71,9 @@ public class SpatialToolsCMP {
             if (IsModLoaded.MEKANISM) {
                 StructureToolExtensions.registerClonerExtension(new MekanismClonerExtension());
             }
+            if (IsModLoaded.FASTSTONE) {
+                StructureToolExtensions.registerClonerExtension(new FaststoneClonerExtension());
+            }
             NetworkHandler.registerMessages();
         });
     }
@@ -114,6 +109,9 @@ public class SpatialToolsCMP {
                 }
                 if (IsModLoaded.MEKANISM) {
                     BlockRenderExtensions.register(new MekanismBlockRenderExtension());
+                }
+                if (IsModLoaded.FASTSTONE) {
+                    BlockRenderExtensions.register(new FaststoneBlockRenderExtension());
                 }
                 MinecraftForge.EVENT_BUS.register(new PortableSpatialStoragePreviewRenderer());
                 SpatialScreenRegistrar.register();

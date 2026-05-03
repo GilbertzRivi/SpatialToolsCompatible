@@ -498,7 +498,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        List<ItemStack> refundStacks = ClonerUndoHandler.collectRefundStacks(undoBlocks);
+        List<ItemStack> refundStacks = ClonerUndoHandler.collectCurrentRefundStacks(level, undoBlocks);
         boolean shouldRefundItems = !player.isCreative() && !refundStacks.isEmpty();
 
         if (shouldRefundItems && !ClonerInventoryAccess.canStoreRefundStacks(level, player, toolStack, refundStacks)) {
