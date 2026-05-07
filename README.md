@@ -1,5 +1,7 @@
 # ![](https://media.forgecdn.net/attachments/description/null/description_b90888d7-ca48-4967-999b-dac85c75f971.png)
 
+https://www.curseforge.com/minecraft/mc-mods/spatial-tools-compatible
+
 **Spatial Tools Compatible** is a standalone structure tools mod focused on copying, cutting, previewing, transforming, and pasting complex builds.
 
 It is built for more than simple block copying. The mod is designed to handle technical and modded structures that usually break under ordinary building tools: blocks with important NBT, directional states, multipart systems, machine blocks, cables, pipes, covers, and other special cases that need proper placement, rendering, and transformation support.
