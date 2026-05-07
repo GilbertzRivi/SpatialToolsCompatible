@@ -1,6 +1,5 @@
 package net.oktawia.spatialtoolscmp.items;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import lombok.Getter;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
@@ -81,6 +80,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     private static final int CUT_CLEAR_FLAGS =
             Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
 
+    private static final long DEFAULT_MAX_CAPTURE_BOUNDS_VOLUME = 1_000_000L;
+
     @Getter
     private final int powerUpgradeSlots;
 
@@ -136,6 +137,16 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
     protected int getMaxStructureSize() {
         return -1;
+    }
+
+    protected long getMaxCaptureBoundsVolume() {
+        int maxStructureSize = getMaxStructureSize();
+
+        if (maxStructureSize > 0) {
+            return Math.max(DEFAULT_MAX_CAPTURE_BOUNDS_VOLUME, (long) maxStructureSize * 16L);
+        }
+
+        return DEFAULT_MAX_CAPTURE_BOUNDS_VOLUME;
     }
 
     protected double getPowerPerBlockCapture() {
@@ -686,7 +697,15 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             boolean filterUncapturable,
             boolean showSuccess
     ) {
-        BlockPos size = max.subtract(min).offset(1, 1, 1);
+        if (!preflightCaptureBounds(level, player, stack, min, max, consumePower, filterUncapturable)) {
+            return null;
+        }
+
+        long sizeX = boundsSizeX(min, max);
+        long sizeY = boundsSizeY(min, max);
+        long sizeZ = boundsSizeZ(min, max);
+
+        BlockPos size = new BlockPos((int) sizeX, (int) sizeY, (int) sizeZ);
 
         StructureTemplate template = new StructureTemplate();
         template.fillFromWorld(level, min, size, false, Blocks.STRUCTURE_VOID);
@@ -789,6 +808,143 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         }
 
         return result;
+    }
+
+    private boolean preflightCaptureBounds(
+            ServerLevel level,
+            Player player,
+            ItemStack stack,
+            BlockPos min,
+            BlockPos max,
+            boolean consumePower,
+            boolean filterUncapturable
+    ) {
+        long sizeX = boundsSizeX(min, max);
+        long sizeY = boundsSizeY(min, max);
+        long sizeZ = boundsSizeZ(min, max);
+
+        if (sizeX <= 0L || sizeY <= 0L || sizeZ <= 0L) {
+            showHud(
+                    player,
+                    HUD_TIME_MEDIUM,
+                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey()))
+            );
+            return false;
+        }
+
+        if (sizeX > Integer.MAX_VALUE || sizeY > Integer.MAX_VALUE || sizeZ > Integer.MAX_VALUE) {
+            showHud(
+                    player,
+                    HUD_TIME_MEDIUM,
+                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey()))
+            );
+            return false;
+        }
+
+        long volume = safeVolume(sizeX, sizeY, sizeZ);
+        long maxVolume = getMaxCaptureBoundsVolume();
+
+        if (maxVolume >= 0L && volume > maxVolume) {
+            showHud(
+                    player,
+                    HUD_TIME_MEDIUM,
+                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())),
+                    cyan(Component.translatable(LangDefs.STRUCTURE_SIZE.getTranslationKey(), volume)),
+                    cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxVolume))
+            );
+            return false;
+        }
+
+        int maxStructureSize = getMaxStructureSize();
+        boolean shouldCheckStructureSize = maxStructureSize >= 0;
+
+        boolean shouldCheckPower = consumePower
+                && !player.isCreative()
+                && getPowerPerBlockCapture() > 0.0D
+                && getEnergyCostMultiplier() > 0.0D;
+
+        if (!shouldCheckStructureSize && !shouldCheckPower) {
+            return true;
+        }
+
+        long countedBlocks = 0L;
+        double estimatedRequiredPower = 0.0D;
+        double estimatedPowerPerBlock = getPowerPerBlockCapture() * getEnergyCostMultiplier();
+        int storedPower = getInternalPowerStored(stack);
+
+        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+
+        for (int y = min.getY(); y <= max.getY(); y++) {
+            for (int z = min.getZ(); z <= max.getZ(); z++) {
+                for (int x = min.getX(); x <= max.getX(); x++) {
+                    mutablePos.set(x, y, z);
+
+                    BlockState state = level.getBlockState(mutablePos);
+
+                    if (state.isAir()) {
+                        continue;
+                    }
+
+                    if (filterUncapturable && shouldSkipStructureToolBlock(level, mutablePos, state)) {
+                        continue;
+                    }
+
+                    countedBlocks++;
+
+                    if (shouldCheckStructureSize && countedBlocks > maxStructureSize) {
+                        showHud(
+                                player,
+                                HUD_TIME_MEDIUM,
+                                red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())),
+                                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE.getTranslationKey(), countedBlocks)),
+                                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxStructureSize))
+                        );
+                        return false;
+                    }
+
+                    if (shouldCheckPower) {
+                        estimatedRequiredPower += estimatedPowerPerBlock;
+
+                        if (Math.ceil(estimatedRequiredPower) > storedPower) {
+                            showNotEnoughPower(player, stack, estimatedRequiredPower);
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private static long boundsSizeX(BlockPos min, BlockPos max) {
+        return (long) max.getX() - min.getX() + 1L;
+    }
+
+    private static long boundsSizeY(BlockPos min, BlockPos max) {
+        return (long) max.getY() - min.getY() + 1L;
+    }
+
+    private static long boundsSizeZ(BlockPos min, BlockPos max) {
+        return (long) max.getZ() - min.getZ() + 1L;
+    }
+
+    private static long safeVolume(long x, long y, long z) {
+        if (x <= 0L || y <= 0L || z <= 0L) {
+            return Long.MAX_VALUE;
+        }
+
+        if (x > Long.MAX_VALUE / y) {
+            return Long.MAX_VALUE;
+        }
+
+        long xy = x * y;
+
+        if (xy > Long.MAX_VALUE / z) {
+            return Long.MAX_VALUE;
+        }
+
+        return xy * z;
     }
 
     private static void removeCapturedBlocksWithoutDrops(
@@ -1024,10 +1180,10 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         int capacity = getInternalPowerCapacity(stack);
 
         tooltip.add(Component.translatable(LangDefs.HOTKEY_TOOLTIP.getTranslationKey())
-                        .copy().withStyle(ChatFormatting.GRAY)
+                .copy().withStyle(ChatFormatting.GRAY)
                 .append(StructureToolContextMenuClient.OPEN_CONTEXT_MENU.getKey().getDisplayName()
                         .copy().withStyle(ChatFormatting.AQUA)
-        ));
+                ));
 
         tooltip.add(Component.translatable(
                 LangDefs.STRUCTURE_TOOL_HOLD_TO_OPEN.getTranslationKey()
