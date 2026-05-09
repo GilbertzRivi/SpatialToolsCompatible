@@ -15,7 +15,7 @@ import java.nio.file.Path;
 @OnlyIn(Dist.CLIENT)
 public final class ClonerStructureFileTransferClient {
 
-    private static final String EXTENSION = ".crazyae2structure";
+    private static final String EXTENSION = ".stcstr";
     private static final int MAX_IMPORT_BYTES = 16 * 1024 * 1024;
 
     private static Path pendingExportPath = null;

@@ -5,6 +5,7 @@ import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.pipenet.PipeCoverContainer;
+import com.gregtechceu.gtceu.common.machine.electric.TransformerMachine;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -30,6 +31,8 @@ import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.compat.GTCEuAE2PostPasteOps;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
@@ -51,8 +54,9 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private static final String NBT_RENDER_STATE_NAME = "Name";
     private static final String NBT_RENDER_PROPERTIES = "Properties";
     private static final String NBT_RENDER_TRANSFORM_UP = "transform_up";
+    private static final String NBT_DATA_STICK = "dataStick";
 
-    private static final long PIPE_POST_INIT_DELAY_TICKS = 1L;
+    private static final long NEXT_TICK_DELAY = 1L;
 
     private static final List<PendingInit> PENDING = new ArrayList<>();
     private static boolean registered = false;
@@ -60,7 +64,12 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     @Override
     public boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag) {
         ResourceLocation id = ForgeRegistries.BLOCKS.getKey(state.getBlock());
-        return id != null && id.toString().startsWith(StructureToolKeys.GTCEU_ID_PREFIX);
+
+        if (id != null && id.toString().startsWith(StructureToolKeys.GTCEU_ID_PREFIX)) {
+            return true;
+        }
+
+        return isGregBlockEntityTag(rawBeTag);
     }
 
     @Override
@@ -72,7 +81,11 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             AbstractStructureCaptureToolItem.RequirementSink requirements,
             CompoundTag blockEntry
     ) {
-        if (handlesRequirements(level.getBlockState(pos), rawBeTag)) {
+        boolean gregLike = handlesRequirements(level.getBlockState(pos), rawBeTag)
+                || be instanceof MetaMachineBlockEntity
+                || be instanceof PipeBlockEntity<?, ?>;
+
+        if (gregLike) {
             addBaseBlockRequirement(level, pos, requirements);
         }
 
@@ -122,18 +135,36 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         CompoundTag currentTag = saveCurrentTag(be);
-        CompoundTag postPlacementTag = createPostPlacementPipeTag(be, currentTag, gregMeta);
 
-        if (postPlacementTag.isEmpty()) {
+        CompoundTag postPlacementPipeTag = createPostPlacementPipeTag(be, currentTag, gregMeta);
+
+        if (!postPlacementPipeTag.isEmpty()) {
+            scheduleSinglePipePostPlacementInit(
+                    level,
+                    pos,
+                    postPlacementPipeTag,
+                    createCoverSnapshotForGuard(currentTag)
+            );
             return;
         }
 
-        scheduleSinglePipePostPlacementInit(
-                level,
-                pos,
-                postPlacementTag,
-                createCoverSnapshotForGuard(currentTag)
-        );
+        CompoundTag machineData = gregMeta.getCompound(StructureToolKeys.CLONE_KEY_GREG_MACHINE);
+
+        if (hasStoredGregTransformerState(machineData)) {
+            scheduleSingleTransformerStateRefresh(
+                    level,
+                    pos,
+                    machineData
+            );
+        }
+
+        if (machineData.contains(NBT_DATA_STICK, Tag.TAG_COMPOUND)) {
+            scheduleSingleDataStickApply(
+                    level,
+                    pos,
+                    machineData.getCompound(NBT_DATA_STICK)
+            );
+        }
     }
 
     private static PlacementPlan buildGregPipePlacementPlan(
@@ -367,20 +398,25 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     ) {
         CompoundTag out = new CompoundTag();
 
-        if (!isGregBlockEntityTag(rawBeTag)) {
+        boolean pipeLike = be instanceof PipeBlockEntity<?, ?> || isGregPipeTag(rawBeTag);
+        boolean machineLike = be instanceof MetaMachineBlockEntity || isGregMachineTag(rawBeTag);
+
+        if (!pipeLike && !machineLike && !isGregBlockEntityTag(rawBeTag)) {
             return out;
         }
 
-        NbtUtil.copyStringIfPresent(rawBeTag, out, NBT_ID);
+        if (rawBeTag != null) {
+            NbtUtil.copyStringIfPresent(rawBeTag, out, NBT_ID);
+        }
 
-        if (rawBeTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+        if (rawBeTag != null && rawBeTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
             CompoundTag coverTag = rawBeTag.getCompound(NBT_COVER).copy();
 
             out.put(StructureToolKeys.CLONE_KEY_GREG_COVER, coverTag);
             collectGregCoverRequirements(coverTag, requirements);
         }
 
-        if (isGregPipeTag(rawBeTag)) {
+        if (pipeLike && rawBeTag != null) {
             CompoundTag pipeTag = new CompoundTag();
 
             NbtUtil.copyIntIfPresent(rawBeTag, pipeTag, "connections");
@@ -399,7 +435,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             }
         }
 
-        if (isGregMachineTag(rawBeTag)) {
+        if (machineLike && rawBeTag != null) {
             CompoundTag machineTag = new CompoundTag();
 
             NbtUtil.copyTagIfPresent(rawBeTag, machineTag, "ownerUUID");
@@ -423,7 +459,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             CompoundTag dataStick = collectGregDataStick(be);
 
             if (!dataStick.isEmpty()) {
-                machineTag.put("dataStick", dataStick);
+                machineTag.put(NBT_DATA_STICK, dataStick);
             }
 
             if (!machineTag.isEmpty()) {
@@ -595,11 +631,10 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         NbtUtil.copyTagIfPresent(machineData, out, "circuitInventory");
 
         copyGregTransformerState(machineData, out);
-
         copyGregMachineSideConfig(machineData, out);
 
-        if (machineData.contains("dataStick", Tag.TAG_COMPOUND)) {
-            out.put("dataStick", machineData.getCompound("dataStick").copy());
+        if (machineData.contains(NBT_DATA_STICK, Tag.TAG_COMPOUND)) {
+            out.put(NBT_DATA_STICK, machineData.getCompound(NBT_DATA_STICK).copy());
         }
 
         if (!filteredCover.isEmpty()) {
@@ -686,6 +721,57 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         return out;
     }
 
+    private static boolean hasStoredGregTransformerState(CompoundTag machineData) {
+        if (machineData == null || machineData.isEmpty()) {
+            return false;
+        }
+
+        if (machineData.contains(NBT_TRANSFORM_UP, Tag.TAG_BYTE)) {
+            return true;
+        }
+
+        if (!machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        CompoundTag renderState = machineData.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
+
+        return properties.contains(NBT_RENDER_TRANSFORM_UP, Tag.TAG_STRING);
+    }
+
+    private static boolean readStoredTransformUp(
+            CompoundTag machineData,
+            boolean fallback
+    ) {
+        if (machineData.contains(NBT_TRANSFORM_UP, Tag.TAG_BYTE)) {
+            return machineData.getBoolean(NBT_TRANSFORM_UP);
+        }
+
+        if (!machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return fallback;
+        }
+
+        CompoundTag renderState = machineData.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return fallback;
+        }
+
+        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
+
+        if (!properties.contains(NBT_RENDER_TRANSFORM_UP, Tag.TAG_STRING)) {
+            return fallback;
+        }
+
+        return Boolean.parseBoolean(properties.getString(NBT_RENDER_TRANSFORM_UP));
+    }
+
     private static CompoundTag createPostPlacementPipeTag(
             @Nullable BlockEntity be,
             @Nullable CompoundTag currentTag,
@@ -713,22 +799,17 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         rawIdTag.putString(NBT_ID, id);
 
         CompoundTag pipeData = gregMeta.getCompound(StructureToolKeys.CLONE_KEY_GREG_PIPE);
-        CompoundTag coverData = getPlacedCoverDataForPostInit(be, currentTag, gregMeta);
+        CompoundTag coverData = getPlacedCoverDataForPostInit(currentTag, gregMeta);
 
         return createWhitelistedGregPipeTag(rawIdTag, pipeData, coverData);
     }
 
     private static CompoundTag getPlacedCoverDataForPostInit(
-            @Nullable BlockEntity be,
             @Nullable CompoundTag currentTag,
             CompoundTag gregMeta
     ) {
         if (currentTag != null && currentTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
             return currentTag.getCompound(NBT_COVER).copy();
-        }
-
-        if (be != null) {
-            return new CompoundTag();
         }
 
         return gregMeta.getCompound(StructureToolKeys.CLONE_KEY_GREG_COVER).copy();
@@ -793,12 +874,48 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             return true;
         }
 
-        return StructureToolKeys.GT_CABLE_ID.equals(id)
+        if (StructureToolKeys.GT_CABLE_ID.equals(id)
                 || StructureToolKeys.GT_ITEM_PIPE_ID.equals(id)
-                || StructureToolKeys.GT_FLUID_PIPE_ID.equals(id)
-                || (tag.contains("connections", Tag.TAG_INT)
+                || StructureToolKeys.GT_FLUID_PIPE_ID.equals(id)) {
+            return true;
+        }
+
+        if (tag.contains("connections", Tag.TAG_INT)
                 && tag.contains("blockedConnections", Tag.TAG_INT)
-                && tag.contains("frameMaterial", Tag.TAG_STRING));
+                && tag.contains("frameMaterial", Tag.TAG_STRING)) {
+            return true;
+        }
+
+        return isLikelyGregMachineTag(tag);
+    }
+
+    private static boolean isLikelyGregMachineTag(CompoundTag tag) {
+        String id = tag.getString(NBT_ID);
+
+        if (id.isBlank()) {
+            return false;
+        }
+
+        if (id.startsWith("minecraft:")) {
+            return false;
+        }
+
+        if (isGregPipeId(id)) {
+            return false;
+        }
+
+        return tag.contains(NBT_COVER, Tag.TAG_COMPOUND)
+                || tag.contains("recipeLogic", Tag.TAG_COMPOUND)
+                || tag.contains("voidingMode", Tag.TAG_STRING)
+                || tag.contains("workingMode", Tag.TAG_STRING)
+                || tag.contains("ownerUUID", Tag.TAG_INT_ARRAY)
+                || tag.contains("paintingColor", Tag.TAG_INT)
+                || tag.contains("renderState", Tag.TAG_COMPOUND)
+                || tag.contains("circuitInventory", Tag.TAG_COMPOUND)
+                || tag.contains("outputFacingItems")
+                || tag.contains("outputFacingFluids")
+                || tag.contains("inputFacingItems")
+                || tag.contains("inputFacingFluids");
     }
 
     private static boolean isGregPipeTag(@Nullable CompoundTag tag) {
@@ -823,8 +940,11 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         String id = tag.getString(NBT_ID);
 
         return !id.isBlank()
-                && id.startsWith(StructureToolKeys.GTCEU_ID_PREFIX)
-                && !isGregPipeId(id);
+                && !isGregPipeId(id)
+                && (
+                id.startsWith(StructureToolKeys.GTCEU_ID_PREFIX)
+                        || isLikelyGregMachineTag(tag)
+        );
     }
 
     private static ItemStack normalizeSingle(ItemStack stack) {
@@ -876,7 +996,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             return;
         }
 
-        if (isPostPlacementAlreadyPending(level, pos)) {
+        if (isPostPlacementAlreadyPending(level, pos, PendingMode.PIPE_LOAD)) {
             return;
         }
 
@@ -885,6 +1005,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         List<PendingBlockInit> blocks = new ArrayList<>();
         blocks.add(new PendingBlockInit(
                 pos.immutable(),
+                PendingMode.PIPE_LOAD,
                 blockEntityTag.copy(),
                 observedCoverTag == null ? null : observedCoverTag.copy()
         ));
@@ -892,7 +1013,67 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         PENDING.add(new PendingInit(
                 level,
                 blocks,
-                level.getGameTime() + PIPE_POST_INIT_DELAY_TICKS
+                level.getGameTime() + NEXT_TICK_DELAY
+        ));
+    }
+
+    private static void scheduleSingleDataStickApply(
+            ServerLevel level,
+            BlockPos pos,
+            CompoundTag dataStickTag
+    ) {
+        if (dataStickTag.isEmpty()) {
+            return;
+        }
+
+        if (isPostPlacementAlreadyPending(level, pos, PendingMode.DATA_STICK_ONLY)) {
+            return;
+        }
+
+        ensureRegistered();
+
+        List<PendingBlockInit> blocks = new ArrayList<>();
+        blocks.add(new PendingBlockInit(
+                pos.immutable(),
+                PendingMode.DATA_STICK_ONLY,
+                dataStickTag.copy(),
+                null
+        ));
+
+        PENDING.add(new PendingInit(
+                level,
+                blocks,
+                level.getGameTime() + NEXT_TICK_DELAY
+        ));
+    }
+
+    private static void scheduleSingleTransformerStateRefresh(
+            ServerLevel level,
+            BlockPos pos,
+            CompoundTag machineData
+    ) {
+        if (!hasStoredGregTransformerState(machineData)) {
+            return;
+        }
+
+        if (isPostPlacementAlreadyPending(level, pos, PendingMode.TRANSFORMER_STATE)) {
+            return;
+        }
+
+        ensureRegistered();
+
+        List<PendingBlockInit> blocks = new ArrayList<>();
+        blocks.add(new PendingBlockInit(
+                pos.immutable(),
+                PendingMode.TRANSFORMER_STATE,
+                machineData.copy(),
+                null
+        ));
+
+        PENDING.add(new PendingInit(
+                level,
+                blocks,
+                level.getGameTime() + NEXT_TICK_DELAY
         ));
     }
 
@@ -938,24 +1119,56 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
 
         for (PendingBlockInit pendingBlock : blocks) {
             BlockPos worldPos = pendingBlock.pos();
-            CompoundTag blockEntityTag = pendingBlock.blockEntityTag();
-
-            if (!isGregPipeTag(blockEntityTag)) {
-                continue;
-            }
-
             BlockEntity blockEntity = level.getBlockEntity(worldPos);
 
-            if (!(blockEntity instanceof PipeBlockEntity<?, ?> pipe)) {
+            if (blockEntity == null) {
                 continue;
             }
 
-            if (hasCoverChangedSinceQueued(blockEntity, pendingBlock.observedCoverTag())) {
+            if (pendingBlock.mode() == PendingMode.PIPE_LOAD) {
+                CompoundTag blockEntityTag = pendingBlock.payload();
+
+                if (!isGregPipeTag(blockEntityTag)) {
+                    continue;
+                }
+
+                if (!(blockEntity instanceof PipeBlockEntity<?, ?> pipe)) {
+                    continue;
+                }
+
+                if (hasCoverChangedSinceQueued(blockEntity, pendingBlock.observedCoverTag())) {
+                    continue;
+                }
+
+                initSinglePipe(level, worldPos, pipe, blockEntityTag);
+                refreshedPositions.add(worldPos);
                 continue;
             }
 
-            initSinglePipe(level, worldPos, pipe, blockEntityTag);
-            refreshedPositions.add(worldPos);
+            if (pendingBlock.mode() == PendingMode.TRANSFORMER_STATE) {
+                boolean changed = refreshTransformerRuntimeState(
+                        level,
+                        worldPos,
+                        blockEntity,
+                        pendingBlock.payload()
+                );
+
+                if (changed) {
+                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
+                    refreshedPositions.add(worldPos);
+                }
+
+                continue;
+            }
+
+            if (pendingBlock.mode() == PendingMode.DATA_STICK_ONLY) {
+                boolean changed = applyDataStickTag(level, blockEntity, pendingBlock.payload());
+
+                if (changed) {
+                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
+                    refreshedPositions.add(worldPos);
+                }
+            }
         }
 
         for (BlockPos pos : refreshedPositions) {
@@ -1026,6 +1239,155 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
     }
 
+    private static boolean refreshTransformerRuntimeState(
+            ServerLevel level,
+            BlockPos pos,
+            BlockEntity blockEntity,
+            CompoundTag machineData
+    ) {
+        if (!(blockEntity instanceof MetaMachineBlockEntity mmbe)) {
+            return false;
+        }
+
+        if (!(mmbe.getMetaMachine() instanceof TransformerMachine transformer)) {
+            return false;
+        }
+
+        boolean desiredTransformUp = readStoredTransformUp(
+                machineData,
+                transformer.isTransformUp()
+        );
+
+        try {
+            if (transformer.isTransformUp() != desiredTransformUp) {
+                transformer.setTransformUp(desiredTransformUp);
+            } else {
+                // NBT/state value can already be correct while the runtime energy container is stale.
+                // Force the runtime side/input/output rules to be rebuilt after template paste.
+                transformer.updateEnergyContainer(desiredTransformUp);
+            }
+
+            try {
+                transformer.getSyncStorage().markAllDirty();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                mmbe.getSyncStorage().markAllDirty();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                transformer.notifyBlockUpdate();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                transformer.scheduleRenderUpdate();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                transformer.markDirty();
+            } catch (Throwable ignored) {
+            }
+
+            blockEntity.setChanged();
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static boolean applyDataStickTag(
+            ServerLevel level,
+            BlockEntity blockEntity,
+            CompoundTag dataStickTag
+    ) {
+        if (dataStickTag.isEmpty()) {
+            return false;
+        }
+
+        if (!(blockEntity instanceof MetaMachineBlockEntity mmbe)) {
+            return false;
+        }
+
+        if (!(mmbe.getMetaMachine() instanceof IDataStickInteractable interactable)) {
+            return false;
+        }
+
+        ItemStack dataStick = new ItemStack(Items.STICK);
+        dataStick.setTag(dataStickTag.copy());
+
+        try {
+            InteractionResult result = interactable.onDataStickUse(
+                    FakePlayerFactory.getMinecraft(level),
+                    dataStick
+            );
+
+            if (result.consumesAction() || result == InteractionResult.SUCCESS) {
+                blockEntity.setChanged();
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return false;
+    }
+
+    private static void syncGenericGregBlockEntityNoLoad(
+            ServerLevel level,
+            BlockPos pos,
+            BlockEntity blockEntity
+    ) {
+        if (blockEntity instanceof MetaMachineBlockEntity mmbe) {
+            try {
+                mmbe.getSyncStorage().markAllDirty();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                mmbe.getMetaMachine().getSyncStorage().markAllDirty();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                mmbe.getMetaMachine().notifyBlockUpdate();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                mmbe.getMetaMachine().scheduleRenderUpdate();
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                mmbe.getMetaMachine().markDirty();
+            } catch (Throwable ignored) {
+            }
+        }
+
+        if (isAe2GridConnectedGregMachine(blockEntity)) {
+            refreshAe2GridNodeIfPresent(level, pos, blockEntity);
+        }
+
+        try {
+            blockEntity.setChanged();
+        } catch (Throwable ignored) {
+        }
+
+        BlockState state = level.getBlockState(pos);
+
+        level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
+        level.getChunkSource().blockChanged(pos);
+
+        ClientboundBlockEntityDataPacket packet = ClientboundBlockEntityDataPacket.create(blockEntity);
+
+        for (ServerPlayer player : level.players()) {
+            player.connection.send(packet);
+        }
+    }
+
     private static void notifyPostPlacedNeighborhood(ServerLevel level, BlockPos pos) {
         BlockState state = level.getBlockState(pos);
 
@@ -1068,28 +1430,40 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
 
         for (TemplateUtil.BlockInfo info : TemplateUtil.parseRawBlocksFromTag(templateTag)) {
             BlockPos worldPos = placementOrigin.offset(info.pos()).immutable();
-
-            if (isPostPlacementAlreadyPending(level, worldPos)) {
-                continue;
-            }
-
             BlockEntity blockEntity = level.getBlockEntity(worldPos);
 
-            if (!(blockEntity instanceof PipeBlockEntity<?, ?>)) {
+            if (blockEntity == null) {
                 continue;
             }
 
             CompoundTag currentTag = saveCurrentTag(blockEntity);
 
-            if (!isGregPipeTag(currentTag)) {
+            if (blockEntity instanceof PipeBlockEntity<?, ?>) {
+                if (!isPostPlacementAlreadyPending(level, worldPos, PendingMode.PIPE_LOAD)
+                        && isGregPipeTag(currentTag)) {
+                    blocks.add(new PendingBlockInit(
+                            worldPos,
+                            PendingMode.PIPE_LOAD,
+                            currentTag.copy(),
+                            createCoverSnapshotForGuard(currentTag)
+                    ));
+                }
+
                 continue;
             }
 
-            blocks.add(new PendingBlockInit(
-                    worldPos,
-                    currentTag.copy(),
-                    createCoverSnapshotForGuard(currentTag)
-            ));
+            if (blockEntity instanceof MetaMachineBlockEntity mmbe
+                    && mmbe.getMetaMachine() instanceof TransformerMachine
+                    && currentTag != null
+                    && hasStoredGregTransformerState(currentTag)
+                    && !isPostPlacementAlreadyPending(level, worldPos, PendingMode.TRANSFORMER_STATE)) {
+                blocks.add(new PendingBlockInit(
+                        worldPos,
+                        PendingMode.TRANSFORMER_STATE,
+                        currentTag.copy(),
+                        null
+                ));
+            }
         }
 
         if (blocks.isEmpty()) {
@@ -1101,18 +1475,22 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         PENDING.add(new PendingInit(
                 level,
                 blocks,
-                level.getGameTime() + PIPE_POST_INIT_DELAY_TICKS
+                level.getGameTime() + NEXT_TICK_DELAY
         ));
     }
 
-    private static boolean isPostPlacementAlreadyPending(ServerLevel level, BlockPos pos) {
+    private static boolean isPostPlacementAlreadyPending(
+            ServerLevel level,
+            BlockPos pos,
+            PendingMode mode
+    ) {
         for (PendingInit pending : PENDING) {
             if (pending.level != level) {
                 continue;
             }
 
             for (PendingBlockInit block : pending.blocks) {
-                if (block.pos().equals(pos)) {
+                if (block.mode() == mode && block.pos().equals(pos)) {
                     return true;
                 }
             }
@@ -1242,9 +1620,16 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         return cost;
     }
 
+    private enum PendingMode {
+        PIPE_LOAD,
+        DATA_STICK_ONLY,
+        TRANSFORMER_STATE
+    }
+
     private record PendingBlockInit(
             BlockPos pos,
-            CompoundTag blockEntityTag,
+            PendingMode mode,
+            CompoundTag payload,
             @Nullable CompoundTag observedCoverTag
     ) {
     }
@@ -1271,7 +1656,9 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     ) {
         CompoundTag currentTag = saveCurrentTag(be);
 
-        if (!handlesRequirements(state, currentTag) && !isGregBlockEntityTag(currentTag)) {
+        if (!handlesRequirements(state, currentTag)
+                && !(be instanceof MetaMachineBlockEntity)
+                && !(be instanceof PipeBlockEntity<?, ?>)) {
             return false;
         }
 
@@ -1333,5 +1720,25 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         if (item != Items.AIR) {
             refunds.add(new ItemStack(item));
         }
+    }
+
+    private static boolean isAe2GridConnectedGregMachine(@Nullable BlockEntity blockEntity) {
+        if (!IsModLoaded.AE2) {
+            return false;
+        }
+
+        return GTCEuAE2PostPasteOps.isAe2GridConnectedMachine(blockEntity);
+    }
+
+    private static void refreshAe2GridNodeIfPresent(
+            ServerLevel level,
+            BlockPos pos,
+            BlockEntity blockEntity
+    ) {
+        if (!IsModLoaded.AE2) {
+            return;
+        }
+
+        GTCEuAE2PostPasteOps.refreshGridNodeIfPresent(level, pos, blockEntity);
     }
 }
