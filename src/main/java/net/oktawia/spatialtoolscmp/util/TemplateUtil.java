@@ -26,6 +26,16 @@ public final class TemplateUtil {
 
     private static final String AE2_CABLE_BUS_ID = "ae2:cable_bus";
 
+    private static final String CB_MULTIPART_BE_ID = "cb_multipart:saved_multipart";
+    private static final String CB_MULTIPART_META_KEY = "CBMultipart";
+    private static final String CB_MULTIPART_META_PARTS_KEY = "Parts";
+
+    private static final String NBT_CB_PARTS = "parts";
+    private static final String NBT_CONN_MAP = "connMap";
+    private static final String NBT_SIDE = "side";
+
+    private static final String PROJECTRED_TRANSMISSION_ID_PREFIX = "projectred_transmission:";
+
     private static final String FASTSTONE_ID_PREFIX = "faststonelogic:";
     private static final String FASTSTONE_META_KEY = "Faststone";
     private static final String FASTSTONE_FULL_BE_TAG_KEY = "FullBlockEntityTag";
@@ -51,6 +61,28 @@ public final class TemplateUtil {
     public static final String TEMPLATE_OFFSET_Z_KEY = "crazy_template_offset_z";
 
     public static final String ENERGY_ORIGIN_KEY = "energyOrigin";
+
+    /*
+     * Kopia CodeChickenLib Rotation.sideRotMap / rotSideMap.
+     * Dzięki temu TemplateUtil nie musi importować CCL.
+     */
+    private static final int[] CCL_SIDE_ROT_MAP = {
+            3, 4, 2, 5,
+            3, 5, 2, 4,
+            1, 5, 0, 4,
+            1, 4, 0, 5,
+            1, 2, 0, 3,
+            1, 3, 0, 2
+    };
+
+    private static final int[] CCL_ROT_SIDE_MAP = {
+            -1, -1,  2,  0,  1,  3,
+            -1, -1,  2,  0,  3,  1,
+            2,  0, -1, -1,  3,  1,
+            2,  0, -1, -1,  1,  3,
+            2,  0,  1,  3, -1, -1,
+            2,  0,  3,  1, -1, -1
+    };
 
     private TemplateUtil() {
     }
@@ -244,6 +276,10 @@ public final class TemplateUtil {
                 state -> flipHorizontalState(state, sourceFacing),
                 cableBusTransform
         );
+    }
+
+    public static CompoundTag applyFlipEastWestToTag() {
+        throw new UnsupportedOperationException("Use applyFlipEastWestToTag(CompoundTag tag)");
     }
 
     public static CompoundTag applyFlipEastWestToTag(CompoundTag tag) {
@@ -717,6 +753,16 @@ public final class TemplateUtil {
                 );
             }
 
+            if (blockEntry.contains(CB_MULTIPART_META_KEY, Tag.TAG_COMPOUND)) {
+                blockEntry.put(
+                        CB_MULTIPART_META_KEY,
+                        transformCbMultipartCloneMetadata(
+                                blockEntry.getCompound(CB_MULTIPART_META_KEY),
+                                cableBusTransform
+                        )
+                );
+            }
+
             if (blockEntry.contains(FASTSTONE_META_KEY, Tag.TAG_COMPOUND)) {
                 blockEntry.put(
                         FASTSTONE_META_KEY,
@@ -800,6 +846,10 @@ public final class TemplateUtil {
             return transformCableBusTag(tag, transform);
         }
 
+        if (isCbMultipartBlockEntityTag(tag)) {
+            return transformCbMultipartBlockEntityTag(tag, transform);
+        }
+
         if (isFaststoneBlockEntityTag(tag)) {
             return transformFaststoneBlockEntityTag(tag, transform);
         }
@@ -809,6 +859,283 @@ public final class TemplateUtil {
         }
 
         return tag.copy();
+    }
+
+    private static boolean isCbMultipartBlockEntityTag(CompoundTag tag) {
+        String id = tag.getString("id");
+
+        return CB_MULTIPART_BE_ID.equals(id)
+                || (id.isBlank() && tag.contains(NBT_CB_PARTS, Tag.TAG_LIST));
+    }
+
+    private static CompoundTag transformCbMultipartBlockEntityTag(
+            CompoundTag tag,
+            CableBusTransform transform
+    ) {
+        CompoundTag result = tag.copy();
+
+        if (!result.contains(NBT_CB_PARTS, Tag.TAG_LIST)) {
+            return result;
+        }
+
+        result.put(
+                NBT_CB_PARTS,
+                transformCbMultipartParts(
+                        result.getList(NBT_CB_PARTS, Tag.TAG_COMPOUND),
+                        transform
+                )
+        );
+
+        return result;
+    }
+
+    private static CompoundTag transformCbMultipartCloneMetadata(
+            CompoundTag metadata,
+            CableBusTransform transform
+    ) {
+        CompoundTag result = metadata.copy();
+
+        if (!result.contains(CB_MULTIPART_META_PARTS_KEY, Tag.TAG_LIST)) {
+            return result;
+        }
+
+        result.put(
+                CB_MULTIPART_META_PARTS_KEY,
+                transformCbMultipartParts(
+                        result.getList(CB_MULTIPART_META_PARTS_KEY, Tag.TAG_COMPOUND),
+                        transform
+                )
+        );
+
+        return result;
+    }
+
+    private static ListTag transformCbMultipartParts(
+            ListTag parts,
+            CableBusTransform transform
+    ) {
+        ListTag out = new ListTag();
+
+        for (int i = 0; i < parts.size(); i++) {
+            out.add(transformCbMultipartPartTag(parts.getCompound(i), transform));
+        }
+
+        return out;
+    }
+
+    private static CompoundTag transformCbMultipartPartTag(
+            CompoundTag partTag,
+            CableBusTransform transform
+    ) {
+        CompoundTag result = partTag.copy();
+
+        if (transform == CableBusTransform.NONE) {
+            return result;
+        }
+
+        int oldSideOrdinal = readDirectionOrdinal(partTag.get(NBT_SIDE));
+
+        if (oldSideOrdinal >= 0) {
+            Direction oldSide = Direction.values()[oldSideOrdinal];
+            Direction newSide = mapCableBusSide(oldSide, transform);
+
+            putDirectionOrdinalPreservingType(
+                    result,
+                    NBT_SIDE,
+                    partTag.get(NBT_SIDE),
+                    newSide.ordinal()
+            );
+        }
+
+        if (isProjectRedTransmissionPart(partTag)
+                && partTag.contains(NBT_CONN_MAP, Tag.TAG_ANY_NUMERIC)) {
+            int oldConnMap = partTag.getInt(NBT_CONN_MAP);
+            int newConnMap;
+
+            if (oldSideOrdinal >= 0) {
+                Direction oldSide = Direction.values()[oldSideOrdinal];
+                newConnMap = remapProjectRedFaceConnMap(
+                        oldConnMap,
+                        oldSide,
+                        transform
+                );
+            } else {
+                newConnMap = remapProjectRedCenterConnMap(
+                        oldConnMap,
+                        transform
+                );
+            }
+
+            result.putInt(NBT_CONN_MAP, newConnMap);
+        }
+
+        return result;
+    }
+
+    private static boolean isProjectRedTransmissionPart(CompoundTag partTag) {
+        if (!partTag.contains("id", Tag.TAG_STRING)) {
+            return false;
+        }
+
+        return partTag.getString("id").startsWith(PROJECTRED_TRANSMISSION_ID_PREFIX);
+    }
+
+    private static int remapProjectRedFaceConnMap(
+            int connMap,
+            Direction oldSide,
+            CableBusTransform transform
+    ) {
+        Direction newSide = mapCableBusSide(oldSide, transform);
+
+        int result = connMap;
+
+        /*
+         * ProjectRed face connMap:
+         * bits 0..3      corner
+         * bits 4..7      straight
+         * bits 8..11     internal
+         * bits 12..15    open
+         * bit 16         center
+         * bits 20..23    render corner
+         */
+        result &= ~0x0000000F;
+        result &= ~0x000000F0;
+        result &= ~0x00000F00;
+        result &= ~0x0000F000;
+        result &= ~0x00F00000;
+
+        int[] laneBases = {
+                0x00000001,
+                0x00000010,
+                0x00000100,
+                0x00001000,
+                0x00100000
+        };
+
+        for (int oldRot = 0; oldRot < 4; oldRot++) {
+            int oldAbsSideOrdinal = cclRotateSide(oldSide.ordinal(), oldRot);
+
+            if (oldAbsSideOrdinal < 0 || oldAbsSideOrdinal >= Direction.values().length) {
+                continue;
+            }
+
+            Direction oldAbsSide = Direction.values()[oldAbsSideOrdinal];
+            Direction newAbsSide = mapCableBusSide(oldAbsSide, transform);
+
+            int newRot = cclRotationTo(newSide.ordinal(), newAbsSide.ordinal());
+
+            if (newRot < 0 || newRot >= 4) {
+                continue;
+            }
+
+            for (int laneBase : laneBases) {
+                if ((connMap & (laneBase << oldRot)) != 0) {
+                    result |= laneBase << newRot;
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static int remapProjectRedCenterConnMap(
+            int connMap,
+            CableBusTransform transform
+    ) {
+        /*
+         * ProjectRed center connMap:
+         * bits 0..5    external straight
+         * bits 6..11   internal
+         * bits 12..17  open
+         */
+        return remapSixDirectionBitGroups(
+                connMap,
+                transform,
+                0,
+                6,
+                12
+        );
+    }
+
+    private static int remapSixDirectionBitGroups(
+            int value,
+            CableBusTransform transform,
+            int... groupOffsets
+    ) {
+        int result = value;
+        int clearMask = 0;
+
+        for (int offset : groupOffsets) {
+            clearMask |= 0x3F << offset;
+        }
+
+        result &= ~clearMask;
+
+        for (int offset : groupOffsets) {
+            int group = (value >> offset) & 0x3F;
+
+            for (Direction oldSide : Direction.values()) {
+                if ((group & (1 << oldSide.ordinal())) == 0) {
+                    continue;
+                }
+
+                Direction newSide = mapCableBusSide(oldSide, transform);
+                result |= 1 << (offset + newSide.ordinal());
+            }
+        }
+
+        return result;
+    }
+
+    private static int cclRotateSide(int side, int rotation) {
+        int index = (side << 2) | rotation;
+
+        if (index < 0 || index >= CCL_SIDE_ROT_MAP.length) {
+            return -1;
+        }
+
+        return CCL_SIDE_ROT_MAP[index];
+    }
+
+    private static int cclRotationTo(int side, int absoluteSide) {
+        int index = side * 6 + absoluteSide;
+
+        if (index < 0 || index >= CCL_ROT_SIDE_MAP.length) {
+            return -1;
+        }
+
+        return CCL_ROT_SIDE_MAP[index];
+    }
+
+    private static int readDirectionOrdinal(@Nullable Tag tag) {
+        if (!(tag instanceof NumericTag numericTag)) {
+            return -1;
+        }
+
+        int value = numericTag.getAsInt();
+
+        return value >= 0 && value < Direction.values().length
+                ? value
+                : -1;
+    }
+
+    private static void putDirectionOrdinalPreservingType(
+            CompoundTag target,
+            String key,
+            @Nullable Tag originalTag,
+            int value
+    ) {
+        if (originalTag == null) {
+            target.putInt(key, value);
+            return;
+        }
+
+        switch (originalTag.getId()) {
+            case Tag.TAG_BYTE -> target.putByte(key, (byte) value);
+            case Tag.TAG_SHORT -> target.putShort(key, (short) value);
+            case Tag.TAG_LONG -> target.putLong(key, value);
+            default -> target.putInt(key, value);
+        }
     }
 
     private static boolean isFaststoneBlockEntityTag(CompoundTag tag) {
@@ -1570,7 +1897,7 @@ public final class TemplateUtil {
                 Direction allowed = coerceDirectionForProperty(property, flipped);
 
                 if (allowed != null && allowed != direction) {
-                    result = setUnchecked(result, property, allowed);
+                    result = setUnchecked(state, property, allowed);
                 }
             }
         }

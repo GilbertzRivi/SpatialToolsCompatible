@@ -161,7 +161,10 @@ dependencies {
     compileOnly fg.deobf("net.oktawia:faststone:0.1.0")
     compileOnly fg.deobf("curse.maven:sophisticated-backpacks-422301:8031675")
     compileOnly fg.deobf("curse.maven:curios-309927:6418456")
-
+    compileOnly fg.deobf("curse.maven:project-red-core-228702:6868143")
+    compileOnly fg.deobf("curse.maven:project-red-transmission-478939:6868149")
+    compileOnly fg.deobf("curse.maven:cb-multipart-258426:7845318")
+    compileOnly fg.deobf("curse.maven:codechicken-lib-1-8-242818:5753868")
     // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:6420945")
@@ -180,6 +183,10 @@ dependencies {
     runtimeOnly fg.deobf("net.oktawia:faststone:0.1.0")
     runtimeOnly fg.deobf("curse.maven:sophisticated-backpacks-422301:8031675")
     runtimeOnly fg.deobf("curse.maven:curios-309927:6418456")
+    runtimeOnly fg.deobf("curse.maven:project-red-core-228702:6868143")
+    runtimeOnly fg.deobf("curse.maven:project-red-transmission-478939:6868149")
+    runtimeOnly fg.deobf("curse.maven:cb-multipart-258426:7845318")
+    runtimeOnly fg.deobf("curse.maven:codechicken-lib-1-8-242818:5753868")
 
     // Runtime utils
     runtimeOnly fg.deobf("curse.maven:jade-324717:6106101")

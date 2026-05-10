@@ -10,4 +10,5 @@ public class IsModLoaded {
     public static final boolean SOPH_STORAGE = ModList.get().isLoaded("sophisticatedstorage");
     public static final boolean FASTSTONE = ModList.get().isLoaded("faststone");
     public static final boolean CURIOS = ModList.get().isLoaded("curios");
+    public static final boolean CB_MULTIPART = ModList.get().isLoaded("cb_multipart");
 }

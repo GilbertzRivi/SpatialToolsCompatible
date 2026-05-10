@@ -74,6 +74,9 @@ public class SpatialToolsCMP {
             if (IsModLoaded.FASTSTONE) {
                 StructureToolExtensions.registerClonerExtension(new FaststoneClonerExtension());
             }
+            if (IsModLoaded.CB_MULTIPART) {
+                StructureToolExtensions.registerClonerExtension(new CBMultipartStructureExtension());
+            }
             NetworkHandler.registerMessages();
         });
     }
@@ -112,6 +115,9 @@ public class SpatialToolsCMP {
                 }
                 if (IsModLoaded.FASTSTONE) {
                     BlockRenderExtensions.register(new FaststoneBlockRenderExtension());
+                }
+                if (IsModLoaded.CB_MULTIPART) {
+                    BlockRenderExtensions.register(new CBMultipartBlockRenderExtension());
                 }
                 MinecraftForge.EVENT_BUS.register(new PortableSpatialStoragePreviewRenderer());
                 SpatialScreenRegistrar.register();
