@@ -12,9 +12,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-public class CrazyRecipeProvider extends RecipeProvider implements IConditionBuilder {
+public class SpatialRecipeProvider extends RecipeProvider implements IConditionBuilder {
 
-    public CrazyRecipeProvider(PackOutput pOutput) {
+    public SpatialRecipeProvider(PackOutput pOutput) {
         super(pOutput);
     }
 

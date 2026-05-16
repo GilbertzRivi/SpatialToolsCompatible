@@ -10,8 +10,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 
-public class CrazyItemModelProvider extends ItemModelProvider {
-    public CrazyItemModelProvider(PackOutput output, ExistingFileHelper existingFileHelper) {
+public class SpatialItemModelProvider extends ItemModelProvider {
+    public SpatialItemModelProvider(PackOutput output, ExistingFileHelper existingFileHelper) {
         super(output, SpatialToolsCMP.MODID, existingFileHelper);
     }
 

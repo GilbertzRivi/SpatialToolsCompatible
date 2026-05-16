@@ -2,6 +2,7 @@ package net.oktawia.spatialtoolscmp.logic;
 
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
@@ -10,9 +11,12 @@ import net.minecraft.world.level.storage.LevelResource;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.zip.GZIPInputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -36,6 +40,19 @@ public final class ClonerStructureLibraryStore {
     private static final String KEY_BLOCK_COUNT = "blockCount";
 
     private ClonerStructureLibraryStore() {
+    }
+
+    private static boolean isValidId(String id) {
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+
+        try {
+            UUID.fromString(id);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     public record Entry(
@@ -110,7 +127,7 @@ public final class ClonerStructureLibraryStore {
     }
 
     public static @Nullable Entry get(MinecraftServer server, UUID owner, String id) throws IOException {
-        if (id == null || id.isBlank()) {
+        if (!isValidId(id)) {
             return null;
         }
 
@@ -124,13 +141,11 @@ public final class ClonerStructureLibraryStore {
     }
 
     public static boolean exists(MinecraftServer server, UUID owner, String id) throws IOException {
-        return id != null
-                && !id.isBlank()
-                && Files.exists(getStructurePath(server, owner, id));
+        return isValidId(id) && Files.exists(getStructurePath(server, owner, id));
     }
 
     public static @Nullable CompoundTag load(MinecraftServer server, UUID owner, String id) throws IOException {
-        if (id == null || id.isBlank()) {
+        if (!isValidId(id)) {
             return null;
         }
 
@@ -183,7 +198,7 @@ public final class ClonerStructureLibraryStore {
             String id,
             CompoundTag tag
     ) throws IOException {
-        if (id == null || id.isBlank()) {
+        if (!isValidId(id)) {
             return null;
         }
 
@@ -238,7 +253,7 @@ public final class ClonerStructureLibraryStore {
             String id,
             String requestedName
     ) throws IOException {
-        if (id == null || id.isBlank()) {
+        if (!isValidId(id)) {
             return false;
         }
 
@@ -278,7 +293,7 @@ public final class ClonerStructureLibraryStore {
     }
 
     public static boolean delete(MinecraftServer server, UUID owner, String id) throws IOException {
-        if (id == null || id.isBlank()) {
+        if (!isValidId(id)) {
             return false;
         }
 
@@ -331,6 +346,10 @@ public final class ClonerStructureLibraryStore {
     }
 
     public static byte[] exportBytes(MinecraftServer server, UUID owner, String id) throws IOException {
+        if (!isValidId(id)) {
+            return new byte[0];
+        }
+
         CompoundTag tag = load(server, owner, id);
 
         if (tag == null) {
@@ -340,13 +359,24 @@ public final class ClonerStructureLibraryStore {
         return TemplateUtil.compressNbt(tag);
     }
 
+    private static final long IMPORT_SIZE_LIMIT = 64L * 1024 * 1024;
+
     public static Entry importBytes(
             MinecraftServer server,
             UUID owner,
             byte[] bytes,
             @Nullable String requestedName
     ) throws IOException {
-        CompoundTag tag = TemplateUtil.decompressNbt(bytes);
+        CompoundTag tag;
+        try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(bytes));
+             DataInputStream data = new DataInputStream(gzip)) {
+            tag = NbtIo.read(data, new NbtAccounter(IMPORT_SIZE_LIMIT));
+        }
+
+        if (tag == null) {
+            throw new IOException("Failed to parse NBT from import bytes");
+        }
+
         return saveNew(server, owner, tag, requestedName);
     }
 

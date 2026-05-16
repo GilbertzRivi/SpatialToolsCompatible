@@ -10,8 +10,8 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
-public class CrazyItemTagGeneratorr extends ItemTagsProvider {
-    public CrazyItemTagGeneratorr(PackOutput pOutput, CompletableFuture<HolderLookup.Provider> pLookupProvider, CompletableFuture<TagLookup<Block>> pBlockTags, @Nullable ExistingFileHelper existingFileHelper) {
+public class SpatialItemTagGenerator extends ItemTagsProvider {
+    public SpatialItemTagGenerator(PackOutput pOutput, CompletableFuture<HolderLookup.Provider> pLookupProvider, CompletableFuture<TagLookup<Block>> pBlockTags, @Nullable ExistingFileHelper existingFileHelper) {
         super(pOutput, pLookupProvider, pBlockTags, SpatialToolsCMP.MODID, existingFileHelper);
     }
 

@@ -10,12 +10,26 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 public final class StructureToolStructureStore {
 
     private static final String DIR_NAME = "crazyae2addons/structure_tools";
 
     private StructureToolStructureStore() {
+    }
+
+    private static boolean isValidId(String id) {
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+
+        try {
+            UUID.fromString(id);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private static Path getRoot(MinecraftServer server) throws IOException {
@@ -29,6 +43,10 @@ public final class StructureToolStructureStore {
     }
 
     public static void save(MinecraftServer server, String id, CompoundTag tag) throws IOException {
+        if (!isValidId(id)) {
+            return;
+        }
+
         Path path = getPath(server, id);
         try (OutputStream out = Files.newOutputStream(path)) {
             NbtIo.writeCompressed(tag, out);
@@ -36,6 +54,10 @@ public final class StructureToolStructureStore {
     }
 
     public static CompoundTag load(MinecraftServer server, String id) throws IOException {
+        if (!isValidId(id)) {
+            return null;
+        }
+
         Path path = getPath(server, id);
         if (!Files.exists(path)) {
             return null;
@@ -47,10 +69,14 @@ public final class StructureToolStructureStore {
     }
 
     public static boolean exists(MinecraftServer server, String id) throws IOException {
-        return Files.exists(getPath(server, id));
+        return isValidId(id) && Files.exists(getPath(server, id));
     }
 
     public static void delete(MinecraftServer server, String id) throws IOException {
+        if (!isValidId(id)) {
+            return;
+        }
+
         Files.deleteIfExists(getPath(server, id));
     }
 }

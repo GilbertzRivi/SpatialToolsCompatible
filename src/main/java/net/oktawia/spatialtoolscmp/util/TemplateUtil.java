@@ -56,6 +56,12 @@ public final class TemplateUtil {
     private static final String KEY_INPUTS = "Inputs";
     private static final String KEY_OUTPUTS = "Outputs";
 
+    private static final String KEY_UPWARDS_FACING = "upwards_facing";
+
+    private static final Set<String> PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES = Set.of(
+            KEY_UPWARDS_FACING
+    );
+
     public static final String TEMPLATE_OFFSET_X_KEY = "crazy_template_offset_x";
     public static final String TEMPLATE_OFFSET_Y_KEY = "crazy_template_offset_y";
     public static final String TEMPLATE_OFFSET_Z_KEY = "crazy_template_offset_z";
@@ -276,10 +282,6 @@ public final class TemplateUtil {
                 state -> flipHorizontalState(state, sourceFacing),
                 cableBusTransform
         );
-    }
-
-    public static CompoundTag applyFlipEastWestToTag() {
-        throw new UnsupportedOperationException("Use applyFlipEastWestToTag(CompoundTag tag)");
     }
 
     public static CompoundTag applyFlipEastWestToTag(CompoundTag tag) {
@@ -1291,7 +1293,7 @@ public final class TemplateUtil {
     }
 
     private static boolean looksLikeGregDirectionalKey(String key) {
-        String normalized = key.toLowerCase();
+        String normalized = key.toLowerCase(Locale.ROOT);
 
         return normalized.contains("facing")
                 || normalized.endsWith("side")
@@ -1564,9 +1566,17 @@ public final class TemplateUtil {
 
         BlockState mirrored = state.mirror(mirror);
 
-        BlockState result = hasHorizontalDirectionPropertyChange(state, mirrored)
-                ? mirrored
-                : remapHorizontalDirectionProperties(mirrored, sourceFacing.getAxis());
+        mirrored = preserveNamedProperties(
+                state,
+                mirrored,
+                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES
+        );
+
+        BlockState result = remapUnchangedHorizontalDirectionalProperties(
+                state,
+                mirrored,
+                sourceFacing.getAxis()
+        );
 
         CableBusTransform transform = sourceFacing.getAxis() == Direction.Axis.Z
                 ? CableBusTransform.FLIP_H_AXIS_Z
@@ -1579,72 +1589,75 @@ public final class TemplateUtil {
         return remapFramedTypePropertyIfUnchanged(state, result, FramedTypeTransform.FLIP_H);
     }
 
-    private static boolean hasHorizontalDirectionPropertyChange(BlockState before, BlockState after) {
-        for (Map.Entry<Property<?>, Comparable<?>> entry : before.getValues().entrySet()) {
-            Comparable<?> beforeValue = entry.getValue();
-            if (!(beforeValue instanceof Direction beforeDirection) || !beforeDirection.getAxis().isHorizontal()) {
-                continue;
-            }
-
-            Comparable<?> afterValue = after.getValue(entry.getKey());
-            if (afterValue instanceof Direction afterDirection && afterDirection != beforeDirection) {
-                return true;
-            }
+    private static BlockState remapUnchangedHorizontalDirectionalProperties(
+            BlockState original,
+            BlockState transformed,
+            Direction.Axis sourceAxis
+    ) {
+        if (original.getBlock() != transformed.getBlock()) {
+            return transformed;
         }
 
-        return false;
-    }
+        BlockState result = transformed;
+        StateDefinition<?, ?> definition = result.getBlock().getStateDefinition();
 
-    private static boolean hasDirectionPropertyChange(BlockState before, BlockState after) {
-        for (Map.Entry<Property<?>, Comparable<?>> entry : before.getValues().entrySet()) {
-            Comparable<?> beforeValue = entry.getValue();
-            if (!(beforeValue instanceof Direction beforeDirection)) {
+        for (Map.Entry<Property<?>, Comparable<?>> entry : original.getValues().entrySet()) {
+            Property<?> originalProperty = entry.getKey();
+
+            if (PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES.contains(originalProperty.getName())) {
                 continue;
             }
 
-            Comparable<?> afterValue = after.getValue(entry.getKey());
-            if (afterValue instanceof Direction afterDirection && afterDirection != beforeDirection) {
-                return true;
-            }
-        }
+            Property<?> resultProperty = definition.getProperty(originalProperty.getName());
 
-        return false;
-    }
-
-    private static BlockState remapHorizontalDirectionProperties(BlockState state, Direction.Axis sourceAxis) {
-        BlockState result = state;
-
-        for (Map.Entry<Property<?>, Comparable<?>> entry : state.getValues().entrySet()) {
-            Property<?> property = entry.getKey();
-            Comparable<?> value = entry.getValue();
-
-            if (!(value instanceof Direction direction) || !direction.getAxis().isHorizontal()) {
+            if (resultProperty == null) {
                 continue;
             }
 
-            Direction flipped = switch (sourceAxis) {
-                case Z -> switch (direction) {
-                    case EAST -> Direction.WEST;
-                    case WEST -> Direction.EAST;
-                    default -> direction;
-                };
-                case X -> switch (direction) {
-                    case NORTH -> Direction.SOUTH;
-                    case SOUTH -> Direction.NORTH;
-                    default -> direction;
-                };
-                default -> direction;
-            };
-
-            if (flipped != direction) {
-                Direction allowed = coerceDirectionForProperty(property, flipped);
-                if (allowed != null && allowed != direction) {
-                    result = setUnchecked(result, property, allowed);
-                }
+            Object afterValue = getPropertyValue(result, resultProperty);
+            if (afterValue == null) {
+                continue;
             }
+
+            String beforeName = getPropertyValueName(originalProperty, entry.getValue());
+            String afterName = getPropertyValueName(resultProperty, afterValue);
+
+            if (!beforeName.equals(afterName)) {
+                continue;
+            }
+
+            Direction beforeDirection = directionFromName(beforeName);
+            if (beforeDirection == null || !beforeDirection.getAxis().isHorizontal()) {
+                continue;
+            }
+
+            Direction mappedDirection = flipHorizontalDirection(beforeDirection, sourceAxis);
+
+            Optional<?> mappedValue = resultProperty.getValue(directionName(mappedDirection));
+            if (mappedValue.isEmpty()) {
+                continue;
+            }
+
+            result = setUnchecked(result, resultProperty, (Comparable<?>) mappedValue.get());
         }
 
         return result;
+    }
+
+    private static Direction flipHorizontalDirection(Direction direction, Direction.Axis sourceAxis) {
+        return switch (sourceAxis) {
+            case Z -> switch (direction) {
+                case EAST -> Direction.WEST;
+                case WEST -> Direction.EAST;
+                default -> direction;
+            };
+            case X -> switch (direction) {
+                case NORTH -> Direction.SOUTH;
+                case SOUTH -> Direction.NORTH;
+                default -> direction;
+            };
+            default -> direction;
+        };
     }
 
     private static BlockState flipVerticalState(BlockState state) {
@@ -1662,9 +1675,11 @@ public final class TemplateUtil {
                 "ceiling", "floor"
         ));
 
-        result = remapPropertyValues(result, "upwards_facing", Map.of(
+        result = remapPropertyValues(result, KEY_UPWARDS_FACING, Map.of(
                 "north", "south",
-                "south", "north"
+                "south", "north",
+                "east", "west",
+                "west", "east"
         ));
 
         result = flipVerticalDirectionProperties(result);
@@ -1681,13 +1696,17 @@ public final class TemplateUtil {
     private static BlockState rotateState(BlockState state, Rotation rotation) {
         BlockState rotated = state.rotate(rotation);
 
+        rotated = preserveNamedProperties(
+                state,
+                rotated,
+                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES
+        );
+
         if (rotation == Rotation.NONE) {
             return rotated;
         }
 
-        BlockState result = hasDirectionPropertyChange(state, rotated)
-                ? rotated
-                : rotateFacingProperty(rotated, rotation);
+        BlockState result = rotateUnchangedDirectionalProperties(state, rotated, rotation);
 
         FramedPropertyTransform framedTransform = switch (rotation) {
             case CLOCKWISE_90 -> FramedPropertyTransform.ROTATE_CW;
@@ -1712,25 +1731,96 @@ public final class TemplateUtil {
                 : remapFramedProperties(result, framedTransform);
     }
 
-    private static BlockState rotateFacingProperty(BlockState state, Rotation rotation) {
-        Property<?> property = state.getBlock().getStateDefinition().getProperty("facing");
-        if (property == null) {
-            return state;
+    private static BlockState rotateUnchangedDirectionalProperties(
+            BlockState original,
+            BlockState transformed,
+            Rotation rotation
+    ) {
+        if (rotation == Rotation.NONE || original.getBlock() != transformed.getBlock()) {
+            return transformed;
         }
 
-        Object currentValue = getPropertyValue(state, property);
-        if (!(currentValue instanceof Direction direction)) {
-            return state;
+        BlockState result = transformed;
+        StateDefinition<?, ?> definition = result.getBlock().getStateDefinition();
+
+        for (Map.Entry<Property<?>, Comparable<?>> entry : original.getValues().entrySet()) {
+            Property<?> originalProperty = entry.getKey();
+
+            if (PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES.contains(originalProperty.getName())) {
+                continue;
+            }
+
+            Property<?> resultProperty = definition.getProperty(originalProperty.getName());
+
+            if (resultProperty == null) {
+                continue;
+            }
+
+            Object afterValue = getPropertyValue(result, resultProperty);
+            if (afterValue == null) {
+                continue;
+            }
+
+            String beforeName = getPropertyValueName(originalProperty, entry.getValue());
+            String afterName = getPropertyValueName(resultProperty, afterValue);
+
+            if (!beforeName.equals(afterName)) {
+                continue;
+            }
+
+            Direction beforeDirection = directionFromName(beforeName);
+            if (beforeDirection == null) {
+                continue;
+            }
+
+            Direction mappedDirection = rotateDirection(beforeDirection, rotation);
+
+            Optional<?> mappedValue = resultProperty.getValue(directionName(mappedDirection));
+            if (mappedValue.isEmpty()) {
+                continue;
+            }
+
+            result = setUnchecked(result, resultProperty, (Comparable<?>) mappedValue.get());
         }
 
-        Direction rotated = rotateDirection(direction, rotation);
-        Direction allowed = coerceDirectionForProperty(property, rotated);
+        return result;
+    }
 
-        if (allowed == null || allowed == direction) {
-            return state;
+    private static BlockState preserveNamedProperties(
+            BlockState original,
+            BlockState transformed,
+            Set<String> propertyNames
+    ) {
+        if (original.getBlock() != transformed.getBlock()) {
+            return transformed;
         }
 
-        return setUnchecked(state, property, allowed);
+        BlockState result = transformed;
+        StateDefinition<?, ?> originalDefinition = original.getBlock().getStateDefinition();
+        StateDefinition<?, ?> resultDefinition = result.getBlock().getStateDefinition();
+
+        for (String propertyName : propertyNames) {
+            Property<?> originalProperty = originalDefinition.getProperty(propertyName);
+            Property<?> resultProperty = resultDefinition.getProperty(propertyName);
+
+            if (originalProperty == null || resultProperty == null) {
+                continue;
+            }
+
+            Object originalValue = getPropertyValue(original, originalProperty);
+            if (originalValue == null) {
+                continue;
+            }
+
+            String originalValueName = getPropertyValueName(originalProperty, originalValue);
+            Optional<?> parsedValue = resultProperty.getValue(originalValueName);
+
+            if (parsedValue.isPresent()) {
+                result = setUnchecked(result, resultProperty, (Comparable<?>) parsedValue.get());
+            }
+        }
+
+        return result;
     }
 
     private static Direction rotateDirection(Direction direction, Rotation rotation) {
@@ -1897,7 +1987,7 @@ public final class TemplateUtil {
                 Direction allowed = coerceDirectionForProperty(property, flipped);
 
                 if (allowed != null && allowed != direction) {
-                    result = setUnchecked(state, property, allowed);
+                    result = setUnchecked(result, property, allowed);
                 }
             }
         }

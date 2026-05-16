@@ -553,7 +553,7 @@ public final class ClonerInventoryAccess {
             return true;
         }
 
-        if (containerStack == toolStack) {
+        if (ItemStack.isSameItemSameTags(containerStack, toolStack)) {
             return true;
         }
 

@@ -29,6 +29,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
@@ -55,6 +56,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private static final String NBT_RENDER_PROPERTIES = "Properties";
     private static final String NBT_RENDER_TRANSFORM_UP = "transform_up";
     private static final String NBT_DATA_STICK = "dataStick";
+    private static final String NBT_DURATION_MULTIPLIER = "durationMultiplier";
 
     private static final long NEXT_TICK_DELAY = 1L;
 
@@ -308,14 +310,6 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private static CompoundTag filterGregCoverForPlacement(
             CompoundTag coverTag,
             @Nullable Map<Item, Integer> reserved,
-            boolean creative
-    ) {
-        return filterGregCoverForPlacement(coverTag, reserved, creative, null, null);
-    }
-
-    private static CompoundTag filterGregCoverForPlacement(
-            CompoundTag coverTag,
-            @Nullable Map<Item, Integer> reserved,
             boolean creative,
             @Nullable List<ItemStack> costs,
             @Nullable ClonerPasteContext ctx
@@ -448,7 +442,13 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             NbtUtil.copyByteIfPresent(rawBeTag, machineTag, "isDistinct");
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "paintingColor");
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "currentParallel");
+
+            if (rawBeTag.contains(NBT_DURATION_MULTIPLIER, Tag.TAG_ANY_NUMERIC)) {
+                machineTag.putFloat(NBT_DURATION_MULTIPLIER, rawBeTag.getFloat(NBT_DURATION_MULTIPLIER));
+            }
+
             NbtUtil.copyTagIfPresent(rawBeTag, machineTag, "circuitInventory");
+            NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "activeRecipeType");
 
             if (isGregTransformerTag(rawBeTag)) {
                 copyGregTransformerState(rawBeTag, machineTag);
@@ -628,7 +628,13 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         NbtUtil.copyByteIfPresent(machineData, out, "isDistinct");
         NbtUtil.copyIntIfPresent(machineData, out, "paintingColor");
         NbtUtil.copyIntIfPresent(machineData, out, "currentParallel");
+
+        if (machineData.contains(NBT_DURATION_MULTIPLIER, Tag.TAG_ANY_NUMERIC)) {
+            out.putFloat(NBT_DURATION_MULTIPLIER, machineData.getFloat(NBT_DURATION_MULTIPLIER));
+        }
+
         NbtUtil.copyTagIfPresent(machineData, out, "circuitInventory");
+        NbtUtil.copyIntIfPresent(machineData, out, "activeRecipeType");
 
         copyGregTransformerState(machineData, out);
         copyGregMachineSideConfig(machineData, out);
@@ -910,6 +916,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 || tag.contains("workingMode", Tag.TAG_STRING)
                 || tag.contains("ownerUUID", Tag.TAG_INT_ARRAY)
                 || tag.contains("paintingColor", Tag.TAG_INT)
+                || tag.contains(NBT_DURATION_MULTIPLIER, Tag.TAG_ANY_NUMERIC)
                 || tag.contains("renderState", Tag.TAG_COMPOUND)
                 || tag.contains("circuitInventory", Tag.TAG_COMPOUND)
                 || tag.contains("outputFacingItems")
@@ -927,9 +934,22 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     }
 
     private static boolean isGregPipeId(String id) {
-        return StructureToolKeys.GT_FLUID_PIPE_ID.equals(id)
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+
+        if (StructureToolKeys.GT_FLUID_PIPE_ID.equals(id)
                 || StructureToolKeys.GT_ITEM_PIPE_ID.equals(id)
-                || StructureToolKeys.GT_CABLE_ID.equals(id);
+                || StructureToolKeys.GT_CABLE_ID.equals(id)) {
+            return true;
+        }
+
+        if (id.startsWith(StructureToolKeys.GTCEU_ID_PREFIX)) {
+            String path = id.substring(StructureToolKeys.GTCEU_ID_PREFIX.length());
+            return path.endsWith("_pipe") || path.equals("cable") || path.endsWith("_cable");
+        }
+
+        return false;
     }
 
     private static boolean isGregMachineTag(@Nullable CompoundTag tag) {
@@ -1081,6 +1101,13 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         if (!registered) {
             MinecraftForge.EVENT_BUS.register(GTCEuStructureExtension.class);
             registered = true;
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            PENDING.removeIf(pending -> pending.level == level);
         }
     }
 
@@ -1452,17 +1479,32 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 continue;
             }
 
-            if (blockEntity instanceof MetaMachineBlockEntity mmbe
-                    && mmbe.getMetaMachine() instanceof TransformerMachine
-                    && currentTag != null
-                    && hasStoredGregTransformerState(currentTag)
-                    && !isPostPlacementAlreadyPending(level, worldPos, PendingMode.TRANSFORMER_STATE)) {
-                blocks.add(new PendingBlockInit(
-                        worldPos,
-                        PendingMode.TRANSFORMER_STATE,
-                        currentTag.copy(),
-                        null
-                ));
+            if (blockEntity instanceof MetaMachineBlockEntity mmbe) {
+                if (mmbe.getMetaMachine() instanceof TransformerMachine
+                        && currentTag != null
+                        && hasStoredGregTransformerState(currentTag)
+                        && !isPostPlacementAlreadyPending(level, worldPos, PendingMode.TRANSFORMER_STATE)) {
+                    blocks.add(new PendingBlockInit(
+                            worldPos,
+                            PendingMode.TRANSFORMER_STATE,
+                            currentTag.copy(),
+                            null
+                    ));
+                }
+
+                if (mmbe.getMetaMachine() instanceof IDataStickInteractable
+                        && !isPostPlacementAlreadyPending(level, worldPos, PendingMode.DATA_STICK_ONLY)) {
+                    CompoundTag dataStick = collectGregDataStick(blockEntity);
+
+                    if (!dataStick.isEmpty()) {
+                        blocks.add(new PendingBlockInit(
+                                worldPos,
+                                PendingMode.DATA_STICK_ONLY,
+                                dataStick,
+                                null
+                        ));
+                    }
+                }
             }
         }
 

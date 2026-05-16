@@ -8,8 +8,8 @@ import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.util.Utils;
 
-public class CrazyLangProvider extends LanguageProvider {
-    public CrazyLangProvider(PackOutput output, String locale) {
+public class SpatialLangProvider extends LanguageProvider {
+    public SpatialLangProvider(PackOutput output, String locale) {
         super(output, SpatialToolsCMP.MODID, locale);
     }
 
