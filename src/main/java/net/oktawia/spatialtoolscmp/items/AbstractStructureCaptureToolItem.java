@@ -963,6 +963,13 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 continue;
             }
 
+            BlockEntity be = level.getBlockEntity(worldPos);
+
+            if (be != null) {
+                be.setRemoved();
+            }
+
+            StructureToolExtensions.notifyBeforeBlockRemoved(level, worldPos);
             level.removeBlockEntity(worldPos);
         }
 

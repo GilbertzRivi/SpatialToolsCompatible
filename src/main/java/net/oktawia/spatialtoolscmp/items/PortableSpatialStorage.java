@@ -19,6 +19,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
@@ -727,6 +728,13 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         BlockState air = Blocks.AIR.defaultBlockState();
 
         for (StorageUndoPlacedBlock undoBlock : undoBlocks) {
+            BlockEntity be = level.getBlockEntity(undoBlock.pos());
+
+            if (be != null) {
+                be.setRemoved();
+            }
+
+            StructureToolExtensions.notifyBeforeBlockRemoved(level, undoBlock.pos());
             level.removeBlockEntity(undoBlock.pos());
         }
 

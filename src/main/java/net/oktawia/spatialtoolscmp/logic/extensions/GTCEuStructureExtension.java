@@ -2,6 +2,8 @@ package net.oktawia.spatialtoolscmp.logic.extensions;
 
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.pipenet.PipeCoverContainer;
@@ -39,6 +41,7 @@ import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructurePasteExtension;
+import net.oktawia.spatialtoolscmp.logic.StructureRemoveExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
@@ -46,7 +49,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
-public final class GTCEuStructureExtension implements StructureCloneExtension, StructurePasteExtension {
+public final class GTCEuStructureExtension implements StructureCloneExtension, StructurePasteExtension, StructureRemoveExtension {
 
     private static final String NBT_ID = "id";
     private static final String NBT_COVER = "cover";
@@ -916,7 +919,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 || tag.contains("workingMode", Tag.TAG_STRING)
                 || tag.contains("ownerUUID", Tag.TAG_INT_ARRAY)
                 || tag.contains("paintingColor", Tag.TAG_INT)
-                || tag.contains(NBT_DURATION_MULTIPLIER, Tag.TAG_ANY_NUMERIC)
+                || tag.contains("durationMultiplier", Tag.TAG_ANY_NUMERIC)
                 || tag.contains("renderState", Tag.TAG_COMPOUND)
                 || tag.contains("circuitInventory", Tag.TAG_COMPOUND)
                 || tag.contains("outputFacingItems")
@@ -1685,6 +1688,26 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             this.level = level;
             this.blocks = blocks;
             this.runAtGameTime = runAtGameTime;
+        }
+    }
+
+    @Override
+    public void onBeforeBlockRemoved(ServerLevel level, BlockPos pos) {
+        BlockEntity be = level.getBlockEntity(pos);
+
+        if (!(be instanceof MetaMachineBlockEntity mmbe)) {
+            return;
+        }
+
+        if (!(mmbe.getMetaMachine() instanceof IMultiPart part)) {
+            return;
+        }
+
+        for (IMultiController controller : part.getControllers()) {
+            try {
+                controller.onStructureInvalid();
+            } catch (Throwable ignored) {
+            }
         }
     }
 

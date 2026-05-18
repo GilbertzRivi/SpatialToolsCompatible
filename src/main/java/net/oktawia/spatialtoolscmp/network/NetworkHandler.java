@@ -115,6 +115,24 @@ public final class NetworkHandler {
                 .decoder(StructureToolContextActionPacket::decode)
                 .consumerMainThread(StructureToolContextActionPacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(CreateClonerFolderPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(CreateClonerFolderPacket::encode)
+                .decoder(CreateClonerFolderPacket::decode)
+                .consumerMainThread(CreateClonerFolderPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(DeleteClonerFolderPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(DeleteClonerFolderPacket::encode)
+                .decoder(DeleteClonerFolderPacket::decode)
+                .consumerMainThread(DeleteClonerFolderPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(MoveClonerStructureToFolderPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(MoveClonerStructureToFolderPacket::encode)
+                .decoder(MoveClonerStructureToFolderPacket::decode)
+                .consumerMainThread(MoveClonerStructureToFolderPacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object packet) {

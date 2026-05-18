@@ -13,13 +13,18 @@ import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureLibraryClientCache
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.CreateClonerFolderPacket;
+import net.oktawia.spatialtoolscmp.network.packets.DeleteClonerFolderPacket;
 import net.oktawia.spatialtoolscmp.network.packets.DeleteClonerStructurePacket;
+import net.oktawia.spatialtoolscmp.network.packets.MoveClonerStructureToFolderPacket;
 import net.oktawia.spatialtoolscmp.network.packets.RenameClonerStructurePacket;
 import net.oktawia.spatialtoolscmp.network.packets.SelectClonerStructurePacket;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.function.IntSupplier;
 
@@ -33,7 +38,10 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     private static final int PADDING = 2;
     private static final int SCROLLBAR_WIDTH = 4;
     private static final int DELETE_BUTTON_SIZE = 12;
-    private static final int DROPDOWN_HEIGHT = 154;
+    private static final int DROPDOWN_HEIGHT = 172;
+    private static final int ADD_FOLDER_BTN = 14;
+
+    private enum RowKind { EMPTY, BACK, CANCEL_MOVE, FOLDER, STRUCTURE }
 
     private final EditBox searchBox;
     private final EditBox renameBox;
@@ -46,8 +54,13 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     private String highlightedId = "";
     private String lastSelectedId = null;
 
+    private String currentFolder = "";
+    private boolean creatingFolder = false;
+    private String movingStructureId = null;
+
     private boolean hoveringExport = false;
     private boolean hoveringImport = false;
+    private boolean hoveringAddFolder = false;
 
     public SearchableClonerStructureDropdownWidget(
             int x,
@@ -64,7 +77,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 Minecraft.getInstance().font,
                 x + PADDING,
                 y + PADDING,
-                Math.max(20, width - PADDING * 2),
+                Math.max(20, width - PADDING * 2 - ADD_FOLDER_BTN - 2),
                 SEARCH_HEIGHT,
                 Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_SEARCH.getTranslationKey())
         );
@@ -93,6 +106,10 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
             syncRenameBoxToHighlighted();
         }
 
+        if (!currentFolder.isEmpty() && !ClonerStructureLibraryClientCache.folders().contains(currentFolder)) {
+            currentFolder = "";
+        }
+
         this.scrollOffset = Mth.clamp(this.scrollOffset, 0, getMaxScroll());
     }
 
@@ -116,7 +133,15 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     }
 
     public @Nullable Component getHoveredTooltip(double mouseX, double mouseY) {
-        if (!this.visible || !this.open) {
+        if (!this.visible) {
+            return null;
+        }
+
+        if (this.hoveringAddFolder) {
+            return Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_ADD_FOLDER_TOOLTIP.getTranslationKey());
+        }
+
+        if (!this.open) {
             return null;
         }
 
@@ -148,6 +173,21 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!this.visible || !this.active) {
             return false;
+        }
+
+        int addFolderLeft = getX() + width - PADDING - ADD_FOLDER_BTN;
+        int addFolderTop = getY() + PADDING;
+
+        if (mouseX >= addFolderLeft && mouseX < addFolderLeft + ADD_FOLDER_BTN
+                && mouseY >= addFolderTop && mouseY < addFolderTop + ADD_FOLDER_BTN) {
+            this.open = true;
+            this.creatingFolder = true;
+            this.movingStructureId = null;
+            this.renameBox.setValue("");
+            this.renameBox.setHint(Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_ADD_FOLDER.getTranslationKey()));
+            this.renameBox.setFocused(true);
+            this.searchBox.setFocused(false);
+            return true;
         }
 
         boolean insideBase = isMouseOver(mouseX, mouseY);
@@ -234,12 +274,20 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
         if (this.renameBox.isFocused()) {
             if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
-                renameHighlighted();
+                if (this.creatingFolder) {
+                    confirmCreateFolder();
+                } else {
+                    renameHighlighted();
+                }
                 return true;
             }
 
             if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-                this.renameBox.setFocused(false);
+                if (this.creatingFolder) {
+                    cancelCreateFolder();
+                } else {
+                    this.renameBox.setFocused(false);
+                }
                 return true;
             }
 
@@ -251,12 +299,22 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         }
 
         if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
-            selectHighlighted();
+            if (this.movingStructureId == null && !this.creatingFolder) {
+                selectHighlighted();
+            }
             return true;
         }
 
         if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
-            this.open = false;
+            if (this.movingStructureId != null) {
+                this.movingStructureId = null;
+            } else if (this.creatingFolder) {
+                cancelCreateFolder();
+            } else if (!this.currentFolder.isEmpty()) {
+                this.currentFolder = "";
+            } else {
+                this.open = false;
+            }
             return true;
         }
 
@@ -297,6 +355,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         drawBorder(guiGraphics, left, top, right, bottom, 0xFF666666);
 
         this.searchBox.render(guiGraphics, mouseX, mouseY, partialTick);
+        renderAddFolderButton(guiGraphics, mouseX, mouseY);
         renderSelectedRow(guiGraphics, mouseX, mouseY);
     }
 
@@ -309,6 +368,21 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
         updateEditBoxBounds();
         renderDropdown(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    private void renderAddFolderButton(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        Minecraft minecraft = Minecraft.getInstance();
+        int btnLeft = getX() + width - PADDING - ADD_FOLDER_BTN;
+        int btnTop = getY() + PADDING;
+        int btnRight = btnLeft + ADD_FOLDER_BTN;
+        int btnBottom = btnTop + ADD_FOLDER_BTN;
+
+        boolean hovered = mouseX >= btnLeft && mouseX < btnRight && mouseY >= btnTop && mouseY < btnBottom;
+        this.hoveringAddFolder = hovered;
+
+        guiGraphics.fill(btnLeft, btnTop, btnRight, btnBottom, hovered ? 0xFF1F6F1F : 0xFF223322);
+        drawBorder(guiGraphics, btnLeft, btnTop, btnRight, btnBottom, 0xFF448844);
+        guiGraphics.drawString(minecraft.font, "+", btnLeft + 4, btnTop + 3, 0xFF55FF55, false);
     }
 
     private void renderSelectedRow(GuiGraphics guiGraphics, int mouseX, int mouseY) {
@@ -347,7 +421,8 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         drawBorder(guiGraphics, left, top, right, bottom, 0xFF777777);
 
         int bottomButtonsTop = bottom - PADDING - BUTTON_HEIGHT;
-        int topButtonsTop = bottomButtonsTop - BUTTON_HEIGHT - 2;
+        int middleButtonsTop = bottomButtonsTop - BUTTON_HEIGHT - 2;
+        int topButtonsTop = middleButtonsTop - BUTTON_HEIGHT - 2;
         int renameTop = topButtonsTop - RENAME_HEIGHT - 4;
 
         int listLeft = left + PADDING;
@@ -361,6 +436,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         this.renameBox.render(guiGraphics, mouseX, mouseY, partialTick);
 
         renderTopButtons(guiGraphics, mouseX, mouseY, topButtonsTop);
+        renderMiddleButtons(guiGraphics, mouseX, mouseY, middleButtonsTop);
         renderBottomButtons(guiGraphics, mouseX, mouseY, bottomButtonsTop);
     }
 
@@ -396,53 +472,74 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 continue;
             }
 
+            RowKind kind = getRowKind(rowIndex);
             String rowId = getRowId(rowIndex);
-            boolean highlighted = Objects.equals(rowId, highlightedId);
+            boolean highlighted = kind == RowKind.STRUCTURE && Objects.equals(rowId, highlightedId);
             boolean hovered = mouseX >= listLeft && mouseX < listRight && mouseY >= rowTop && mouseY < rowBottom;
 
-            int color = highlighted
-                    ? 0xFF2F8A8A
-                    : hovered
-                      ? 0xFF1F6F6F
-                      : ((rowIndex & 1) == 0 ? 0xFF222222 : 0xFF2E2E2E);
+            boolean isMovingRow = movingStructureId != null && kind == RowKind.STRUCTURE
+                    && Objects.equals(rowId, movingStructureId);
 
-            guiGraphics.fill(listLeft, rowTop, listRight, rowBottom, color);
+            int bgColor = switch (kind) {
+                case FOLDER -> highlighted ? 0xFF2A2A5A : hovered ? 0xFF252540 : 0xFF1E1E2E;
+                case BACK, CANCEL_MOVE -> hovered ? 0xFF253535 : 0xFF1A2020;
+                case STRUCTURE -> isMovingRow
+                        ? (hovered ? 0xFF6A5000 : 0xFF4A3800)
+                        : highlighted ? 0xFF2F8A8A : hovered ? 0xFF1F6F6F : ((rowIndex & 1) == 0 ? 0xFF222222 : 0xFF2E2E2E);
+                default -> hovered ? 0xFF1F6F6F : 0xFF222222;
+            };
 
-            int deleteRight = listRight - 2;
-            int deleteLeft = deleteRight - DELETE_BUTTON_SIZE;
-            int textRight = rowId.isBlank() ? listRight : deleteLeft - 2;
+            guiGraphics.fill(listLeft, rowTop, listRight, rowBottom, bgColor);
 
+            int textX = listLeft + 2;
+            int textColor;
             String rowText = getRowDisplayName(rowIndex);
-            rowText = minecraft.font.plainSubstrByWidth(rowText, Math.max(1, textRight - listLeft - 4));
 
-            guiGraphics.drawString(
-                    minecraft.font,
-                    rowText,
-                    listLeft + 2,
-                    rowTop + 5,
-                    rowId.isBlank() ? 0xFFAAAAAA : 0xFFFFFFFF,
-                    false
-            );
+            boolean canDelete = false;
+            boolean isFolder = kind == RowKind.FOLDER;
 
-            if (!rowId.isBlank()) {
+            if (kind == RowKind.FOLDER) {
+                textColor = 0xFFAAAAFF;
+                String folderName = getRowFolderName(rowIndex);
+                canDelete = isFolderEmpty(folderName);
+            } else if (kind == RowKind.BACK || kind == RowKind.CANCEL_MOVE) {
+                textColor = 0xFF88CCCC;
+            } else if (kind == RowKind.EMPTY) {
+                textColor = 0xFFAAAAAA;
+            } else {
+                textColor = isMovingRow ? 0xFFFFCC44 : 0xFFFFFFFF;
+                textX = currentFolder.isEmpty() ? listLeft + 2 : listLeft + 10;
+            }
+
+            if (kind == RowKind.STRUCTURE && !rowId.isBlank() && movingStructureId == null) {
+                int deleteRight = listRight - 2;
+                int deleteLeft = deleteRight - DELETE_BUTTON_SIZE;
+                int textRight = deleteLeft - 2;
+                rowText = minecraft.font.plainSubstrByWidth(rowText, Math.max(1, textRight - textX - 2));
+                guiGraphics.drawString(minecraft.font, rowText, textX, rowTop + 5, textColor, false);
+
                 int deleteTop = rowTop + 3;
                 int deleteBottom = deleteTop + DELETE_BUTTON_SIZE;
-                boolean deleteHovered = mouseX >= deleteLeft
-                        && mouseX < deleteRight
-                        && mouseY >= deleteTop
-                        && mouseY < deleteBottom;
-
+                boolean deleteHovered = mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop && mouseY < deleteBottom;
                 guiGraphics.fill(deleteLeft, deleteTop, deleteRight, deleteBottom, deleteHovered ? 0xFFFF4040 : 0xFF552222);
                 drawBorder(guiGraphics, deleteLeft, deleteTop, deleteRight, deleteBottom, 0xFFAA5555);
+                guiGraphics.drawString(minecraft.font, "x", deleteLeft + 3, deleteTop + 2, 0xFFFFFFFF, false);
+            } else if (isFolder && canDelete) {
+                int deleteRight = listRight - 2;
+                int deleteLeft = deleteRight - DELETE_BUTTON_SIZE;
+                int textRight = deleteLeft - 2;
+                rowText = minecraft.font.plainSubstrByWidth(rowText, Math.max(1, textRight - textX - 2));
+                guiGraphics.drawString(minecraft.font, rowText, textX, rowTop + 5, textColor, false);
 
-                guiGraphics.drawString(
-                        minecraft.font,
-                        "x",
-                        deleteLeft + 3,
-                        deleteTop + 2,
-                        0xFFFFFFFF,
-                        false
-                );
+                int deleteTop = rowTop + 3;
+                int deleteBottom = deleteTop + DELETE_BUTTON_SIZE;
+                boolean deleteHovered = mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop && mouseY < deleteBottom;
+                guiGraphics.fill(deleteLeft, deleteTop, deleteRight, deleteBottom, deleteHovered ? 0xFFFF4040 : 0xFF552222);
+                drawBorder(guiGraphics, deleteLeft, deleteTop, deleteRight, deleteBottom, 0xFFAA5555);
+                guiGraphics.drawString(minecraft.font, "x", deleteLeft + 3, deleteTop + 2, 0xFFFFFFFF, false);
+            } else {
+                rowText = minecraft.font.plainSubstrByWidth(rowText, Math.max(1, listRight - textX - 4));
+                guiGraphics.drawString(minecraft.font, rowText, textX, rowTop + 5, textColor, false);
             }
         }
 
@@ -454,29 +551,38 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         int right = getX() + getDropdownWidth() - PADDING;
         int middle = left + (right - left) / 2;
 
-        renderButton(
-                guiGraphics,
-                mouseX,
-                mouseY,
-                left,
-                top,
-                middle - 1,
-                top + BUTTON_HEIGHT,
-                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_SELECT.getTranslationKey()).getString(),
-                0xFF55FFFF
-        );
+        if (this.creatingFolder) {
+            renderButton(guiGraphics, mouseX, mouseY, left, top, middle - 1, top + BUTTON_HEIGHT,
+                    Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_CREATE.getTranslationKey()).getString(),
+                    0xFF55FFFF);
+            renderButton(guiGraphics, mouseX, mouseY, middle + 1, top, right, top + BUTTON_HEIGHT,
+                    Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_CANCEL.getTranslationKey()).getString(),
+                    0xFFFFFF55);
+        } else {
+            renderButton(guiGraphics, mouseX, mouseY, left, top, middle - 1, top + BUTTON_HEIGHT,
+                    Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_SELECT.getTranslationKey()).getString(),
+                    0xFF55FFFF);
+            renderButton(guiGraphics, mouseX, mouseY, middle + 1, top, right, top + BUTTON_HEIGHT,
+                    Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_RENAME.getTranslationKey()).getString(),
+                    highlightedId == null || highlightedId.isBlank() ? 0xFF777777 : 0xFFFFFF55);
+        }
+    }
 
-        renderButton(
-                guiGraphics,
-                mouseX,
-                mouseY,
-                middle + 1,
-                top,
-                right,
-                top + BUTTON_HEIGHT,
-                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_RENAME.getTranslationKey()).getString(),
-                highlightedId == null || highlightedId.isBlank() ? 0xFF777777 : 0xFFFFFF55
-        );
+    private void renderMiddleButtons(GuiGraphics guiGraphics, int mouseX, int mouseY, int top) {
+        int left = getX() + PADDING;
+        int right = getX() + getDropdownWidth() - PADDING;
+        int middle = left + (right - left) / 2;
+
+        boolean canMove = !highlightedId.isBlank() && movingStructureId == null && !creatingFolder;
+        boolean canUnfolder = canMove && isHighlightedInFolder();
+
+        renderButton(guiGraphics, mouseX, mouseY, left, top, middle - 1, top + BUTTON_HEIGHT,
+                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_MOVE_TO_FOLDER.getTranslationKey()).getString(),
+                canMove ? 0xFF55FFFF : 0xFF777777);
+
+        renderButton(guiGraphics, mouseX, mouseY, middle + 1, top, right, top + BUTTON_HEIGHT,
+                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_REMOVE_FROM_FOLDER.getTranslationKey()).getString(),
+                canUnfolder ? 0xFF55FF55 : 0xFF777777);
     }
 
     private void renderBottomButtons(GuiGraphics guiGraphics, int mouseX, int mouseY, int top) {
@@ -487,29 +593,13 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         this.hoveringExport = mouseX >= left && mouseX < middle - 1 && mouseY >= top && mouseY < top + BUTTON_HEIGHT;
         this.hoveringImport = mouseX >= middle + 1 && mouseX < right && mouseY >= top && mouseY < top + BUTTON_HEIGHT;
 
-        renderButton(
-                guiGraphics,
-                mouseX,
-                mouseY,
-                left,
-                top,
-                middle - 1,
-                top + BUTTON_HEIGHT,
+        renderButton(guiGraphics, mouseX, mouseY, left, top, middle - 1, top + BUTTON_HEIGHT,
                 Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_EXPORT.getTranslationKey()).getString(),
-                highlightedId == null || highlightedId.isBlank() ? 0xFF777777 : 0xFF55FF55
-        );
+                highlightedId == null || highlightedId.isBlank() ? 0xFF777777 : 0xFF55FF55);
 
-        renderButton(
-                guiGraphics,
-                mouseX,
-                mouseY,
-                middle + 1,
-                top,
-                right,
-                top + BUTTON_HEIGHT,
+        renderButton(guiGraphics, mouseX, mouseY, middle + 1, top, right, top + BUTTON_HEIGHT,
                 Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_IMPORT.getTranslationKey()).getString(),
-                0xFF55FF55
-        );
+                0xFF55FF55);
     }
 
     private void renderButton(
@@ -548,7 +638,8 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         int dropdownBottom = dropdownTop + DROPDOWN_HEIGHT;
 
         int bottomButtonsTop = dropdownBottom - PADDING - BUTTON_HEIGHT;
-        int topButtonsTop = bottomButtonsTop - BUTTON_HEIGHT - 2;
+        int middleButtonsTop = bottomButtonsTop - BUTTON_HEIGHT - 2;
+        int topButtonsTop = middleButtonsTop - BUTTON_HEIGHT - 2;
         int renameTop = topButtonsTop - RENAME_HEIGHT - 4;
 
         int buttonLeft = dropdownLeft + PADDING;
@@ -557,12 +648,37 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
         if (mouseY >= topButtonsTop && mouseY < topButtonsTop + BUTTON_HEIGHT) {
             if (mouseX >= buttonLeft && mouseX < buttonMiddle - 1) {
-                selectHighlighted();
+                if (this.creatingFolder) {
+                    confirmCreateFolder();
+                } else {
+                    selectHighlighted();
+                }
                 return true;
             }
-
             if (mouseX >= buttonMiddle + 1 && mouseX < buttonRight) {
-                renameHighlighted();
+                if (this.creatingFolder) {
+                    cancelCreateFolder();
+                } else {
+                    renameHighlighted();
+                }
+                return true;
+            }
+        }
+
+        if (mouseY >= middleButtonsTop && mouseY < middleButtonsTop + BUTTON_HEIGHT) {
+            if (mouseX >= buttonLeft && mouseX < buttonMiddle - 1) {
+                if (!highlightedId.isBlank() && movingStructureId == null && !creatingFolder) {
+                    this.movingStructureId = this.highlightedId;
+                    this.scrollOffset = 0;
+                }
+                return true;
+            }
+            if (mouseX >= buttonMiddle + 1 && mouseX < buttonRight) {
+                if (!highlightedId.isBlank() && isHighlightedInFolder()) {
+                    NetworkHandler.sendToServer(new MoveClonerStructureToFolderPacket(
+                            this.containerIdSupplier.getAsInt(), this.highlightedId, ""));
+                    this.movingStructureId = null;
+                }
                 return true;
             }
         }
@@ -572,7 +688,6 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 exportHighlighted();
                 return true;
             }
-
             if (mouseX >= buttonMiddle + 1 && mouseX < buttonRight) {
                 importStructure();
                 return true;
@@ -592,38 +707,72 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         int rowIndex = localY / ROW_HEIGHT;
 
         if (rowIndex >= 0 && rowIndex < getRowCount()) {
-            String rowId = getRowId(rowIndex);
+            RowKind kind = getRowKind(rowIndex);
 
-            if (!rowId.isBlank() && clickedDeleteButton(rowIndex, mouseX, mouseY, listTop, listRight)) {
-                deleteStructure(rowId);
+            if (kind == RowKind.BACK) {
+                this.currentFolder = "";
+                this.scrollOffset = 0;
                 return true;
             }
 
-            this.highlightedId = rowId;
-            syncRenameBoxToHighlighted();
-            return true;
+            if (kind == RowKind.CANCEL_MOVE) {
+                this.movingStructureId = null;
+                return true;
+            }
+
+            if (kind == RowKind.FOLDER) {
+                String folderName = getRowFolderName(rowIndex);
+
+                if (this.movingStructureId != null) {
+                    NetworkHandler.sendToServer(new MoveClonerStructureToFolderPacket(
+                            this.containerIdSupplier.getAsInt(), this.movingStructureId, folderName));
+                    this.movingStructureId = null;
+                    return true;
+                }
+
+                if (isFolderEmpty(folderName) && clickedDeleteButtonForRow(rowIndex, mouseX, mouseY, listTop, listRight)) {
+                    NetworkHandler.sendToServer(new DeleteClonerFolderPacket(
+                            this.containerIdSupplier.getAsInt(), folderName));
+                    return true;
+                }
+
+                this.currentFolder = folderName;
+                this.scrollOffset = 0;
+                return true;
+            }
+
+            if (kind == RowKind.STRUCTURE) {
+                String rowId = getRowId(rowIndex);
+
+                if (!rowId.isBlank() && this.movingStructureId == null
+                        && clickedDeleteButtonForRow(rowIndex, mouseX, mouseY, listTop, listRight)) {
+                    deleteStructure(rowId);
+                    return true;
+                }
+
+                this.highlightedId = rowId;
+                syncRenameBoxToHighlighted();
+                return true;
+            }
+
+            if (kind == RowKind.EMPTY) {
+                this.highlightedId = "";
+                syncRenameBoxToHighlighted();
+                return true;
+            }
         }
 
         return true;
     }
 
-    private boolean clickedDeleteButton(
-            int rowIndex,
-            double mouseX,
-            double mouseY,
-            int listTop,
-            int listRight
-    ) {
+    private boolean clickedDeleteButtonForRow(int rowIndex, double mouseX, double mouseY, int listTop, int listRight) {
         int rowTop = listTop - (scrollOffset % ROW_HEIGHT) + (rowIndex - scrollOffset / ROW_HEIGHT) * ROW_HEIGHT;
         int deleteRight = listRight - 2;
         int deleteLeft = deleteRight - DELETE_BUTTON_SIZE;
         int deleteTop = rowTop + 3;
         int deleteBottom = deleteTop + DELETE_BUTTON_SIZE;
 
-        return mouseX >= deleteLeft
-                && mouseX < deleteRight
-                && mouseY >= deleteTop
-                && mouseY < deleteBottom;
+        return mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop && mouseY < deleteBottom;
     }
 
     private void selectHighlighted() {
@@ -656,6 +805,25 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 this.highlightedId,
                 name
         ));
+    }
+
+    private void confirmCreateFolder() {
+        String name = this.renameBox.getValue();
+
+        if (name != null && !name.isBlank()) {
+            NetworkHandler.sendToServer(new CreateClonerFolderPacket(
+                    this.containerIdSupplier.getAsInt(), name));
+        }
+
+        cancelCreateFolder();
+    }
+
+    private void cancelCreateFolder() {
+        this.creatingFolder = false;
+        this.renameBox.setValue("");
+        this.renameBox.setHint(Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_NAME.getTranslationKey()));
+        this.renameBox.setFocused(false);
+        syncRenameBoxToHighlighted();
     }
 
     private void deleteStructure(String id) {
@@ -693,6 +861,10 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     }
 
     private void syncRenameBoxToHighlighted() {
+        if (this.creatingFolder) {
+            return;
+        }
+
         if (this.highlightedId == null || this.highlightedId.isBlank()) {
             this.renameBox.setValue("");
             return;
@@ -722,21 +894,106 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         return "";
     }
 
+    private boolean isHighlightedInFolder() {
+        if (this.highlightedId == null || this.highlightedId.isBlank()) {
+            return false;
+        }
+
+        for (ClonerStructureLibraryClientCache.Entry entry : ClonerStructureLibraryClientCache.entries()) {
+            if (entry.id().equals(this.highlightedId)) {
+                return entry.folder() != null && !entry.folder().isBlank();
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isFolderEmpty(String folderName) {
+        if (folderName == null || folderName.isBlank()) {
+            return true;
+        }
+
+        for (ClonerStructureLibraryClientCache.Entry entry : ClonerStructureLibraryClientCache.entries()) {
+            if (folderName.equals(entry.folder())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private int getDropdownWidth() {
         return Math.max(this.width, 170);
     }
 
     private int getRowCount() {
-        return getFilteredEntries().size() + 1;
+        if (this.movingStructureId != null) {
+            return 2 + ClonerStructureLibraryClientCache.folders().size();
+        }
+
+        if (!this.currentFolder.isEmpty()) {
+            return 1 + getFilteredEntries().size();
+        }
+
+        return 1 + getFilteredFolders().size() + getFilteredEntries().size();
     }
 
-    private String getRowId(int rowIndex) {
-        if (rowIndex <= 0) {
+    private RowKind getRowKind(int rowIndex) {
+        if (this.movingStructureId != null) {
+            if (rowIndex == 0) return RowKind.CANCEL_MOVE;
+            if (rowIndex == 1) return RowKind.STRUCTURE;
+            return RowKind.FOLDER;
+        }
+
+        if (!this.currentFolder.isEmpty()) {
+            return rowIndex == 0 ? RowKind.BACK : RowKind.STRUCTURE;
+        }
+
+        if (rowIndex == 0) {
+            return RowKind.EMPTY;
+        }
+
+        int folderCount = getFilteredFolders().size();
+
+        if (rowIndex <= folderCount) {
+            return RowKind.FOLDER;
+        }
+
+        return RowKind.STRUCTURE;
+    }
+
+    private String getRowFolderName(int rowIndex) {
+        if (this.movingStructureId != null) {
+            int folderIndex = rowIndex - 2;
+            List<String> folders = ClonerStructureLibraryClientCache.folders();
+            if (folderIndex >= 0 && folderIndex < folders.size()) {
+                return folders.get(folderIndex);
+            }
             return "";
         }
 
+        int folderIndex = rowIndex - 1;
+        List<String> folders = getFilteredFolders();
+        if (folderIndex >= 0 && folderIndex < folders.size()) {
+            return folders.get(folderIndex);
+        }
+
+        return "";
+    }
+
+    private String getRowId(int rowIndex) {
+        RowKind kind = getRowKind(rowIndex);
+
+        if (kind != RowKind.STRUCTURE) {
+            return "";
+        }
+
+        if (this.movingStructureId != null) {
+            return rowIndex == 1 ? this.movingStructureId : "";
+        }
+
         List<ClonerStructureLibraryClientCache.Entry> entries = getFilteredEntries();
-        int entryIndex = rowIndex - 1;
+        int entryIndex = entryIndexForRow(rowIndex);
 
         if (entryIndex < 0 || entryIndex >= entries.size()) {
             return "";
@@ -745,20 +1002,43 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         return entries.get(entryIndex).id();
     }
 
+    private int entryIndexForRow(int rowIndex) {
+        if (!this.currentFolder.isEmpty()) {
+            return rowIndex - 1;
+        }
+
+        return rowIndex - 1 - getFilteredFolders().size();
+    }
+
     private String getRowDisplayName(int rowIndex) {
-        if (rowIndex <= 0) {
-            return Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_EMPTY.getTranslationKey()).getString();
-        }
+        RowKind kind = getRowKind(rowIndex);
 
-        List<ClonerStructureLibraryClientCache.Entry> entries = getFilteredEntries();
-        int entryIndex = rowIndex - 1;
+        return switch (kind) {
+            case EMPTY -> Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_EMPTY.getTranslationKey()).getString();
+            case BACK -> "◄ " + this.currentFolder;
+            case CANCEL_MOVE -> "◄ " + Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_CANCEL.getTranslationKey()).getString();
+            case FOLDER -> "▶ " + getRowFolderName(rowIndex);
+            case STRUCTURE -> {
+                if (this.movingStructureId != null) {
+                    for (ClonerStructureLibraryClientCache.Entry e : ClonerStructureLibraryClientCache.entries()) {
+                        if (e.id().equals(this.movingStructureId)) {
+                            yield e.name() + " (" + e.blockCount() + ")";
+                        }
+                    }
+                    yield this.movingStructureId;
+                }
 
-        if (entryIndex < 0 || entryIndex >= entries.size()) {
-            return "";
-        }
+                List<ClonerStructureLibraryClientCache.Entry> entries = getFilteredEntries();
+                int entryIndex = entryIndexForRow(rowIndex);
 
-        ClonerStructureLibraryClientCache.Entry entry = entries.get(entryIndex);
-        return entry.name() + " (" + entry.blockCount() + ")";
+                if (entryIndex < 0 || entryIndex >= entries.size()) {
+                    yield "";
+                }
+
+                ClonerStructureLibraryClientCache.Entry entry = entries.get(entryIndex);
+                yield entry.name() + " (" + entry.blockCount() + ")";
+            }
+        };
     }
 
     private String getSelectedDisplayName() {
@@ -778,11 +1058,31 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     }
 
     private List<ClonerStructureLibraryClientCache.Entry> getFilteredEntries() {
-        return ClonerStructureLibraryClientCache.filtered(this.searchBox.getValue());
+        String folderFilter = this.currentFolder.isEmpty() ? "" : this.currentFolder;
+        return ClonerStructureLibraryClientCache.filtered(this.searchBox.getValue(), folderFilter);
+    }
+
+    private List<String> getFilteredFolders() {
+        String query = this.searchBox.getValue();
+
+        if (query == null || query.isBlank()) {
+            return ClonerStructureLibraryClientCache.folders();
+        }
+
+        String normalized = query.toLowerCase(Locale.ROOT);
+        List<String> result = new ArrayList<>();
+
+        for (String folder : ClonerStructureLibraryClientCache.folders()) {
+            if (folder.toLowerCase(Locale.ROOT).contains(normalized)) {
+                result.add(folder);
+            }
+        }
+
+        return result;
     }
 
     private int getMaxScroll() {
-        int listHeight = DROPDOWN_HEIGHT - PADDING * 2 - RENAME_HEIGHT - BUTTON_HEIGHT * 2 - 11;
+        int listHeight = DROPDOWN_HEIGHT - RENAME_HEIGHT - BUTTON_HEIGHT * 3 - PADDING * 2 - 13;
         return Math.max(0, getRowCount() * ROW_HEIGHT - listHeight);
     }
 
@@ -820,11 +1120,12 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     private void updateEditBoxBounds() {
         this.searchBox.setX(getX() + PADDING);
         this.searchBox.setY(getY() + PADDING);
-        this.searchBox.setWidth(Math.max(20, this.width - PADDING * 2));
+        this.searchBox.setWidth(Math.max(20, this.width - PADDING * 2 - ADD_FOLDER_BTN - 2));
 
         int dropdownBottom = getY() + height + 1 + DROPDOWN_HEIGHT;
         int bottomButtonsTop = dropdownBottom - PADDING - BUTTON_HEIGHT;
-        int topButtonsTop = bottomButtonsTop - BUTTON_HEIGHT - 2;
+        int middleButtonsTop = bottomButtonsTop - BUTTON_HEIGHT - 2;
+        int topButtonsTop = middleButtonsTop - BUTTON_HEIGHT - 2;
         int renameTop = topButtonsTop - RENAME_HEIGHT - 4;
 
         this.renameBox.setX(getX() + PADDING);

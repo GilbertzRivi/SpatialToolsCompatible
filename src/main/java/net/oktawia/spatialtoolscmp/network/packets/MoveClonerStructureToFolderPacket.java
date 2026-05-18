@@ -10,39 +10,39 @@ import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 
 import java.util.function.Supplier;
 
-public class RenameClonerStructurePacket {
+public class MoveClonerStructureToFolderPacket {
 
     private final int containerId;
-    private final String id;
-    private final String name;
+    private final String structureId;
+    private final String folderName;
 
-    public RenameClonerStructurePacket(int containerId, String id, String name) {
+    public MoveClonerStructureToFolderPacket(int containerId, String structureId, String folderName) {
         this.containerId = containerId;
-        this.id = id == null ? "" : id;
-        this.name = name == null ? "" : name;
+        this.structureId = structureId == null ? "" : structureId;
+        this.folderName = folderName == null ? "" : folderName;
     }
 
-    public static void encode(RenameClonerStructurePacket packet, FriendlyByteBuf buffer) {
+    public static void encode(MoveClonerStructureToFolderPacket packet, FriendlyByteBuf buffer) {
         buffer.writeVarInt(packet.containerId);
-        buffer.writeUtf(packet.id, 32767);
-        buffer.writeUtf(packet.name, ClonerStructureLibraryStore.MAX_NAME_LENGTH);
+        buffer.writeUtf(packet.structureId, 32767);
+        buffer.writeUtf(packet.folderName, ClonerStructureLibraryStore.MAX_NAME_LENGTH);
     }
 
-    public static RenameClonerStructurePacket decode(FriendlyByteBuf buffer) {
-        return new RenameClonerStructurePacket(
+    public static MoveClonerStructureToFolderPacket decode(FriendlyByteBuf buffer) {
+        return new MoveClonerStructureToFolderPacket(
                 buffer.readVarInt(),
                 buffer.readUtf(32767),
                 buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH)
         );
     }
 
-    public static void handle(RenameClonerStructurePacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
+    public static void handle(MoveClonerStructureToFolderPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
 
-            if (player == null) {
+            if (player == null || packet.structureId.isBlank()) {
                 return;
             }
 
@@ -52,11 +52,11 @@ public class RenameClonerStructurePacket {
             }
 
             try {
-                ClonerStructureLibraryStore.rename(
+                ClonerStructureLibraryStore.moveToFolder(
                         player.server,
                         player.getUUID(),
-                        packet.id,
-                        packet.name
+                        packet.structureId,
+                        packet.folderName
                 );
 
                 NetworkHandler.sendToPlayer(

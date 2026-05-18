@@ -10,6 +10,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public final class StructureToolExtensions {
     private static final List<StructureCloneExtension> CLONER_EXTENSIONS = new CopyOnWriteArrayList<>();
     private static final List<StructurePasteExtension> PASTE_EXTENSIONS = new CopyOnWriteArrayList<>();
+    private static final List<StructureRemoveExtension> REMOVE_EXTENSIONS = new CopyOnWriteArrayList<>();
 
     private StructureToolExtensions() {
     }
@@ -20,6 +21,7 @@ public final class StructureToolExtensions {
         }
 
         CLONER_EXTENSIONS.add(extension);
+
     }
 
     public static List<StructureCloneExtension> clonerExtensions() {
@@ -34,9 +36,23 @@ public final class StructureToolExtensions {
         PASTE_EXTENSIONS.add(extension);
     }
 
+    public static void registerRemoveExtension(StructureRemoveExtension extension) {
+        if (extension == null || REMOVE_EXTENSIONS.contains(extension)) {
+            return;
+        }
+
+        REMOVE_EXTENSIONS.add(extension);
+    }
+
     public static void notifyTemplatePasted(ServerLevel level, BlockPos placementOrigin, CompoundTag templateTag) {
         for (StructurePasteExtension extension : PASTE_EXTENSIONS) {
             extension.onTemplatePasted(level, placementOrigin, templateTag);
+        }
+    }
+
+    public static void notifyBeforeBlockRemoved(ServerLevel level, BlockPos pos) {
+        for (StructureRemoveExtension extension : REMOVE_EXTENSIONS) {
+            extension.onBeforeBlockRemoved(level, pos);
         }
     }
 }

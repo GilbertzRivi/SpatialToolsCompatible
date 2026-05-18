@@ -69,8 +69,9 @@ public class DeleteClonerStructurePacket {
 
                 NetworkHandler.sendToPlayer(
                         player,
-                        SyncClonerLibraryPacket.fromStoreEntries(
-                                ClonerStructureLibraryStore.list(player.server, player.getUUID()),
+                        SyncClonerLibraryPacket.fromPlayer(
+                                player.server,
+                                player.getUUID(),
                                 StructureToolStackState.getStructureId(stack)
                         )
                 );

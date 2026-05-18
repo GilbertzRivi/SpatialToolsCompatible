@@ -64,6 +64,7 @@ public class SpatialToolsCMP {
                 GTCEuStructureExtension gtceuExtension = new GTCEuStructureExtension();
                 StructureToolExtensions.registerClonerExtension(gtceuExtension);
                 StructureToolExtensions.registerPasteExtension(gtceuExtension);
+                StructureToolExtensions.registerRemoveExtension(gtceuExtension);
             }
             if (IsModLoaded.FRAMED_BLOCKS) {
                 StructureToolExtensions.registerClonerExtension(new FramedBlocksClonerExtension());

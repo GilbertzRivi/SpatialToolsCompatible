@@ -267,7 +267,10 @@ public class PortableSpatialClonerScreen
             return true;
         }
 
-        if (this.materialList != null && this.materialList.mouseClicked(mouseX, mouseY, button)) {
+        boolean dropdownConsumesClick = this.structureSelector != null
+                && this.structureSelector.isExpandedMouseOver(mouseX, mouseY);
+
+        if (!dropdownConsumesClick && this.materialList != null && this.materialList.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.materialList);
             return true;
         }

@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
 import net.minecraft.nbt.NbtIo;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
@@ -33,11 +34,13 @@ public final class ClonerStructureLibraryStore {
     private static final String INDEX_FILE_NAME = "index.nbt";
 
     private static final String KEY_ENTRIES = "entries";
+    private static final String KEY_FOLDERS = "folders";
     private static final String KEY_ID = "id";
     private static final String KEY_NAME = "name";
     private static final String KEY_CREATED = "created";
     private static final String KEY_UPDATED = "updated";
     private static final String KEY_BLOCK_COUNT = "blockCount";
+    private static final String KEY_FOLDER = "folder";
 
     private ClonerStructureLibraryStore() {
     }
@@ -60,7 +63,8 @@ public final class ClonerStructureLibraryStore {
             String name,
             long created,
             long updated,
-            int blockCount
+            int blockCount,
+            String folder
     ) {
     }
 
@@ -114,7 +118,8 @@ public final class ClonerStructureLibraryStore {
                     sanitizeName(row.getString(KEY_NAME)),
                     row.getLong(KEY_CREATED),
                     row.getLong(KEY_UPDATED),
-                    Math.max(0, row.getInt(KEY_BLOCK_COUNT))
+                    Math.max(0, row.getInt(KEY_BLOCK_COUNT)),
+                    row.getString(KEY_FOLDER)
             ));
         }
 
@@ -181,7 +186,8 @@ public final class ClonerStructureLibraryStore {
                 name,
                 now,
                 now,
-                countBlocks(tag)
+                countBlocks(tag),
+                ""
         );
 
         writeStructure(server, owner, id, tag);
@@ -217,7 +223,8 @@ public final class ClonerStructureLibraryStore {
                     old.name(),
                     old.created(),
                     now,
-                    countBlocks(tag)
+                    countBlocks(tag),
+                    old.folder()
             );
 
             writeStructure(server, owner, id, tag);
@@ -278,7 +285,8 @@ public final class ClonerStructureLibraryStore {
                     name,
                     old.created(),
                     System.currentTimeMillis(),
-                    old.blockCount()
+                    old.blockCount(),
+                    old.folder()
             ));
 
             changed = true;
@@ -426,6 +434,110 @@ public final class ClonerStructureLibraryStore {
         return TemplateUtil.parseRawBlocksFromTag(tag).size();
     }
 
+    private static List<String> readFolderList(MinecraftServer server, UUID owner) throws IOException {
+        CompoundTag index = readIndex(server, owner);
+
+        if (!index.contains(KEY_FOLDERS, Tag.TAG_LIST)) {
+            return new ArrayList<>();
+        }
+
+        ListTag foldersTag = index.getList(KEY_FOLDERS, Tag.TAG_STRING);
+        List<String> result = new ArrayList<>();
+
+        for (int i = 0; i < foldersTag.size(); i++) {
+            String name = foldersTag.getString(i);
+            if (!name.isBlank()) {
+                result.add(name);
+            }
+        }
+
+        return result;
+    }
+
+    public static List<String> listFolders(MinecraftServer server, UUID owner) throws IOException {
+        return readFolderList(server, owner);
+    }
+
+    public static boolean createFolder(MinecraftServer server, UUID owner, String name) throws IOException {
+        String sanitized = sanitizeName(name);
+
+        if (sanitized.isBlank()) {
+            return false;
+        }
+
+        List<String> folders = new ArrayList<>(readFolderList(server, owner));
+
+        for (String f : folders) {
+            if (f.equalsIgnoreCase(sanitized)) {
+                return false;
+            }
+        }
+
+        folders.add(sanitized);
+        writeIndex(server, owner, new ArrayList<>(list(server, owner)), folders);
+
+        return true;
+    }
+
+    public static boolean deleteFolder(MinecraftServer server, UUID owner, String name) throws IOException {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+
+        List<Entry> entries = list(server, owner);
+
+        for (Entry entry : entries) {
+            if (name.equals(entry.folder())) {
+                return false;
+            }
+        }
+
+        List<String> folders = new ArrayList<>(readFolderList(server, owner));
+        boolean removed = folders.removeIf(f -> f.equals(name));
+
+        if (removed) {
+            writeIndex(server, owner, new ArrayList<>(entries), folders);
+        }
+
+        return removed;
+    }
+
+    public static boolean moveToFolder(
+            MinecraftServer server,
+            UUID owner,
+            String structureId,
+            String folderName
+    ) throws IOException {
+        if (!isValidId(structureId)) {
+            return false;
+        }
+
+        String targetFolder = folderName == null ? "" : sanitizeName(folderName);
+
+        List<Entry> entries = new ArrayList<>(list(server, owner));
+        boolean changed = false;
+
+        for (int i = 0; i < entries.size(); i++) {
+            Entry old = entries.get(i);
+
+            if (!old.id().equals(structureId)) {
+                continue;
+            }
+
+            entries.set(i, new Entry(
+                    old.id(), old.name(), old.created(), old.updated(), old.blockCount(), targetFolder
+            ));
+            changed = true;
+            break;
+        }
+
+        if (changed) {
+            writeIndex(server, owner, entries);
+        }
+
+        return changed;
+    }
+
     private static void writeStructure(
             MinecraftServer server,
             UUID owner,
@@ -457,6 +569,15 @@ public final class ClonerStructureLibraryStore {
             UUID owner,
             List<Entry> entries
     ) throws IOException {
+        writeIndex(server, owner, entries, null);
+    }
+
+    private static void writeIndex(
+            MinecraftServer server,
+            UUID owner,
+            List<Entry> entries,
+            List<String> folders
+    ) throws IOException {
         CompoundTag root = new CompoundTag();
         ListTag entriesTag = new ListTag();
 
@@ -473,11 +594,19 @@ public final class ClonerStructureLibraryStore {
             row.putLong(KEY_CREATED, entry.created());
             row.putLong(KEY_UPDATED, entry.updated());
             row.putInt(KEY_BLOCK_COUNT, Math.max(0, entry.blockCount()));
+            row.putString(KEY_FOLDER, entry.folder() == null ? "" : entry.folder());
 
             entriesTag.add(row);
         }
 
         root.put(KEY_ENTRIES, entriesTag);
+
+        List<String> folderList = folders != null ? folders : readFolderList(server, owner);
+        ListTag foldersTag = new ListTag();
+        for (String f : folderList) {
+            foldersTag.add(StringTag.valueOf(f));
+        }
+        root.put(KEY_FOLDERS, foldersTag);
 
         Path path = getIndexPath(server, owner);
 
