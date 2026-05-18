@@ -19,6 +19,7 @@ import net.minecraftforge.registries.RegisterEvent;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtensions;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialStoragePreviewRenderer;
 import net.oktawia.spatialtoolscmp.client.renderer.extensions.*;
+import net.oktawia.spatialtoolscmp.compat.ae2.AE2BlockRegistrar;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
 import net.oktawia.spatialtoolscmp.defs.SpatialCreativeTabRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
@@ -40,6 +41,9 @@ public class SpatialToolsCMP {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
         ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, SpatialConfig.COMMON_SPEC);
 
+        if (IsModLoaded.AE2) {
+            AE2BlockRegistrar.registerEventBus(modEventBus);
+        }
         SpatialItemRegistrar.ITEMS.register(modEventBus);
         SpatialMenuRegistrar.MENU_TYPES.register(modEventBus);
 
@@ -58,6 +62,7 @@ public class SpatialToolsCMP {
         event.enqueueWork(() -> {
             if (IsModLoaded.AE2) {
                 AE2Compat.register();
+                AE2BlockRegistrar.registerCreativeTabItems();
                 StructureToolExtensions.registerClonerExtension(new AE2ClonerExtension());
             }
             if (IsModLoaded.GTCEU) {

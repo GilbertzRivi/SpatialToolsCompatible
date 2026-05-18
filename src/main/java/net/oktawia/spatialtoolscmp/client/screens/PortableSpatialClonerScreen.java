@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.client.misc.CraftingBufferStatusClientCache;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
@@ -49,11 +50,16 @@ public class PortableSpatialClonerScreen
     private static final int NESTED_MODE_BUTTON_TOP = 6;
     private static final int NESTED_MODE_BUTTON_SIZE = 16;
 
+    private static final int CRAFT_ALL_BUTTON_LEFT = 136;
+    private static final int CRAFT_ALL_BUTTON_TOP = 6;
+    private static final int CRAFT_ALL_BUTTON_SIZE = 16;
+
     private static final int NESTED_MODE_TOOLTIP_MAX_CHARS = 28;
 
     private ClonerMaterialListWidget materialList;
     private SearchableClonerStructureDropdownWidget structureSelector;
     private IconButtonWidget nestedInventoryModeButton;
+    private IconButtonWidget craftAllButton;
 
     private boolean requestedLibrary = false;
 
@@ -126,6 +132,17 @@ public class PortableSpatialClonerScreen
 
         this.addRenderableWidget(this.nestedInventoryModeButton);
 
+        this.craftAllButton = new IconButtonWidget(
+                this.leftPos + CRAFT_ALL_BUTTON_LEFT,
+                this.topPos + CRAFT_ALL_BUTTON_TOP,
+                CRAFT_ALL_BUTTON_SIZE,
+                CRAFT_ALL_BUTTON_SIZE,
+                Icon.CRAFT_HAMMER,
+                button -> getMenu().craftAll()
+        );
+        this.craftAllButton.visible = false;
+        this.addRenderableWidget(this.craftAllButton);
+
         layoutWidgets();
 
         finishInit();
@@ -171,6 +188,14 @@ public class PortableSpatialClonerScreen
                     NESTED_MODE_BUTTON_SIZE,
                     NESTED_MODE_BUTTON_SIZE
             );
+        }
+
+        if (this.craftAllButton != null) {
+            this.craftAllButton.setPosition(
+                    left + CRAFT_ALL_BUTTON_LEFT,
+                    top + CRAFT_ALL_BUTTON_TOP
+            );
+            this.craftAllButton.resize(CRAFT_ALL_BUTTON_SIZE, CRAFT_ALL_BUTTON_SIZE);
         }
     }
 
@@ -243,6 +268,7 @@ public class PortableSpatialClonerScreen
     public void removed() {
         super.removed();
         PortableSpatialClonerRequirementSync.clear(getMenu().containerId);
+        CraftingBufferStatusClientCache.clear(getMenu().containerId);
     }
 
     @Override
@@ -258,6 +284,7 @@ public class PortableSpatialClonerScreen
         }
 
         syncRequirementEntries();
+        updateCraftAllButton();
     }
 
     @Override
@@ -331,6 +358,8 @@ public class PortableSpatialClonerScreen
         }
 
         renderNestedInventoryModeTooltip(graphics, mouseX, mouseY);
+        renderCraftAllHighlight(graphics);
+        renderCraftAllTooltip(graphics, mouseX, mouseY);
 
         if (this.structureSelector != null) {
             this.structureSelector.renderDropdownOverlay(graphics, mouseX, mouseY, partialTick);
@@ -501,6 +530,72 @@ public class PortableSpatialClonerScreen
         }
 
         return Component.translatable(LangDefs.PREVIEW_EMPTY_SELECT_HINT.getTranslationKey());
+    }
+
+    private void updateCraftAllButton() {
+        if (this.craftAllButton == null) return;
+
+        int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
+        boolean show = hasCraftingUpgrade() && status != CraftingBufferStatusClientCache.UNKNOWN
+                && status != CraftingBufferStatusClientCache.NO_BUFFER;
+
+        this.craftAllButton.visible = show;
+
+        boolean hasCraftableMissing = PortableSpatialClonerRequirementSync.getEntries(getMenu().containerId)
+                .stream()
+                .anyMatch(e -> e.craftable() && e.available() < e.required());
+
+        this.craftAllButton.active = show
+                && status == CraftingBufferStatusClientCache.AVAILABLE
+                && hasCraftableMissing;
+
+        this.craftAllButton.setIcon(
+                status == CraftingBufferStatusClientCache.CRAFTING_SCHEDULED
+                        ? Icon.CRAFT_HAMMER_DARK
+                        : Icon.CRAFT_HAMMER
+        );
+    }
+
+    private void renderCraftAllHighlight(GuiGraphics graphics) {
+        if (this.craftAllButton == null || !this.craftAllButton.visible) return;
+        if (CraftingBufferStatusClientCache.get(getMenu().containerId) != CraftingBufferStatusClientCache.CRAFTING_SCHEDULED) return;
+
+        int x = this.craftAllButton.getX();
+        int y = this.craftAllButton.getY();
+        int w = this.craftAllButton.getWidth();
+        int h = this.craftAllButton.getHeight();
+
+        graphics.fill(x - 2, y - 2, x + w + 2, y, 0xFF44EE44);
+        graphics.fill(x - 2, y + h, x + w + 2, y + h + 2, 0xFF44EE44);
+        graphics.fill(x - 2, y, x, y + h, 0xFF44EE44);
+        graphics.fill(x + w, y, x + w + 2, y + h, 0xFF44EE44);
+    }
+
+    private void renderCraftAllTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (this.craftAllButton == null || !this.craftAllButton.visible) return;
+        if (mouseX < this.craftAllButton.getX() || mouseX >= this.craftAllButton.getX() + this.craftAllButton.getWidth()
+                || mouseY < this.craftAllButton.getY() || mouseY >= this.craftAllButton.getY() + this.craftAllButton.getHeight()) return;
+
+        int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
+        boolean hasCraftableMissing = PortableSpatialClonerRequirementSync.getEntries(getMenu().containerId)
+                .stream()
+                .anyMatch(e -> e.craftable() && e.available() < e.required());
+
+        LangDefs key;
+        if (status == CraftingBufferStatusClientCache.CRAFTING_SCHEDULED) {
+            key = LangDefs.CRAFT_ALL_SCHEDULED;
+        } else if (status == CraftingBufferStatusClientCache.ALL_BUSY) {
+            key = LangDefs.CRAFT_ALL_ALL_BUSY;
+        } else if (!hasCraftableMissing) {
+            key = LangDefs.CRAFT_ALL_NOTHING_TO_CRAFT;
+        } else {
+            key = LangDefs.CRAFT_ALL_TOOLTIP;
+        }
+
+        List<Component> lines = new ArrayList<>();
+        addWrappedTooltipLines(lines, Component.translatable(key.getTranslationKey()));
+
+        graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mouseX, mouseY);
     }
 
     private static void addWrappedTooltipLines(List<Component> lines, Component component) {

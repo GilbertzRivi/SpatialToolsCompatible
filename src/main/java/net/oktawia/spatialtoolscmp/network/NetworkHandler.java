@@ -133,6 +133,18 @@ public final class NetworkHandler {
                 .decoder(MoveClonerStructureToFolderPacket::decode)
                 .consumerMainThread(MoveClonerStructureToFolderPacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(SyncCraftAllStatusPacket.class, nextId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncCraftAllStatusPacket::encode)
+                .decoder(SyncCraftAllStatusPacket::decode)
+                .consumerMainThread(SyncCraftAllStatusPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(RequestCraftAllPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RequestCraftAllPacket::encode)
+                .decoder(RequestCraftAllPacket::decode)
+                .consumerMainThread(RequestCraftAllPacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object packet) {

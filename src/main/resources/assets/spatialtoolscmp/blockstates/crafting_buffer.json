@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "spatialtoolscmp:block/crafting_buffer"
+    }
+  }
+}

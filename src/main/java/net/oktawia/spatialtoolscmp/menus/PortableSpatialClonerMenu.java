@@ -11,16 +11,19 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.compat.ae2.AE2CraftingBufferOps;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.RequestCraftAllPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SetClonerNestedInventoryModePacket;
 import net.oktawia.spatialtoolscmp.network.packets.RequestClonerCraftingPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerLibraryPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerRequirementStatusPacket;
+import net.oktawia.spatialtoolscmp.network.packets.SyncCraftAllStatusPacket;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
@@ -268,6 +271,29 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
         }
     }
 
+    public void craftAll() {
+        if (isClientSide()) {
+            NetworkHandler.sendToServer(new RequestCraftAllPacket(this.containerId));
+            return;
+        }
+        handleCraftAll();
+    }
+
+    public void handleCraftAll() {
+        if (isClientSide()) return;
+        if (!(getPlayer() instanceof ServerPlayer serverPlayer)) return;
+        if (!(serverPlayer.level() instanceof ServerLevel serverLevel)) return;
+        if (!hasCraftingUpgradeInstalled()) return;
+        if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) return;
+        if (!IsModLoaded.AE2) return;
+
+        try {
+            int status = AE2CraftingBufferOps.requestCraftAll(serverLevel, getItemStack(), buildRequirementEntries());
+            NetworkHandler.sendToPlayer(serverPlayer, new SyncCraftAllStatusPacket(this.containerId, status));
+        } catch (Throwable ignored) {
+        }
+    }
+
     private void syncRequirementsToClient() {
         if (!(getPlayer() instanceof ServerPlayer serverPlayer)) {
             return;
@@ -280,6 +306,17 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                         buildRequirementEntries()
                 )
         );
+
+        if (IsModLoaded.AE2
+                && hasCraftingUpgradeInstalled()
+                && !PortableSpatialCloner.hasItemHandlerLink(getItemStack())
+                && serverPlayer.level() instanceof ServerLevel serverLevel) {
+            try {
+                int status = AE2CraftingBufferOps.getStatus(serverLevel, getItemStack());
+                NetworkHandler.sendToPlayer(serverPlayer, new SyncCraftAllStatusPacket(this.containerId, status));
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private List<SyncClonerRequirementStatusPacket.Entry> buildRequirementEntries() {

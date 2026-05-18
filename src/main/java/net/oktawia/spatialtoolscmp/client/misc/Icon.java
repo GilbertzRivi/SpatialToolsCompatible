@@ -5,6 +5,7 @@ import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 public enum Icon {
     CRAFT_HAMMER("textures/gui/icons/craft_hammer.png"),
+    CRAFT_HAMMER_DARK("textures/gui/icons/craft_hammer_dark.png"),
     CHECK("textures/gui/icons/check.png"),
     CROSS("textures/gui/icons/cross.png"),
     PLUS("textures/gui/icons/plus.png"),

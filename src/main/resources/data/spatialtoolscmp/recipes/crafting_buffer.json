@@ -1,0 +1,26 @@
+{
+  "type": "forge:conditional",
+  "recipes": [
+    {
+      "conditions": [
+        {
+          "type": "forge:mod_loaded",
+          "modid": "ae2"
+        }
+      ],
+      "recipe": {
+        "type": "minecraft:crafting_shapeless",
+        "ingredients": [
+          {"item": "ae2:pattern_provider"},
+          {"item": "ae2:cell_component_64k"},
+          {"item": "ae2:crafting_card"},
+          {"item": "ae2:capacity_card"},
+          {"item": "ae2:speed_card"}
+        ],
+        "result": {
+          "item": "spatialtoolscmp:crafting_buffer"
+        }
+      }
+    }
+  ]
+}
