@@ -2,10 +2,12 @@ package net.oktawia.spatialtoolscmp.compat.ae2;
 
 import appeng.block.AEBaseEntityBlock;
 import appeng.blockentity.AEBaseBlockEntity;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -24,6 +26,9 @@ public final class AE2BlockRegistrar {
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITY_TYPES =
             DeferredRegister.create(ForgeRegistries.BLOCK_ENTITY_TYPES, SpatialToolsCMP.MODID);
 
+    public static final DeferredRegister<MenuType<?>> MENU_TYPES =
+            DeferredRegister.create(ForgeRegistries.MENU_TYPES, SpatialToolsCMP.MODID);
+
     public static final RegistryObject<CraftingBufferBlock> CRAFTING_BUFFER_BLOCK =
             BLOCKS.register("crafting_buffer", CraftingBufferBlock::new);
 
@@ -33,6 +38,10 @@ public final class AE2BlockRegistrar {
 
     public static final RegistryObject<BlockEntityType<CraftingBufferBlockEntity>> CRAFTING_BUFFER_BE_TYPE =
             reg("crafting_buffer", CRAFTING_BUFFER_BLOCK, CraftingBufferBlockEntity::new, CraftingBufferBlockEntity.class);
+
+    public static final RegistryObject<MenuType<CraftingBufferMenu>> CRAFTING_BUFFER_MENU_TYPE =
+            MENU_TYPES.register("crafting_buffer_menu",
+                    () -> IForgeMenuType.create(CraftingBufferMenu::new));
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private static <T extends AEBaseBlockEntity> RegistryObject<BlockEntityType<T>> reg(
@@ -53,6 +62,7 @@ public final class AE2BlockRegistrar {
         BLOCKS.register(bus);
         ITEMS.register(bus);
         BLOCK_ENTITY_TYPES.register(bus);
+        MENU_TYPES.register(bus);
     }
 
     public static void registerCreativeTabItems() {

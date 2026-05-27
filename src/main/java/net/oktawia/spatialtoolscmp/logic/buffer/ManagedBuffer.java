@@ -59,6 +59,10 @@ public class ManagedBuffer {
     @Setter
     private boolean canCraft = true;
 
+    @Getter
+    @Nullable
+    private String lastError = null;
+
     public ManagedBuffer(IManagedGridNode mainNode, PatternProviderLogicHost logicHost,
                          IActionHost actionHost, Runnable onDirty, Runnable onReady,
                          Supplier<Boolean> isActive) {
@@ -294,6 +298,7 @@ public class ManagedBuffer {
                             if (mc != null && !mc.isEmpty()) {
                                 var e = mc.iterator().next();
                                 firstMissing = new GenericStack(e.getKey(), e.getLongValue());
+                                lastError = e.getKey().getDisplayName().getString() + " x" + e.getLongValue();
                                 SpatialToolsCMP.getLOGGER().debug("crafting job failed, first missing: {} x{}", e.getKey(), e.getLongValue());
                             }
                         } catch (Throwable e) {
@@ -451,6 +456,10 @@ public class ManagedBuffer {
         }
     }
 
+    public GenericStack[] getItemsAsStacks() {
+        return toEntryArray();
+    }
+
     public boolean hasActiveCrafting() {
         return !pendingPlans.isEmpty() || !activeLinks.isEmpty() || readyAtTick > 0;
     }
@@ -474,6 +483,7 @@ public class ManagedBuffer {
     }
 
     private void fireReady() {
+        lastError = null;
         onReady.run();
     }
 

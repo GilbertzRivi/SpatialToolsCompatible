@@ -101,6 +101,11 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         return buffer.hasActiveCrafting();
     }
 
+    @Nullable
+    public String getLastError() {
+        return buffer.getLastError();
+    }
+
     private void onBufferReady() {
         hasActiveRequest = false;
         setChanged();

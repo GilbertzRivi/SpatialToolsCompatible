@@ -145,6 +145,12 @@ public final class NetworkHandler {
                 .decoder(RequestCraftAllPacket::decode)
                 .consumerMainThread(RequestCraftAllPacket::handle)
                 .add();
+
+        CHANNEL.messageBuilder(SyncCraftingBufferStatusPacket.class, nextId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncCraftingBufferStatusPacket::encode)
+                .decoder(SyncCraftingBufferStatusPacket::decode)
+                .consumerMainThread(SyncCraftingBufferStatusPacket::handle)
+                .add();
     }
 
     public static void sendToPlayer(ServerPlayer player, Object packet) {

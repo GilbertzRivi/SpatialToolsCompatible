@@ -16,9 +16,11 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.RegisterEvent;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtensions;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialStoragePreviewRenderer;
 import net.oktawia.spatialtoolscmp.client.renderer.extensions.*;
+import net.oktawia.spatialtoolscmp.client.screens.CraftingBufferScreen;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2BlockRegistrar;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
 import net.oktawia.spatialtoolscmp.defs.SpatialCreativeTabRegistrar;
@@ -109,6 +111,7 @@ public class SpatialToolsCMP {
             event.enqueueWork(() -> {
                 if (IsModLoaded.AE2) {
                     BlockRenderExtensions.register(new AE2BlockRenderExtension());
+                    MenuScreens.register(AE2BlockRegistrar.CRAFTING_BUFFER_MENU_TYPE.get(), CraftingBufferScreen::new);
                 }
                 if (IsModLoaded.GTCEU) {
                     BlockRenderExtensions.register(new GTCEuBlockRenderExtension());
