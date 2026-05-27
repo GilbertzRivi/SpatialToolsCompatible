@@ -50,7 +50,7 @@ public class PortableSpatialClonerScreen
     private static final int NESTED_MODE_BUTTON_TOP = 6;
     private static final int NESTED_MODE_BUTTON_SIZE = 16;
 
-    private static final int CRAFT_ALL_BUTTON_LEFT = 136;
+    private static final int CRAFT_ALL_BUTTON_LEFT = 134;
     private static final int CRAFT_ALL_BUTTON_TOP = 6;
     private static final int CRAFT_ALL_BUTTON_SIZE = 16;
 

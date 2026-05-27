@@ -111,7 +111,7 @@
   "gui.spatialtoolscmp.valid_upgrades": "Valid Upgrades:",
   "item.spatialtoolscmp.portable_spatial_cloner": "Portable Spatial Cloner",
   "item.spatialtoolscmp.portable_spatial_cloner.link_dimension": "(%s)",
-  "item.spatialtoolscmp.portable_spatial_cloner.link_storage_tooltip": "Shift right-click to link to a storage",
+  "item.spatialtoolscmp.portable_spatial_cloner.link_storage_tooltip": "Shift right-click in offhand to link to a storage",
   "item.spatialtoolscmp.portable_spatial_cloner.linked_to": "Linked to %s",
   "item.spatialtoolscmp.portable_spatial_cloner.linked_to_ae2": "Linked to %s (AE2)",
   "item.spatialtoolscmp.portable_spatial_cloner.nested_mode_ae2_ignored_tooltip": "Nested inventories stored inside AE2 are ignored",

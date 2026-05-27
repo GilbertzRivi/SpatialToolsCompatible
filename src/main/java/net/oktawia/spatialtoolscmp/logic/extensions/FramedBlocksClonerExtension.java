@@ -31,6 +31,8 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static final String NBT_ID = "id";
     private static final String NBT_CAMO = "camo";
+    private static final String NBT_FACE = "face";
+    private static final String NBT_OFFSETS = "offsets";
     private static final String NBT_STATE = "state";
     private static final String NBT_NAME = "Name";
 
@@ -164,6 +166,16 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
         if (framedData.contains(CLONE_KEY_CAMO, Tag.TAG_COMPOUND)) {
             out.put(NBT_CAMO, framedData.getCompound(CLONE_KEY_CAMO).copy());
+        }
+
+        Tag faceTag = rawBeTag.get(NBT_FACE);
+        if (faceTag != null) {
+            out.put(NBT_FACE, faceTag.copy());
+        }
+
+        Tag offsetsTag = rawBeTag.get(NBT_OFFSETS);
+        if (offsetsTag != null) {
+            out.put(NBT_OFFSETS, offsetsTag.copy());
         }
 
         return out;

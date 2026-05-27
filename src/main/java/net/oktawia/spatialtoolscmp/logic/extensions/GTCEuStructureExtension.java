@@ -6,6 +6,8 @@ import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
+import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
+import com.gregtechceu.gtceu.api.machine.trait.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.pipenet.PipeCoverContainer;
 import com.gregtechceu.gtceu.common.machine.electric.TransformerMachine;
 import net.minecraft.core.BlockPos;
@@ -169,6 +171,24 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                     pos,
                     machineData.getCompound(NBT_DATA_STICK)
             );
+        }
+
+        reapplyFluidTankLockFilters(be);
+    }
+
+    private static void reapplyFluidTankLockFilters(@Nullable BlockEntity be) {
+        if (!(be instanceof MetaMachineBlockEntity mmbe)) {
+            return;
+        }
+
+        for (MachineTrait trait : mmbe.getMetaMachine().getTraits()) {
+            if (!(trait instanceof NotifiableFluidTank tank)) {
+                continue;
+            }
+
+            if (tank.isLocked()) {
+                tank.setFilter(stack -> stack.isFluidEqual(tank.getLockedFluid().getFluid()));
+            }
         }
     }
 

@@ -860,7 +860,75 @@ public final class TemplateUtil {
             return transformGregBlockEntityTag(tag, transform);
         }
 
+        if (isFramedCollapsibleBlockEntityTag(tag)) {
+            return transformCollapsibleBlockEntityTag(tag, transform);
+        }
+
         return tag.copy();
+    }
+
+    private static boolean isFramedCollapsibleBlockEntityTag(CompoundTag tag) {
+        String id = tag.getString("id");
+        return id.startsWith("framedblocks:")
+                && tag.contains("face")
+                && tag.contains("offsets", Tag.TAG_INT);
+    }
+
+    private static CompoundTag transformCollapsibleBlockEntityTag(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        Tag faceTag = tag.get("face");
+        if (!(faceTag instanceof NumericTag numericFaceTag)) {
+            return result;
+        }
+
+        int faceOrdinal = numericFaceTag.getAsInt();
+        if (faceOrdinal < 0 || faceOrdinal >= Direction.values().length) {
+            return result;
+        }
+
+        Direction oldFace = Direction.values()[faceOrdinal];
+        Direction newFace = mapCableBusSide(oldFace, transform);
+
+        putDirectionOrdinalPreservingType(result, "face", faceTag, newFace.ordinal());
+
+        int[] perm = collapsibleVertexPermutation(oldFace, transform);
+        byte[] oldVertexOffsets = unpackCollapsibleOffsets(tag.getInt("offsets"));
+        byte[] newVertexOffsets = new byte[4];
+
+        for (int i = 0; i < 4; i++) {
+            newVertexOffsets[perm[i]] = oldVertexOffsets[i];
+        }
+
+        result.putInt("offsets", packCollapsibleOffsets(newVertexOffsets));
+        return result;
+    }
+
+    private static int[] collapsibleVertexPermutation(Direction oldFace, CableBusTransform transform) {
+        return switch (transform) {
+            case FLIP_V -> new int[]{1, 0, 3, 2};
+            case FLIP_H_AXIS_Z -> new int[]{3, 2, 1, 0};
+            case FLIP_H_AXIS_X -> oldFace.getAxis() == Direction.Axis.Y
+                    ? new int[]{1, 0, 3, 2}
+                    : new int[]{3, 2, 1, 0};
+            default -> new int[]{0, 1, 2, 3};
+        };
+    }
+
+    private static int packCollapsibleOffsets(byte[] offsets) {
+        int result = 0;
+        for (int i = 0; i < 4; i++) {
+            result |= (offsets[i] & 0x1F) << (i * 5);
+        }
+        return result;
+    }
+
+    private static byte[] unpackCollapsibleOffsets(int packed) {
+        byte[] offsets = new byte[4];
+        for (int i = 0; i < 4; i++) {
+            offsets[i] = (byte) ((packed >> (i * 5)) & 0x1F);
+        }
+        return offsets;
     }
 
     private static boolean isCbMultipartBlockEntityTag(CompoundTag tag) {
@@ -1672,7 +1740,9 @@ public final class TemplateUtil {
 
         result = remapPropertyValues(result, "face", Map.of(
                 "floor", "ceiling",
-                "ceiling", "floor"
+                "ceiling", "floor",
+                "up", "down",
+                "down", "up"
         ));
 
         result = remapPropertyValues(result, KEY_UPWARDS_FACING, Map.of(
