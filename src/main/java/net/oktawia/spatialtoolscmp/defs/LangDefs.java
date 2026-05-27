@@ -140,7 +140,10 @@ public enum LangDefs {
     CONTEXT_MENU_CUT_COPY_FIRST("gui.spatialtoolscmp.context.cut_copy_first", "Cut/copy something first"),
     CONTEXT_MENU_RED_CORNER("gui.spatialtoolscmp.context.red_corner", "Red"),
     CONTEXT_MENU_GREEN_CORNER("gui.spatialtoolscmp.context.green_corner", "Green"),
-    CONTEXT_MENU_CANCEL_SELECTION("gui.spatialtoolscmp.context_menu.cancel_selection", "Cancel selection");
+    CONTEXT_MENU_CANCEL_SELECTION("gui.spatialtoolscmp.context_menu.cancel_selection", "Cancel selection"),
+    CRAFTING_BUFFER_ERROR_NO_CPUS_LINE_1("spatialtoolscmp.crafting_buffer.error.no_cpus.line1","Error: check if there are"),
+    CRAFTING_BUFFER_ERROR_NO_CPUS_LINE_2("spatialtoolscmp.crafting_buffer.error.no_cpus.line2","crafting CPUs available"),
+    CRAFTING_BUFFER_IDLE("spatialtoolscmp.crafting_buffer.idle","IDLE");
 
     private final String key;
     private final String value;

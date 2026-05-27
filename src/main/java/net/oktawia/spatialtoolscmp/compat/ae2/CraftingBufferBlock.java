@@ -32,19 +32,34 @@ public class CraftingBufferBlock extends AEBaseEntityBlock<CraftingBufferBlockEn
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
+
         if (!(player instanceof ServerPlayer sp)) {
             return InteractionResult.FAIL;
         }
+
         if (!(level.getBlockEntity(pos) instanceof CraftingBufferBlockEntity be)) {
             return InteractionResult.FAIL;
         }
 
-        String initialStatus = be.getLastError() != null ? be.getLastError() : "";
+        boolean initialHasError = be.hasDisplayError();
+        var initialEntries = be.getDisplayEntries();
+
         Component title = Component.translatable(LangDefs.CRAFTING_BUFFER_BLOCK.getTranslationKey());
 
-        NetworkHooks.openScreen(sp,
+        NetworkHooks.openScreen(
+                sp,
                 new SimpleMenuProvider((id, inv, p) -> new CraftingBufferMenu(id, inv, p, be), title),
-                buf -> buf.writeUtf(initialStatus));
+                buf -> {
+                    buf.writeBoolean(initialHasError);
+                    buf.writeVarInt(initialEntries.size());
+
+                    for (var entry : initialEntries) {
+                        buf.writeItem(entry.stack());
+                        buf.writeLong(entry.requestedAmount());
+                        buf.writeLong(entry.bufferedAmount());
+                    }
+                }
+        );
 
         return InteractionResult.CONSUME;
     }

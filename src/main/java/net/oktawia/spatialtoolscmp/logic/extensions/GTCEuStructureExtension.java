@@ -2,10 +2,10 @@ package net.oktawia.spatialtoolscmp.logic.extensions;
 
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
-import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
-import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.trait.MachineTrait;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.pipenet.PipeCoverContainer;
@@ -62,6 +62,9 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private static final String NBT_RENDER_TRANSFORM_UP = "transform_up";
     private static final String NBT_DATA_STICK = "dataStick";
     private static final String NBT_DURATION_MULTIPLIER = "durationMultiplier";
+    private static final String NBT_BUFFER_POS = "bufferPos";
+    private static final String NBT_PATTERN_BUFFER_OFFSET = "patternBufferOffset";
+    private static final String NBT_PATTERN_BUFFER_ID = "patternBufferId";
 
     private static final long NEXT_TICK_DELAY = 1L;
 
@@ -96,7 +99,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             addBaseBlockRequirement(level, pos, requirements);
         }
 
-        CompoundTag gregData = collectGregMetadata(rawBeTag, be, requirements);
+        CompoundTag gregData = collectGregMetadata(level, pos, rawBeTag, be, requirements);
 
         if (gregData.isEmpty()) {
             return false;
@@ -156,6 +159,15 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         CompoundTag machineData = gregMeta.getCompound(StructureToolKeys.CLONE_KEY_GREG_MACHINE);
+
+        if (machineData.contains(NBT_BUFFER_POS, Tag.TAG_COMPOUND)
+                && machineData.contains(NBT_PATTERN_BUFFER_ID, Tag.TAG_STRING)) {
+            scheduleSinglePatternBufferLinkRefresh(
+                    level,
+                    pos,
+                    machineData
+            );
+        }
 
         if (hasStoredGregTransformerState(machineData)) {
             scheduleSingleTransformerStateRefresh(
@@ -409,6 +421,8 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     }
 
     private static CompoundTag collectGregMetadata(
+            ServerLevel level,
+            BlockPos pos,
             @Nullable CompoundTag rawBeTag,
             BlockEntity be,
             AbstractStructureCaptureToolItem.RequirementSink requirements
@@ -470,6 +484,8 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 machineTag.putFloat(NBT_DURATION_MULTIPLIER, rawBeTag.getFloat(NBT_DURATION_MULTIPLIER));
             }
 
+            collectPatternBufferLinkMetadata(level, pos, rawBeTag, machineTag);
+
             NbtUtil.copyTagIfPresent(rawBeTag, machineTag, "circuitInventory");
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "activeRecipeType");
 
@@ -491,6 +507,282 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         return out;
+    }
+
+    private static void collectPatternBufferLinkMetadata(
+            ServerLevel level,
+            BlockPos proxyPos,
+            CompoundTag rawBeTag,
+            CompoundTag machineTag
+    ) {
+        if (!rawBeTag.contains(NBT_BUFFER_POS, Tag.TAG_COMPOUND)) {
+            return;
+        }
+
+        if (!isPatternBufferProxyTag(rawBeTag)) {
+            return;
+        }
+
+        String proxyId = getMachineId(rawBeTag);
+        String expectedBufferId = getExpectedPatternBufferIdForProxyId(proxyId);
+
+        if (expectedBufferId.isBlank()) {
+            return;
+        }
+
+        CompoundTag originalBufferPosTag = rawBeTag.getCompound(NBT_BUFFER_POS).copy();
+        BlockPos originalBufferPos = readBlockPosTag(originalBufferPosTag);
+
+        if (originalBufferPos == null) {
+            return;
+        }
+
+        machineTag.put(NBT_BUFFER_POS, originalBufferPosTag);
+        machineTag.putString(NBT_PATTERN_BUFFER_ID, expectedBufferId);
+        writePatternBufferOffset(proxyPos, originalBufferPos, machineTag);
+    }
+
+    private static void writePatternBufferOffset(
+            BlockPos proxyPos,
+            BlockPos bufferPos,
+            CompoundTag machineTag
+    ) {
+        CompoundTag offsetTag = new CompoundTag();
+
+        offsetTag.putInt("x", bufferPos.getX() - proxyPos.getX());
+        offsetTag.putInt("y", bufferPos.getY() - proxyPos.getY());
+        offsetTag.putInt("z", bufferPos.getZ() - proxyPos.getZ());
+
+        machineTag.put(NBT_PATTERN_BUFFER_OFFSET, offsetTag);
+    }
+
+    private static boolean applyPatternBufferLink(
+            ServerLevel level,
+            BlockPos pastedProxyPos,
+            @Nullable BlockEntity be,
+            CompoundTag machineData
+    ) {
+        if (be == null) {
+            return false;
+        }
+
+        if (!machineData.contains(NBT_BUFFER_POS, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        BlockPos originalBufferPos = readBlockPosTag(machineData.getCompound(NBT_BUFFER_POS));
+
+        if (originalBufferPos == null) {
+            return false;
+        }
+
+        String expectedBufferId = machineData.getString(NBT_PATTERN_BUFFER_ID);
+
+        if (expectedBufferId.isBlank()) {
+            CompoundTag currentTagForId = saveCurrentTag(be);
+
+            if (currentTagForId != null) {
+                expectedBufferId = getExpectedPatternBufferIdForProxyId(getMachineId(currentTagForId));
+            }
+        }
+
+        if (expectedBufferId.isBlank()) {
+            return false;
+        }
+
+        BlockPos finalBufferPos = originalBufferPos;
+
+        if (machineData.contains(NBT_PATTERN_BUFFER_OFFSET, Tag.TAG_COMPOUND)) {
+            BlockPos offset = readBlockPosTag(machineData.getCompound(NBT_PATTERN_BUFFER_OFFSET));
+
+            if (offset != null) {
+                BlockPos candidateBufferPos = pastedProxyPos.offset(
+                        offset.getX(),
+                        offset.getY(),
+                        offset.getZ()
+                );
+
+                if (isExpectedPatternBufferAt(level, candidateBufferPos, expectedBufferId)) {
+                    finalBufferPos = candidateBufferPos;
+                }
+            }
+        }
+
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (currentTag == null) {
+            return false;
+        }
+
+        currentTag.put(NBT_BUFFER_POS, writeUpperBlockPosTag(finalBufferPos));
+        currentTag.remove(NBT_PATTERN_BUFFER_OFFSET);
+        currentTag.remove(NBT_PATTERN_BUFFER_ID);
+
+        currentTag.putInt("x", pastedProxyPos.getX());
+        currentTag.putInt("y", pastedProxyPos.getY());
+        currentTag.putInt("z", pastedProxyPos.getZ());
+
+        try {
+            be.load(currentTag);
+            be.clearRemoved();
+        } catch (Throwable ignored) {
+            return false;
+        }
+
+        syncGenericGregBlockEntityNoLoad(level, pastedProxyPos, be);
+        return true;
+    }
+
+    private static boolean isExpectedPatternBufferAt(
+            ServerLevel level,
+            BlockPos pos,
+            String expectedBufferId
+    ) {
+        if (expectedBufferId == null || expectedBufferId.isBlank()) {
+            return false;
+        }
+
+        String normalizedExpected = expectedBufferId.toLowerCase(Locale.ROOT);
+
+        BlockState state = level.getBlockState(pos);
+        ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
+
+        if (blockId != null && blockId.toString().toLowerCase(Locale.ROOT).equals(normalizedExpected)) {
+            return true;
+        }
+
+        BlockEntity be = level.getBlockEntity(pos);
+
+        if (be == null) {
+            return false;
+        }
+
+        CompoundTag tag = saveCurrentTag(be);
+
+        if (tag == null) {
+            return false;
+        }
+
+        String actualId = getMachineId(tag).toLowerCase(Locale.ROOT);
+
+        return actualId.equals(normalizedExpected);
+    }
+
+    private static boolean isPatternBufferTag(CompoundTag tag) {
+        String id = getMachineId(tag);
+
+        return isPatternBufferId(id);
+    }
+
+    private static boolean isPatternBufferProxyTag(CompoundTag tag) {
+        String id = getMachineId(tag);
+
+        return isPatternBufferProxyId(id);
+    }
+
+    private static boolean isPatternBufferId(String id) {
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+
+        String normalized = id.toLowerCase(Locale.ROOT);
+
+        return normalized.contains("pattern_buffer")
+                && !isPatternBufferProxyId(normalized);
+    }
+
+    private static boolean isPatternBufferProxyId(String id) {
+        if (id == null || id.isBlank()) {
+            return false;
+        }
+
+        String normalized = id.toLowerCase(Locale.ROOT);
+
+        return normalized.contains("pattern_buffer_proxy")
+                || normalized.contains("pattern_buffer") && normalized.endsWith("_proxy");
+    }
+
+    private static String getExpectedPatternBufferIdForProxyId(String proxyId) {
+        if (proxyId == null || proxyId.isBlank()) {
+            return "";
+        }
+
+        String normalized = proxyId.toLowerCase(Locale.ROOT);
+
+        if (!isPatternBufferProxyId(normalized)) {
+            return "";
+        }
+
+        if (normalized.endsWith("_proxy")) {
+            return normalized.substring(0, normalized.length() - "_proxy".length());
+        }
+
+        if (normalized.contains("pattern_buffer_proxy")) {
+            return normalized.replace("pattern_buffer_proxy", "pattern_buffer");
+        }
+
+        return "";
+    }
+
+    private static String getMachineId(CompoundTag tag) {
+        String id = tag.getString(NBT_ID);
+
+        if (!id.isBlank()) {
+            return id;
+        }
+
+        if (tag.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            CompoundTag renderState = tag.getCompound(NBT_RENDER_STATE);
+            String renderName = renderState.getString(NBT_RENDER_STATE_NAME);
+
+            if (!renderName.isBlank()) {
+                return renderName;
+            }
+        }
+
+        return "";
+    }
+
+    @Nullable
+    private static BlockPos readBlockPosTag(CompoundTag tag) {
+        if (hasBlockPosTag(tag, "X", "Y", "Z")) {
+            return new BlockPos(
+                    tag.getInt("X"),
+                    tag.getInt("Y"),
+                    tag.getInt("Z")
+            );
+        }
+
+        if (hasBlockPosTag(tag, "x", "y", "z")) {
+            return new BlockPos(
+                    tag.getInt("x"),
+                    tag.getInt("y"),
+                    tag.getInt("z")
+            );
+        }
+
+        return null;
+    }
+
+    private static boolean hasBlockPosTag(
+            CompoundTag tag,
+            String xKey,
+            String yKey,
+            String zKey
+    ) {
+        return tag.contains(xKey, Tag.TAG_ANY_NUMERIC)
+                && tag.contains(yKey, Tag.TAG_ANY_NUMERIC)
+                && tag.contains(zKey, Tag.TAG_ANY_NUMERIC);
+    }
+
+    private static CompoundTag writeUpperBlockPosTag(BlockPos pos) {
+        CompoundTag tag = new CompoundTag();
+
+        tag.putInt("X", pos.getX());
+        tag.putInt("Y", pos.getY());
+        tag.putInt("Z", pos.getZ());
+
+        return tag;
     }
 
     private static CompoundTag collectGregDataStick(BlockEntity be) {
@@ -655,6 +947,8 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         if (machineData.contains(NBT_DURATION_MULTIPLIER, Tag.TAG_ANY_NUMERIC)) {
             out.putFloat(NBT_DURATION_MULTIPLIER, machineData.getFloat(NBT_DURATION_MULTIPLIER));
         }
+
+        NbtUtil.copyTagIfPresent(machineData, out, NBT_BUFFER_POS);
 
         NbtUtil.copyTagIfPresent(machineData, out, "circuitInventory");
         NbtUtil.copyIntIfPresent(machineData, out, "activeRecipeType");
@@ -942,10 +1236,13 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 || tag.contains("durationMultiplier", Tag.TAG_ANY_NUMERIC)
                 || tag.contains("renderState", Tag.TAG_COMPOUND)
                 || tag.contains("circuitInventory", Tag.TAG_COMPOUND)
+                || tag.contains(NBT_BUFFER_POS, Tag.TAG_COMPOUND)
                 || tag.contains("outputFacingItems")
                 || tag.contains("outputFacingFluids")
                 || tag.contains("inputFacingItems")
-                || tag.contains("inputFacingFluids");
+                || tag.contains("inputFacingFluids")
+                || isPatternBufferTag(tag)
+                || isPatternBufferProxyTag(tag);
     }
 
     private static boolean isGregPipeTag(@Nullable CompoundTag tag) {
@@ -1120,6 +1417,40 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         ));
     }
 
+    private static void scheduleSinglePatternBufferLinkRefresh(
+            ServerLevel level,
+            BlockPos pos,
+            CompoundTag machineData
+    ) {
+        if (!machineData.contains(NBT_BUFFER_POS, Tag.TAG_COMPOUND)) {
+            return;
+        }
+
+        if (!machineData.contains(NBT_PATTERN_BUFFER_ID, Tag.TAG_STRING)) {
+            return;
+        }
+
+        if (isPostPlacementAlreadyPending(level, pos, PendingMode.PATTERN_BUFFER_LINK)) {
+            return;
+        }
+
+        ensureRegistered();
+
+        List<PendingBlockInit> blocks = new ArrayList<>();
+        blocks.add(new PendingBlockInit(
+                pos.immutable(),
+                PendingMode.PATTERN_BUFFER_LINK,
+                machineData.copy(),
+                null
+        ));
+
+        PENDING.add(new PendingInit(
+                level,
+                blocks,
+                level.getGameTime() + NEXT_TICK_DELAY
+        ));
+    }
+
     private static void ensureRegistered() {
         if (!registered) {
             MinecraftForge.EVENT_BUS.register(GTCEuStructureExtension.class);
@@ -1218,6 +1549,21 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                     syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
+
+                continue;
+            }
+
+            if (pendingBlock.mode() == PendingMode.PATTERN_BUFFER_LINK) {
+                boolean changed = applyPatternBufferLink(
+                        level,
+                        worldPos,
+                        blockEntity,
+                        pendingBlock.payload()
+                );
+
+                if (changed) {
+                    refreshedPositions.add(worldPos);
+                }
             }
         }
 
@@ -1312,8 +1658,6 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             if (transformer.isTransformUp() != desiredTransformUp) {
                 transformer.setTransformUp(desiredTransformUp);
             } else {
-                // NBT/state value can already be correct while the runtime energy container is stale.
-                // Force the runtime side/input/output rules to be rebuilt after template paste.
                 transformer.updateEnergyContainer(desiredTransformUp);
             }
 
@@ -1688,7 +2032,8 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private enum PendingMode {
         PIPE_LOAD,
         DATA_STICK_ONLY,
-        TRANSFORMER_STATE
+        TRANSFORMER_STATE,
+        PATTERN_BUFFER_LINK
     }
 
     private record PendingBlockInit(
