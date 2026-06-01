@@ -28,4 +28,7 @@ public final class StructureToolKeys {
     public static final String CLONE_KEY_GREG_COVER   = "cover";
     public static final String CLONE_KEY_GREG_PIPE    = "pipe";
     public static final String CLONE_KEY_GREG_MACHINE = "machine";
+
+    public static final String LASERIO_ID_PREFIX  = "laserio:";
+    public static final String CLONE_KEY_LASERIO  = "laserio";
 }

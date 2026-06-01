@@ -165,6 +165,10 @@ dependencies {
     compileOnly fg.deobf("curse.maven:project-red-transmission-478939:6868149")
     compileOnly fg.deobf("curse.maven:cb-multipart-258426:7845318")
     compileOnly fg.deobf("curse.maven:codechicken-lib-1-8-242818:5753868")
+    compileOnly fg.deobf("curse.maven:laserio-uel-1168178:6773950")
+    compileOnly fg.deobf("curse.maven:flux-networks-248020:5234697")
+    compileOnly fg.deobf("curse.maven:ex-pattern-provider-892005:7986603")
+    compileOnly fg.deobf("curse.maven:glodium-957920:5226922")
     // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:6420945")
@@ -187,6 +191,10 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:project-red-transmission-478939:6868149")
     runtimeOnly fg.deobf("curse.maven:cb-multipart-258426:7845318")
     runtimeOnly fg.deobf("curse.maven:codechicken-lib-1-8-242818:5753868")
+    runtimeOnly fg.deobf("curse.maven:laserio-uel-1168178:6773950")
+    runtimeOnly fg.deobf("curse.maven:flux-networks-248020:5234697")
+    runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:7986603")
+    runtimeOnly fg.deobf("curse.maven:glodium-957920:5226922")
 
     // Runtime utils
     runtimeOnly fg.deobf("curse.maven:jade-324717:6106101")
@@ -194,7 +202,6 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:emi-580555:6420945")
     runtimeOnly fg.deobf("curse.maven:mekanism-268560:6552911")
     runtimeOnly fg.deobf("curse.maven:mekanism-generators-268566:6552914")
-    runtimeOnly fg.deobf("curse.maven:flux-networks-248020:5234697")
     runtimeOnly fg.deobf("curse.maven:journeymap-32274:5789363")
     runtimeOnly fg.deobf("curse.maven:architectury-api-419699:5137938")
     runtimeOnly fg.deobf("curse.maven:ftb-chunks-forge-314906:6431735")

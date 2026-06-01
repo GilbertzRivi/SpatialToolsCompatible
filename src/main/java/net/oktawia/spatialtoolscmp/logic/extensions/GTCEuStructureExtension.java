@@ -65,6 +65,11 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private static final String NBT_BUFFER_POS = "bufferPos";
     private static final String NBT_PATTERN_BUFFER_OFFSET = "patternBufferOffset";
     private static final String NBT_PATTERN_BUFFER_ID = "patternBufferId";
+    private static final String NBT_IS_RANDOM_TICK_MODE = "isRandomTickMode";
+    private static final String NBT_RENDER_RANDOM_TICK_MODE = "random_tick_mode";
+    private static final String NBT_FE_TO_EU = "feToEu";
+    private static final String NBT_RENDER_FE_TO_EU = "fe_to_eu";
+    private static final String NBT_ENERGY_CONTAINER = "energyContainer";
 
     private static final long NEXT_TICK_DELAY = 1L;
 
@@ -177,6 +182,22 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             );
         }
 
+        if (hasStoredWorldAcceleratorMode(machineData)) {
+            scheduleSingleWorldAcceleratorModeRefresh(
+                    level,
+                    pos,
+                    machineData
+            );
+        }
+
+        if (hasStoredEnergyConverterDirection(machineData)) {
+            scheduleSingleEnergyConverterDirectionRefresh(
+                    level,
+                    pos,
+                    machineData
+            );
+        }
+
         if (machineData.contains(NBT_DATA_STICK, Tag.TAG_COMPOUND)) {
             scheduleSingleDataStickApply(
                     level,
@@ -186,6 +207,14 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         reapplyFluidTankLockFilters(be);
+        reinitMachineCovers(be);
+    }
+
+    private static void reinitMachineCovers(@Nullable BlockEntity be) {
+        if (!(be instanceof MetaMachineBlockEntity mmbe)) {
+            return;
+        }
+        mmbe.getMetaMachine().getCoverContainer().onLoad();
     }
 
     private static void reapplyFluidTankLockFilters(@Nullable BlockEntity be) {
@@ -491,6 +520,14 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
 
             if (isGregTransformerTag(rawBeTag)) {
                 copyGregTransformerState(rawBeTag, machineTag);
+            }
+
+            if (isWorldAcceleratorTag(rawBeTag)) {
+                copyWorldAcceleratorState(rawBeTag, machineTag);
+            }
+
+            if (isEnergyConverterTag(rawBeTag)) {
+                copyEnergyConverterState(rawBeTag, machineTag);
             }
 
             copyGregMachineSideConfig(rawBeTag, machineTag);
@@ -954,6 +991,8 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         NbtUtil.copyIntIfPresent(machineData, out, "activeRecipeType");
 
         copyGregTransformerState(machineData, out);
+        copyWorldAcceleratorState(machineData, out);
+        copyEnergyConverterState(machineData, out);
         copyGregMachineSideConfig(machineData, out);
 
         if (machineData.contains(NBT_DATA_STICK, Tag.TAG_COMPOUND)) {
@@ -1093,6 +1132,346 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         return Boolean.parseBoolean(properties.getString(NBT_RENDER_TRANSFORM_UP));
+    }
+
+    private static boolean isWorldAcceleratorTag(@Nullable CompoundTag tag) {
+        if (tag == null) {
+            return false;
+        }
+
+        String id = getMachineId(tag).toLowerCase(Locale.ROOT);
+
+        if (id.contains("world_accelerator")) {
+            return true;
+        }
+
+        return tag.contains(NBT_IS_RANDOM_TICK_MODE, Tag.TAG_BYTE);
+    }
+
+    private static boolean isEnergyConverterTag(@Nullable CompoundTag tag) {
+        if (tag == null) {
+            return false;
+        }
+
+        String id = getMachineId(tag).toLowerCase(Locale.ROOT);
+
+        if (id.contains("energy_converter")) {
+            return true;
+        }
+
+        if (!tag.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        return tag.getCompound(NBT_ENERGY_CONTAINER).contains(NBT_FE_TO_EU, Tag.TAG_BYTE);
+    }
+
+    private static CompoundTag extractRenderStateWithProperty(CompoundTag from, String propertyKey) {
+        CompoundTag out = new CompoundTag();
+
+        if (!from.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return out;
+        }
+
+        CompoundTag renderState = from.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return out;
+        }
+
+        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
+
+        if (!properties.contains(propertyKey, Tag.TAG_STRING)) {
+            return out;
+        }
+
+        NbtUtil.copyStringIfPresent(renderState, out, NBT_RENDER_STATE_NAME);
+
+        CompoundTag outProperties = new CompoundTag();
+        NbtUtil.copyStringIfPresent(properties, outProperties, propertyKey);
+
+        if (!outProperties.isEmpty()) {
+            out.put(NBT_RENDER_PROPERTIES, outProperties);
+        }
+
+        return out;
+    }
+
+    private static void copyWorldAcceleratorState(CompoundTag from, CompoundTag to) {
+        NbtUtil.copyByteIfPresent(from, to, NBT_IS_RANDOM_TICK_MODE);
+
+        CompoundTag renderState = extractRenderStateWithProperty(from, NBT_RENDER_RANDOM_TICK_MODE);
+
+        if (!renderState.isEmpty()) {
+            to.put(NBT_RENDER_STATE, renderState);
+        }
+    }
+
+    private static void copyEnergyConverterState(CompoundTag from, CompoundTag to) {
+        if (from.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)) {
+            CompoundTag ec = from.getCompound(NBT_ENERGY_CONTAINER);
+
+            if (ec.contains(NBT_FE_TO_EU, Tag.TAG_BYTE)) {
+                CompoundTag savedEc = to.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)
+                        ? to.getCompound(NBT_ENERGY_CONTAINER).copy()
+                        : new CompoundTag();
+
+                savedEc.putBoolean(NBT_FE_TO_EU, ec.getBoolean(NBT_FE_TO_EU));
+                to.put(NBT_ENERGY_CONTAINER, savedEc);
+            }
+        }
+
+        CompoundTag renderState = extractRenderStateWithProperty(from, NBT_RENDER_FE_TO_EU);
+
+        if (!renderState.isEmpty()) {
+            to.put(NBT_RENDER_STATE, renderState);
+        }
+    }
+
+    private static boolean hasStoredWorldAcceleratorMode(CompoundTag machineData) {
+        if (machineData == null || machineData.isEmpty()) {
+            return false;
+        }
+
+        if (machineData.contains(NBT_IS_RANDOM_TICK_MODE, Tag.TAG_BYTE)) {
+            return true;
+        }
+
+        if (!machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        CompoundTag renderState = machineData.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        return renderState.getCompound(NBT_RENDER_PROPERTIES).contains(NBT_RENDER_RANDOM_TICK_MODE, Tag.TAG_STRING);
+    }
+
+    private static boolean hasStoredEnergyConverterDirection(CompoundTag machineData) {
+        if (machineData == null || machineData.isEmpty()) {
+            return false;
+        }
+
+        if (machineData.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)
+                && machineData.getCompound(NBT_ENERGY_CONTAINER).contains(NBT_FE_TO_EU, Tag.TAG_BYTE)) {
+            return true;
+        }
+
+        if (!machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        CompoundTag renderState = machineData.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        return renderState.getCompound(NBT_RENDER_PROPERTIES).contains(NBT_RENDER_FE_TO_EU, Tag.TAG_STRING);
+    }
+
+    private static boolean readStoredRandomTickMode(CompoundTag machineData, boolean fallback) {
+        if (machineData.contains(NBT_IS_RANDOM_TICK_MODE, Tag.TAG_BYTE)) {
+            return machineData.getBoolean(NBT_IS_RANDOM_TICK_MODE);
+        }
+
+        if (!machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return fallback;
+        }
+
+        CompoundTag renderState = machineData.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return fallback;
+        }
+
+        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
+
+        if (!properties.contains(NBT_RENDER_RANDOM_TICK_MODE, Tag.TAG_STRING)) {
+            return fallback;
+        }
+
+        return Boolean.parseBoolean(properties.getString(NBT_RENDER_RANDOM_TICK_MODE));
+    }
+
+    private static boolean readStoredFeToEu(CompoundTag machineData, boolean fallback) {
+        if (machineData.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)) {
+            CompoundTag ec = machineData.getCompound(NBT_ENERGY_CONTAINER);
+
+            if (ec.contains(NBT_FE_TO_EU, Tag.TAG_BYTE)) {
+                return ec.getBoolean(NBT_FE_TO_EU);
+            }
+        }
+
+        if (!machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return fallback;
+        }
+
+        CompoundTag renderState = machineData.getCompound(NBT_RENDER_STATE);
+
+        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
+            return fallback;
+        }
+
+        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
+
+        if (!properties.contains(NBT_RENDER_FE_TO_EU, Tag.TAG_STRING)) {
+            return fallback;
+        }
+
+        return Boolean.parseBoolean(properties.getString(NBT_RENDER_FE_TO_EU));
+    }
+
+    private static void scheduleSingleWorldAcceleratorModeRefresh(
+            ServerLevel level,
+            BlockPos pos,
+            CompoundTag machineData
+    ) {
+        if (!hasStoredWorldAcceleratorMode(machineData)) {
+            return;
+        }
+
+        if (isPostPlacementAlreadyPending(level, pos, PendingMode.WORLD_ACCELERATOR_MODE)) {
+            return;
+        }
+
+        ensureRegistered();
+
+        List<PendingBlockInit> blocks = new ArrayList<>();
+        blocks.add(new PendingBlockInit(
+                pos.immutable(),
+                PendingMode.WORLD_ACCELERATOR_MODE,
+                machineData.copy(),
+                null
+        ));
+
+        PENDING.add(new PendingInit(
+                level,
+                blocks,
+                level.getGameTime() + NEXT_TICK_DELAY
+        ));
+    }
+
+    private static void scheduleSingleEnergyConverterDirectionRefresh(
+            ServerLevel level,
+            BlockPos pos,
+            CompoundTag machineData
+    ) {
+        if (!hasStoredEnergyConverterDirection(machineData)) {
+            return;
+        }
+
+        if (isPostPlacementAlreadyPending(level, pos, PendingMode.ENERGY_CONVERTER_DIRECTION)) {
+            return;
+        }
+
+        ensureRegistered();
+
+        List<PendingBlockInit> blocks = new ArrayList<>();
+        blocks.add(new PendingBlockInit(
+                pos.immutable(),
+                PendingMode.ENERGY_CONVERTER_DIRECTION,
+                machineData.copy(),
+                null
+        ));
+
+        PENDING.add(new PendingInit(
+                level,
+                blocks,
+                level.getGameTime() + NEXT_TICK_DELAY
+        ));
+    }
+
+    private static boolean refreshWorldAcceleratorMode(
+            ServerLevel level,
+            BlockPos pos,
+            BlockEntity blockEntity,
+            CompoundTag machineData
+    ) {
+        if (!(blockEntity instanceof MetaMachineBlockEntity)) {
+            return false;
+        }
+
+        CompoundTag currentTag = saveCurrentTag(blockEntity);
+
+        if (currentTag == null) {
+            return false;
+        }
+
+        if (!getMachineId(currentTag).toLowerCase(Locale.ROOT).contains("world_accelerator")) {
+            return false;
+        }
+
+        boolean currentMode = currentTag.getBoolean(NBT_IS_RANDOM_TICK_MODE);
+        boolean desiredMode = readStoredRandomTickMode(machineData, currentMode);
+
+        if (currentMode == desiredMode) {
+            return false;
+        }
+
+        currentTag.putBoolean(NBT_IS_RANDOM_TICK_MODE, desiredMode);
+        currentTag.putInt("x", pos.getX());
+        currentTag.putInt("y", pos.getY());
+        currentTag.putInt("z", pos.getZ());
+
+        try {
+            blockEntity.load(currentTag);
+            blockEntity.clearRemoved();
+            blockEntity.setChanged();
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
+    private static boolean refreshEnergyConverterDirection(
+            ServerLevel level,
+            BlockPos pos,
+            BlockEntity blockEntity,
+            CompoundTag machineData
+    ) {
+        if (!(blockEntity instanceof MetaMachineBlockEntity)) {
+            return false;
+        }
+
+        CompoundTag currentTag = saveCurrentTag(blockEntity);
+
+        if (currentTag == null) {
+            return false;
+        }
+
+        if (!getMachineId(currentTag).toLowerCase(Locale.ROOT).contains("energy_converter")) {
+            return false;
+        }
+
+        CompoundTag currentEc = currentTag.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)
+                ? currentTag.getCompound(NBT_ENERGY_CONTAINER).copy()
+                : new CompoundTag();
+
+        boolean currentFeToEu = currentEc.getBoolean(NBT_FE_TO_EU);
+        boolean desiredFeToEu = readStoredFeToEu(machineData, currentFeToEu);
+
+        if (currentFeToEu == desiredFeToEu) {
+            return false;
+        }
+
+        currentEc.putBoolean(NBT_FE_TO_EU, desiredFeToEu);
+        currentTag.put(NBT_ENERGY_CONTAINER, currentEc);
+        currentTag.putInt("x", pos.getX());
+        currentTag.putInt("y", pos.getY());
+        currentTag.putInt("z", pos.getZ());
+
+        try {
+            blockEntity.load(currentTag);
+            blockEntity.clearRemoved();
+            blockEntity.setChanged();
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
     }
 
     private static CompoundTag createPostPlacementPipeTag(
@@ -1564,6 +1943,38 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 if (changed) {
                     refreshedPositions.add(worldPos);
                 }
+
+                continue;
+            }
+
+            if (pendingBlock.mode() == PendingMode.WORLD_ACCELERATOR_MODE) {
+                boolean changed = refreshWorldAcceleratorMode(
+                        level,
+                        worldPos,
+                        blockEntity,
+                        pendingBlock.payload()
+                );
+
+                if (changed) {
+                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
+                    refreshedPositions.add(worldPos);
+                }
+
+                continue;
+            }
+
+            if (pendingBlock.mode() == PendingMode.ENERGY_CONVERTER_DIRECTION) {
+                boolean changed = refreshEnergyConverterDirection(
+                        level,
+                        worldPos,
+                        blockEntity,
+                        pendingBlock.payload()
+                );
+
+                if (changed) {
+                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
+                    refreshedPositions.add(worldPos);
+                }
             }
         }
 
@@ -2033,7 +2444,9 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         PIPE_LOAD,
         DATA_STICK_ONLY,
         TRANSFORMER_STATE,
-        PATTERN_BUFFER_LINK
+        PATTERN_BUFFER_LINK,
+        WORLD_ACCELERATOR_MODE,
+        ENERGY_CONVERTER_DIRECTION
     }
 
     private record PendingBlockInit(

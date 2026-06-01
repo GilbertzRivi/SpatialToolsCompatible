@@ -11,4 +11,7 @@ public class IsModLoaded {
     public static final boolean FASTSTONE = ModList.get().isLoaded("faststone");
     public static final boolean CURIOS = ModList.get().isLoaded("curios");
     public static final boolean CB_MULTIPART = ModList.get().isLoaded("cb_multipart");
+    public static final boolean LASERIO = ModList.get().isLoaded("laserio");
+    public static final boolean FLUXNETWORKS = ModList.get().isLoaded("fluxnetworks");
+    public static final boolean EXTENDEDAE = ModList.get().isLoaded("expatternprovider");
 }

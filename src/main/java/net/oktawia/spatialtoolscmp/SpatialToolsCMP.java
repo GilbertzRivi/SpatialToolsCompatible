@@ -85,6 +85,15 @@ public class SpatialToolsCMP {
             if (IsModLoaded.CB_MULTIPART) {
                 StructureToolExtensions.registerClonerExtension(new CBMultipartStructureExtension());
             }
+            if (IsModLoaded.LASERIO) {
+                StructureToolExtensions.registerClonerExtension(new LaserIOStructureExtension());
+            }
+            if (IsModLoaded.FLUXNETWORKS) {
+                StructureToolExtensions.registerClonerExtension(new FluxNetworksStructureExtension());
+            }
+            if (IsModLoaded.EXTENDEDAE) {
+                StructureToolExtensions.registerClonerExtension(new ExtendedAEStructureExtension());
+            }
             NetworkHandler.registerMessages();
         });
     }

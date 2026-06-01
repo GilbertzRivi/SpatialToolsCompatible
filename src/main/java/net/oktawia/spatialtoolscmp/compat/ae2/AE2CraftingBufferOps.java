@@ -45,7 +45,7 @@ public final class AE2CraftingBufferOps {
         // are excluded to prevent the crafting plan from failing.
         GenericStack[] toRequest = entries.stream()
                 .filter(e -> e.craftable() && e.required() > e.available())
-                .map(e -> new GenericStack(AEItemKey.of(e.stack()), e.required() - e.available()))
+                .map(e -> new GenericStack(AEItemKey.of(e.stack()), e.required()))
                 .filter(s -> s.what() != null && s.amount() > 0)
                 .toArray(GenericStack[]::new);
 

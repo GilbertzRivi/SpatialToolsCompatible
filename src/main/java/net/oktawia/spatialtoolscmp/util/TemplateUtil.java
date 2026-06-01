@@ -775,6 +775,13 @@ public final class TemplateUtil {
                 );
             }
 
+            if (blockEntry.contains(StructureToolKeys.CLONE_KEY_LASERIO, Tag.TAG_COMPOUND)) {
+                CompoundTag laserMeta = blockEntry.getCompound(StructureToolKeys.CLONE_KEY_LASERIO).copy();
+                remapLaserIOInventories(laserMeta.copy(), laserMeta, cableBusTransform);
+                transformLaserIOConnectionOffsets(laserMeta, cableBusTransform);
+                blockEntry.put(StructureToolKeys.CLONE_KEY_LASERIO, laserMeta);
+            }
+
             if (blockEntry.contains(StructureToolKeys.CLONE_KEY_GREG, Tag.TAG_COMPOUND)) {
                 CompoundTag gregTag = blockEntry.getCompound(StructureToolKeys.CLONE_KEY_GREG).copy();
 
@@ -860,11 +867,102 @@ public final class TemplateUtil {
             return transformGregBlockEntityTag(tag, transform);
         }
 
+        if (!id.isBlank() && id.startsWith(StructureToolKeys.LASERIO_ID_PREFIX)) {
+            return transformLaserIOBlockEntityTag(tag, transform);
+        }
+
         if (isFramedCollapsibleBlockEntityTag(tag)) {
             return transformCollapsibleBlockEntityTag(tag, transform);
         }
 
         return tag.copy();
+    }
+
+    private static void transformLaserIOConnectionOffsets(CompoundTag laserMeta, CableBusTransform transform) {
+        if (transform == CableBusTransform.NONE) {
+            return;
+        }
+
+        if (!laserMeta.contains("connectionOffsets", Tag.TAG_LIST)) {
+            return;
+        }
+
+        ListTag original = laserMeta.getList("connectionOffsets", Tag.TAG_COMPOUND);
+
+        if (original.isEmpty()) {
+            return;
+        }
+
+        ListTag transformed = new ListTag();
+
+        for (int i = 0; i < original.size(); i++) {
+            CompoundTag entry = original.getCompound(i);
+
+            if (!entry.contains("pos", Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            CompoundTag pos = entry.getCompound("pos");
+            int dx = pos.getInt("X");
+            int dy = pos.getInt("Y");
+            int dz = pos.getInt("Z");
+
+            int[] v = transformRelativeOffset(dx, dy, dz, transform);
+
+            CompoundTag newPos = new CompoundTag();
+            newPos.putInt("X", v[0]);
+            newPos.putInt("Y", v[1]);
+            newPos.putInt("Z", v[2]);
+
+            CompoundTag newEntry = new CompoundTag();
+            newEntry.put("pos", newPos);
+            transformed.add(newEntry);
+        }
+
+        laserMeta.put("connectionOffsets", transformed);
+    }
+
+    private static int[] transformRelativeOffset(int dx, int dy, int dz, CableBusTransform transform) {
+        return switch (transform) {
+            case ROTATE_CW     -> new int[]{ -dz, dy,  dx };
+            case ROTATE_180    -> new int[]{ -dx, dy, -dz };
+            case ROTATE_CCW    -> new int[]{  dz, dy, -dx };
+            case FLIP_H_AXIS_Z -> new int[]{ -dx, dy,  dz };
+            case FLIP_H_AXIS_X -> new int[]{  dx, dy, -dz };
+            case FLIP_V        -> new int[]{  dx,-dy,  dz };
+            case NONE          -> new int[]{  dx, dy,  dz };
+        };
+    }
+
+    private static CompoundTag transformLaserIOBlockEntityTag(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        remapLaserIOInventories(tag, result, transform);
+
+        return result;
+    }
+
+    private static void remapLaserIOInventories(
+            CompoundTag source,
+            CompoundTag target,
+            CableBusTransform transform
+    ) {
+        Direction[] dirs = Direction.values();
+
+        for (int i = 0; i < dirs.length; i++) {
+            target.remove("Inventory" + i);
+        }
+
+        for (int i = 0; i < dirs.length; i++) {
+            String oldKey = "Inventory" + i;
+
+            if (!source.contains(oldKey, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            Direction mapped = mapCableBusSide(dirs[i], transform);
+            target.put("Inventory" + mapped.ordinal(), source.getCompound(oldKey).copy());
+        }
     }
 
     private static boolean isFramedCollapsibleBlockEntityTag(CompoundTag tag) {
@@ -1430,10 +1528,35 @@ public final class TemplateUtil {
                 movedCoverTag.put("uid", uidTag);
             }
 
+            if (movedCoverTag.contains("payload", Tag.TAG_COMPOUND)) {
+                CompoundTag payload = movedCoverTag.getCompound("payload");
+                if (payload.contains("d", Tag.TAG_COMPOUND)) {
+                    remapCoverPayloadDirectionalStrings(payload.getCompound("d"), transform);
+                }
+            }
+
             result.put(directionKey(mappedSide), movedCoverTag);
         }
 
         return result;
+    }
+
+    private static void remapCoverPayloadDirectionalStrings(CompoundTag dTag, CableBusTransform transform) {
+        for (String key : dTag.getAllKeys()) {
+            Tag value = dTag.get(key);
+            if (value == null || value.getId() != Tag.TAG_STRING) {
+                continue;
+            }
+            String str = dTag.getString(key);
+            if (str.length() <= 6 || !str.startsWith("COVER_")) {
+                continue;
+            }
+            Direction dir = directionFromName(str.substring(6).toLowerCase(Locale.ROOT));
+            if (dir == null) {
+                continue;
+            }
+            dTag.putString(key, "COVER_" + directionName(mapCableBusSide(dir, transform)).toUpperCase(Locale.ROOT));
+        }
     }
 
     private static @Nullable Direction directionFromKey(String key) {
