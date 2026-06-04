@@ -13,6 +13,7 @@ import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.screens.StructureToolContextMenuScreen;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT)
@@ -64,7 +65,9 @@ public final class StructureToolContextMenuClient {
 
         ItemStack held = mc.player.getMainHandItem();
 
-        return !held.isEmpty() && held.getItem() instanceof AbstractStructureCaptureToolItem;
+        return !held.isEmpty()
+                && (held.getItem() instanceof AbstractStructureCaptureToolItem
+                    || held.getItem() instanceof PortableSpatialReplacer);
     }
 
     @SubscribeEvent

@@ -13,6 +13,7 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.network.NetworkEvent;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
@@ -60,6 +61,11 @@ public class StructureToolContextActionPacket {
     public static final int MOVE_SELECTION_GREEN_UP = 94;
     public static final int MOVE_SELECTION_GREEN_DOWN = 95;
 
+    public static final int REPLACER_RADIUS_UP = 100;
+    public static final int REPLACER_RADIUS_DOWN = 101;
+    public static final int REPLACER_TOGGLE_CONNECTIVITY = 102;
+    public static final int REPLACER_TOGGLE_BLOCKSTATE = 103;
+
     private final int action;
     private final boolean aroundOrigin;
 
@@ -105,6 +111,26 @@ public class StructureToolContextActionPacket {
                     syncStack(player);
                 }
 
+                return;
+            }
+
+            if (packet.action == REPLACER_RADIUS_UP
+                    || packet.action == REPLACER_RADIUS_DOWN
+                    || packet.action == REPLACER_TOGGLE_CONNECTIVITY
+                    || packet.action == REPLACER_TOGGLE_BLOCKSTATE) {
+                if (stack.getItem() instanceof PortableSpatialReplacer) {
+                    switch (packet.action) {
+                        case REPLACER_RADIUS_UP ->
+                                PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) + 1);
+                        case REPLACER_RADIUS_DOWN ->
+                                PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) - 1);
+                        case REPLACER_TOGGLE_CONNECTIVITY ->
+                                PortableSpatialReplacer.cycleConnectivityMode(stack);
+                        case REPLACER_TOGGLE_BLOCKSTATE ->
+                                PortableSpatialReplacer.toggleSameBlockstate(stack);
+                    }
+                    syncStack(player);
+                }
                 return;
             }
 

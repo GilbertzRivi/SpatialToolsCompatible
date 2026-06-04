@@ -47,6 +47,14 @@ public class SpatialItemRecipes {
                 .define('E', Items.ENDER_PEARL)
                 .output(SpatialItemRegistrar.PORTABLE_SPATIAL_CLONER.get())
                 .register();
+        recipe("portable_spatial_replacer")
+                .shaped(" L /DSD/EEE")
+                .define('L', Blocks.REDSTONE_LAMP)
+                .define('D', Items.DIAMOND)
+                .define('S', SpatialItemRegistrar.PORTABLE_SPATIAL_STORAGE.get())
+                .define('E', Items.ENDER_EYE)
+                .output(SpatialItemRegistrar.PORTABLE_SPATIAL_REPLACER.get())
+                .register();
     }
 
     public static class Builder {

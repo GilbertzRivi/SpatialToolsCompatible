@@ -18,6 +18,7 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.RegisterEvent;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtensions;
+import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialReplacerPreviewRenderer;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialStoragePreviewRenderer;
 import net.oktawia.spatialtoolscmp.client.renderer.extensions.*;
 import net.oktawia.spatialtoolscmp.client.screens.CraftingBufferScreen;
@@ -27,6 +28,8 @@ import net.oktawia.spatialtoolscmp.defs.SpatialCreativeTabRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialScreenRegistrar;
+import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtensions;
+import net.oktawia.spatialtoolscmp.logic.ReplacerExtensions;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
 import net.oktawia.spatialtoolscmp.logic.extensions.*;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
@@ -72,6 +75,7 @@ public class SpatialToolsCMP {
                 StructureToolExtensions.registerClonerExtension(gtceuExtension);
                 StructureToolExtensions.registerPasteExtension(gtceuExtension);
                 StructureToolExtensions.registerRemoveExtension(gtceuExtension);
+                ReplacerExtensions.register(new GTCEuReplacerExtension());
             }
             if (IsModLoaded.FRAMED_BLOCKS) {
                 StructureToolExtensions.registerClonerExtension(new FramedBlocksClonerExtension());
@@ -124,6 +128,7 @@ public class SpatialToolsCMP {
                 }
                 if (IsModLoaded.GTCEU) {
                     BlockRenderExtensions.register(new GTCEuBlockRenderExtension());
+                    ClientReplacerExtensions.register(new GTCEuClientReplacerExtension());
                 }
                 if (IsModLoaded.FRAMED_BLOCKS) {
                     BlockRenderExtensions.register(new FramedBlocksRenderExtension());
@@ -138,6 +143,7 @@ public class SpatialToolsCMP {
                     BlockRenderExtensions.register(new CBMultipartBlockRenderExtension());
                 }
                 MinecraftForge.EVENT_BUS.register(new PortableSpatialStoragePreviewRenderer());
+                MinecraftForge.EVENT_BUS.register(new PortableSpatialReplacerPreviewRenderer());
                 SpatialScreenRegistrar.register();
             });
         }

@@ -34,6 +34,7 @@ public final class AE2Compat {
 
     public static void register() {
         GridLinkables.register(SpatialItemRegistrar.PORTABLE_SPATIAL_CLONER.get(), AE2GridLinkableHandler.INSTANCE);
+        GridLinkables.register(SpatialItemRegistrar.PORTABLE_SPATIAL_REPLACER.get(), AE2GridLinkableHandler.INSTANCE);
         MenuLocators.register(
                 AE2ClonerCraftingLocator.class,
                 AE2ClonerCraftingLocator::writeToPacket,

@@ -1,8 +1,10 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -19,7 +21,9 @@ import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public final class ClonerUndoHandler {
@@ -28,9 +32,19 @@ public final class ClonerUndoHandler {
     private static final String UNDO_BLOCKS_KEY = "clonerUndoBlocks";
     public static final String UNDO_ID_KEY = "clonerUndoId";
 
+    private static final String ORIGINAL_STATE_KEY = "originalState";
+    private static final String ORIGINAL_BE_TAG_KEY = "originalBeTag";
+
+    private static final String PER_POS_STATE_KEY = "perPosOriginalState";
+    private static final String PER_POS_STATE_ENTRY_KEY = "state";
+
+    private static final String PER_POS_BE_KEY = "perPosOriginalBe";
+    private static final String PER_POS_BE_ENTRY_KEY = "be";
+
     private static final String POS_X = "x";
     private static final String POS_Y = "y";
     private static final String POS_Z = "z";
+
     private static final String STATE_KEY = "state";
     private static final String REFUNDS_KEY = "refunds";
     private static final String REFUND_STACK_KEY = "stack";
@@ -42,10 +56,18 @@ public final class ClonerUndoHandler {
     private ClonerUndoHandler() {
     }
 
-    public record ClonerUndoPlacedBlock(BlockPos pos, String stateSignature, List<ItemStack> refundStacks) {
+    public record ClonerUndoPlacedBlock(
+            BlockPos pos,
+            String stateSignature,
+            List<ItemStack> refundStacks
+    ) {
     }
 
-    public static void store(ItemStack toolStack, ServerLevel level, List<ClonerUndoPlacedBlock> placedBlocks) {
+    public static void store(
+            ItemStack toolStack,
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> placedBlocks
+    ) {
         clear(level, toolStack);
 
         CompoundTag undoTag = new CompoundTag();
@@ -92,6 +114,298 @@ public final class ClonerUndoHandler {
             StructureToolStructureStore.save(level.getServer(), undoId, undoTag);
             toolStack.getOrCreateTag().putString(UNDO_ID_KEY, undoId);
         } catch (IOException ignored) {
+        }
+    }
+
+    public static void storeForReplacer(
+            ItemStack toolStack,
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> placedBlocks,
+            CompoundTag originalStateNbt,
+            Map<BlockPos, CompoundTag> perPosBeTags
+    ) {
+        storeForReplacer(
+                toolStack,
+                level,
+                placedBlocks,
+                originalStateNbt,
+                Map.of(),
+                perPosBeTags
+        );
+    }
+
+    public static void storeForReplacer(
+            ItemStack toolStack,
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> placedBlocks,
+            CompoundTag originalStateNbt,
+            Map<BlockPos, CompoundTag> perPosStateTags,
+            Map<BlockPos, CompoundTag> perPosBeTags
+    ) {
+        clear(level, toolStack);
+
+        CompoundTag undoTag = new CompoundTag();
+        undoTag.putString(UNDO_DIMENSION_KEY, level.dimension().location().toString());
+
+        ListTag blocksTag = new ListTag();
+
+        for (ClonerUndoPlacedBlock placedBlock : placedBlocks) {
+            CompoundTag blockTag = new CompoundTag();
+
+            BlockState currentState = level.getBlockState(placedBlock.pos());
+
+            blockTag.putInt(POS_X, placedBlock.pos().getX());
+            blockTag.putInt(POS_Y, placedBlock.pos().getY());
+            blockTag.putInt(POS_Z, placedBlock.pos().getZ());
+            blockTag.putString(STATE_KEY, getBlockId(currentState));
+
+            ListTag refundList = new ListTag();
+
+            for (ItemStack refundStack : placedBlock.refundStacks()) {
+                if (refundStack.isEmpty()) {
+                    continue;
+                }
+
+                CompoundTag refundEntry = new CompoundTag();
+                ItemStack single = refundStack.copy();
+                int count = Math.max(1, refundStack.getCount());
+                single.setCount(1);
+
+                refundEntry.put(REFUND_STACK_KEY, single.save(new CompoundTag()));
+                refundEntry.putInt(REFUND_COUNT_KEY, count);
+                refundList.add(refundEntry);
+            }
+
+            blockTag.put(REFUNDS_KEY, refundList);
+            blocksTag.add(blockTag);
+        }
+
+        undoTag.put(UNDO_BLOCKS_KEY, blocksTag);
+        undoTag.put(ORIGINAL_STATE_KEY, originalStateNbt);
+
+        if (!perPosStateTags.isEmpty()) {
+            ListTag perPosStateListTag = new ListTag();
+
+            for (Map.Entry<BlockPos, CompoundTag> entry : perPosStateTags.entrySet()) {
+                CompoundTag entryTag = new CompoundTag();
+
+                entryTag.putInt(POS_X, entry.getKey().getX());
+                entryTag.putInt(POS_Y, entry.getKey().getY());
+                entryTag.putInt(POS_Z, entry.getKey().getZ());
+                entryTag.put(PER_POS_STATE_ENTRY_KEY, entry.getValue().copy());
+
+                perPosStateListTag.add(entryTag);
+            }
+
+            undoTag.put(PER_POS_STATE_KEY, perPosStateListTag);
+        }
+
+        if (!perPosBeTags.isEmpty()) {
+            ListTag perPosBeListTag = new ListTag();
+
+            for (Map.Entry<BlockPos, CompoundTag> entry : perPosBeTags.entrySet()) {
+                CompoundTag entryTag = new CompoundTag();
+
+                entryTag.putInt(POS_X, entry.getKey().getX());
+                entryTag.putInt(POS_Y, entry.getKey().getY());
+                entryTag.putInt(POS_Z, entry.getKey().getZ());
+                entryTag.put(PER_POS_BE_ENTRY_KEY, entry.getValue().copy());
+
+                perPosBeListTag.add(entryTag);
+            }
+
+            undoTag.put(PER_POS_BE_KEY, perPosBeListTag);
+        }
+
+        String undoId = UUID.randomUUID().toString();
+
+        try {
+            StructureToolStructureStore.save(level.getServer(), undoId, undoTag);
+            toolStack.getOrCreateTag().putString(UNDO_ID_KEY, undoId);
+        } catch (IOException ignored) {
+        }
+    }
+
+    public static @Nullable CompoundTag getOriginalStateNbt(CompoundTag undoTag) {
+        if (undoTag == null || !undoTag.contains(ORIGINAL_STATE_KEY, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        return undoTag.getCompound(ORIGINAL_STATE_KEY);
+    }
+
+    public static @Nullable CompoundTag getOriginalBeTag(CompoundTag undoTag) {
+        if (undoTag == null || !undoTag.contains(ORIGINAL_BE_TAG_KEY, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        return undoTag.getCompound(ORIGINAL_BE_TAG_KEY);
+    }
+
+    public static Map<BlockPos, CompoundTag> getPerPosStateTags(CompoundTag undoTag) {
+        Map<BlockPos, CompoundTag> result = new LinkedHashMap<>();
+
+        if (undoTag == null || !undoTag.contains(PER_POS_STATE_KEY, Tag.TAG_LIST)) {
+            return result;
+        }
+
+        ListTag list = undoTag.getList(PER_POS_STATE_KEY, Tag.TAG_COMPOUND);
+
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag entry = list.getCompound(i);
+
+            BlockPos pos = new BlockPos(
+                    entry.getInt(POS_X),
+                    entry.getInt(POS_Y),
+                    entry.getInt(POS_Z)
+            );
+
+            if (entry.contains(PER_POS_STATE_ENTRY_KEY, Tag.TAG_COMPOUND)) {
+                result.put(pos, entry.getCompound(PER_POS_STATE_ENTRY_KEY).copy());
+            }
+        }
+
+        return result;
+    }
+
+    public static Map<BlockPos, CompoundTag> getPerPosBeTags(CompoundTag undoTag) {
+        Map<BlockPos, CompoundTag> result = new LinkedHashMap<>();
+
+        if (undoTag == null || !undoTag.contains(PER_POS_BE_KEY, Tag.TAG_LIST)) {
+            return result;
+        }
+
+        ListTag list = undoTag.getList(PER_POS_BE_KEY, Tag.TAG_COMPOUND);
+
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag entry = list.getCompound(i);
+
+            BlockPos pos = new BlockPos(
+                    entry.getInt(POS_X),
+                    entry.getInt(POS_Y),
+                    entry.getInt(POS_Z)
+            );
+
+            if (entry.contains(PER_POS_BE_ENTRY_KEY, Tag.TAG_COMPOUND)) {
+                result.put(pos, entry.getCompound(PER_POS_BE_ENTRY_KEY).copy());
+            }
+        }
+
+        return result;
+    }
+
+    public static void restoreBlocksWithPerPosStatesAndTags(
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> undoBlocks,
+            CompoundTag fallbackStateNbt,
+            Map<BlockPos, CompoundTag> perPosStateTags,
+            Map<BlockPos, CompoundTag> perPosBeTags
+    ) {
+        BlockState fallbackState = readBlockStateOrFallback(
+                fallbackStateNbt,
+                Blocks.AIR.defaultBlockState()
+        );
+
+        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            level.removeBlockEntity(undoBlock.pos());
+        }
+
+        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            if (!level.getBlockState(undoBlock.pos()).isAir()) {
+                level.setBlock(
+                        undoBlock.pos(),
+                        Blocks.AIR.defaultBlockState(),
+                        UNDO_CLEAR_FLAGS,
+                        0
+                );
+            }
+        }
+
+        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            BlockPos pos = undoBlock.pos();
+
+            BlockState originalState = readBlockStateOrFallback(
+                    perPosStateTags.get(pos),
+                    fallbackState
+            );
+
+            CompoundTag beTag = perPosBeTags.get(pos);
+
+            ClonerBlockPlacer.placeBlockAndLoadTag(
+                    level,
+                    pos,
+                    originalState,
+                    beTag
+            );
+        }
+    }
+
+    public static void restoreBlocksWithPerPosTags(
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> undoBlocks,
+            CompoundTag originalStateNbt,
+            Map<BlockPos, CompoundTag> perPosBeTags
+    ) {
+        restoreBlocksWithPerPosStatesAndTags(
+                level,
+                undoBlocks,
+                originalStateNbt,
+                Map.of(),
+                perPosBeTags
+        );
+    }
+
+    public static void restoreBlocks(
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> undoBlocks,
+            CompoundTag originalStateNbt,
+            @Nullable CompoundTag originalBeTag
+    ) {
+        BlockState originalState = readBlockStateOrFallback(
+                originalStateNbt,
+                Blocks.AIR.defaultBlockState()
+        );
+
+        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            level.removeBlockEntity(undoBlock.pos());
+        }
+
+        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            if (!level.getBlockState(undoBlock.pos()).isAir()) {
+                level.setBlock(
+                        undoBlock.pos(),
+                        Blocks.AIR.defaultBlockState(),
+                        UNDO_CLEAR_FLAGS,
+                        0
+                );
+            }
+        }
+
+        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            ClonerBlockPlacer.placeBlockAndLoadTag(
+                    level,
+                    undoBlock.pos(),
+                    originalState,
+                    originalBeTag
+            );
+        }
+    }
+
+    private static BlockState readBlockStateOrFallback(
+            @Nullable CompoundTag stateTag,
+            BlockState fallback
+    ) {
+        if (stateTag == null || stateTag.isEmpty()) {
+            return fallback;
+        }
+
+        try {
+            return NbtUtils.readBlockState(
+                    BuiltInRegistries.BLOCK.asLookup(),
+                    stateTag
+            );
+        } catch (Throwable ignored) {
+            return fallback;
         }
     }
 
@@ -196,13 +510,20 @@ public final class ClonerUndoHandler {
                 }
             }
 
-            out.add(new ClonerUndoPlacedBlock(pos, stateSignature, List.copyOf(refundStacks)));
+            out.add(new ClonerUndoPlacedBlock(
+                    pos,
+                    stateSignature,
+                    List.copyOf(refundStacks)
+            ));
         }
 
         return out;
     }
 
-    public static boolean areBlocksUnchanged(ServerLevel level, List<ClonerUndoPlacedBlock> undoBlocks) {
+    public static boolean areBlocksUnchanged(
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> undoBlocks
+    ) {
         for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
             BlockState currentState = level.getBlockState(undoBlock.pos());
 
@@ -214,7 +535,10 @@ public final class ClonerUndoHandler {
         return true;
     }
 
-    private static boolean matchesStoredBlock(BlockState currentState, String storedSignature) {
+    private static boolean matchesStoredBlock(
+            BlockState currentState,
+            String storedSignature
+    ) {
         if (currentState.isAir()) {
             return false;
         }
@@ -299,7 +623,10 @@ public final class ClonerUndoHandler {
         return aggregateRefundStacks(out);
     }
 
-    public static void removeBlocks(ServerLevel level, List<ClonerUndoPlacedBlock> undoBlocks) {
+    public static void removeBlocks(
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> undoBlocks
+    ) {
         BlockState air = Blocks.AIR.defaultBlockState();
 
         for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
@@ -311,11 +638,18 @@ public final class ClonerUndoHandler {
                 continue;
             }
 
-            level.setBlock(undoBlock.pos(), air, UNDO_CLEAR_FLAGS, 0);
+            level.setBlock(
+                    undoBlock.pos(),
+                    air,
+                    UNDO_CLEAR_FLAGS,
+                    0
+            );
         }
     }
 
-    public static List<ItemStack> collectRefundStacks(List<ClonerUndoPlacedBlock> undoBlocks) {
+    public static List<ItemStack> collectRefundStacks(
+            List<ClonerUndoPlacedBlock> undoBlocks
+    ) {
         List<ItemStack> out = new ArrayList<>();
 
         for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {

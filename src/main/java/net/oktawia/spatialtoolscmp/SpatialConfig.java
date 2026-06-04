@@ -30,6 +30,8 @@ public final class SpatialConfig {
         public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_CLONER_BASE_INTERNAL_POWER_CAPACITY;
         public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_CLONER_MAX_STRUCTURE_SIZE;
 
+        public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_REPLACER_MAX_BLOCKS;
+
         public Common(ForgeConfigSpec.Builder builder) {
             builder.comment(
                     "Spatial Tools Compatible - Configuration.",
@@ -121,6 +123,19 @@ public final class SpatialConfig {
                     "maxStructureSize", -1,
                     "Maximum allowed structure size for portable spatial cloner.",
                     "-1 means no limit."
+            );
+
+            builder.pop();
+
+            builder.comment(
+                    "Portable spatial replacer feature.",
+                    "Replaces all connected same-type blocks within radius with the chosen target block."
+            ).push("portableSpatialReplacer");
+
+            PORTABLE_SPATIAL_REPLACER_MAX_BLOCKS = nonNegativeInt(builder,
+                    "maxBlocks", 1024,
+                    "Hard cap on how many blocks the replacer can replace in one operation.",
+                    "Prevents accidental mass-replacement on large servers."
             );
 
             builder.pop();

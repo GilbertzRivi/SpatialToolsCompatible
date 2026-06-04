@@ -1856,26 +1856,29 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
 
         long now = level.getGameTime();
 
-        Iterator<PendingInit> iterator = PENDING.iterator();
+        List<PendingInit> toProcess = new ArrayList<>();
 
-        while (iterator.hasNext()) {
-            PendingInit pending = iterator.next();
-
+        PENDING.removeIf(pending -> {
             if (pending.level != level) {
-                continue;
+                return false;
             }
 
             if (now < pending.runAtGameTime) {
-                continue;
+                return false;
             }
 
+            toProcess.add(pending);
+            return true;
+        });
+
+        for (PendingInit pending : toProcess) {
             runPostPlacementInit(level, pending.blocks);
-            iterator.remove();
         }
     }
 
     private static void runPostPlacementInit(ServerLevel level, List<PendingBlockInit> blocks) {
         List<BlockPos> refreshedPositions = new ArrayList<>();
+        List<PendingBlockInit> reconnectBlocks = new ArrayList<>();
 
         for (PendingBlockInit pendingBlock : blocks) {
             BlockPos worldPos = pendingBlock.pos();
@@ -1901,6 +1904,26 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                 }
 
                 initSinglePipe(level, worldPos, pipe, blockEntityTag);
+                refreshedPositions.add(worldPos);
+
+                if (!isPostPlacementAlreadyPending(level, worldPos, PendingMode.PIPE_RECONNECT)) {
+                    reconnectBlocks.add(new PendingBlockInit(
+                            worldPos,
+                            PendingMode.PIPE_RECONNECT,
+                            blockEntityTag.copy(),
+                            null
+                    ));
+                }
+
+                continue;
+            }
+
+            if (pendingBlock.mode() == PendingMode.PIPE_RECONNECT) {
+                if (!(blockEntity instanceof PipeBlockEntity<?, ?> pipe)) {
+                    continue;
+                }
+
+                reconnectPipe(level, worldPos, pipe, pendingBlock.payload());
                 refreshedPositions.add(worldPos);
                 continue;
             }
@@ -1981,6 +2004,44 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         for (BlockPos pos : refreshedPositions) {
             notifyPostPlacedNeighborhood(level, pos);
         }
+
+        if (!reconnectBlocks.isEmpty()) {
+            ensureRegistered();
+            PENDING.add(new PendingInit(
+                    level,
+                    reconnectBlocks,
+                    level.getGameTime() + NEXT_TICK_DELAY
+            ));
+        }
+    }
+
+    private static void reconnectPipe(
+            ServerLevel level,
+            BlockPos pos,
+            PipeBlockEntity<?, ?> pipe,
+            CompoundTag originalTag
+    ) {
+        int connections = pipe.getConnections();
+
+        if (connections == 0) {
+            connections = originalTag.getInt("connections");
+        }
+
+        for (Direction side : Direction.values()) {
+            if (!PipeBlockEntity.isConnected(connections, side)) {
+                continue;
+            }
+
+            try {
+                pipe.setConnection(side, false, false);
+            } catch (Throwable ignored) {
+            }
+
+            try {
+                pipe.setConnection(side, true, false);
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     private static void initSinglePipe(
@@ -1997,6 +2058,11 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
 
         pipe.load(tag);
         pipe.clearRemoved();
+
+        try {
+            pipe.onLoad();
+        } catch (Throwable ignored) {
+        }
 
         PipeCoverContainer coverContainer = pipe.getCoverContainer();
 
@@ -2440,8 +2506,36 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         return cost;
     }
 
+    public static void scheduleReplacedPipeInit(
+            ServerLevel level,
+            BlockPos pos,
+            @Nullable CompoundTag savedConnectionState
+    ) {
+        BlockEntity be = level.getBlockEntity(pos);
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (currentTag == null || !isGregPipeTag(currentTag)) {
+            return;
+        }
+
+        CompoundTag initTag = currentTag.copy();
+
+        if (savedConnectionState != null) {
+            if (savedConnectionState.contains("connections", Tag.TAG_INT)) {
+                initTag.putInt("connections", savedConnectionState.getInt("connections"));
+            }
+
+            if (savedConnectionState.contains("blockedConnections", Tag.TAG_INT)) {
+                initTag.putInt("blockedConnections", savedConnectionState.getInt("blockedConnections"));
+            }
+        }
+
+        scheduleSinglePipePostPlacementInit(level, pos, initTag, createCoverSnapshotForGuard(currentTag));
+    }
+
     private enum PendingMode {
         PIPE_LOAD,
+        PIPE_RECONNECT,
         DATA_STICK_ONLY,
         TRANSFORMER_STATE,
         PATTERN_BUFFER_LINK,
@@ -2467,6 +2561,16 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             this.blocks = blocks;
             this.runAtGameTime = runAtGameTime;
         }
+    }
+
+    @Override
+    public void onBlockRestored(
+            ServerLevel level,
+            BlockPos pos,
+            @Nullable BlockEntity be,
+            @Nullable CompoundTag savedBeTag
+    ) {
+        scheduleReplacedPipeInit(level, pos, savedBeTag);
     }
 
     @Override
@@ -2524,6 +2628,29 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         }
 
         return true;
+    }
+
+    @Override
+    public boolean hasNonEmptyStorage(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be
+    ) {
+        if (StructureCloneExtension.super.hasNonEmptyStorage(level, pos, state, be)) {
+            return true;
+        }
+        if (be instanceof MetaMachineBlockEntity mmbe) {
+            try {
+                for (MachineTrait trait : mmbe.getMetaMachine().getTraits()) {
+                    if (trait instanceof NotifiableFluidTank tank && !tank.isEmpty()) {
+                        return true;
+                    }
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+        return false;
     }
 
     @Nullable

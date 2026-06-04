@@ -8,6 +8,7 @@ import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.network.packets.*;
+import net.oktawia.spatialtoolscmp.network.packets.ReplacerContextActionPacket;
 
 public final class NetworkHandler {
 
@@ -150,6 +151,12 @@ public final class NetworkHandler {
                 .encoder(SyncCraftingBufferStatusPacket::encode)
                 .decoder(SyncCraftingBufferStatusPacket::decode)
                 .consumerMainThread(SyncCraftingBufferStatusPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(ReplacerContextActionPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(ReplacerContextActionPacket::encode)
+                .decoder(ReplacerContextActionPacket::decode)
+                .consumerMainThread(ReplacerContextActionPacket::handle)
                 .add();
     }
 

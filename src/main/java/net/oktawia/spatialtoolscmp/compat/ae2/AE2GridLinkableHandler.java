@@ -16,6 +16,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import org.jetbrains.annotations.Nullable;
 
 public final class AE2GridLinkableHandler implements IGridLinkableHandler {
@@ -28,12 +29,15 @@ public final class AE2GridLinkableHandler implements IGridLinkableHandler {
 
     @Override
     public boolean canLink(ItemStack stack) {
-        return stack.getItem() instanceof PortableSpatialCloner;
+        return stack.getItem() instanceof PortableSpatialCloner
+                || stack.getItem() instanceof PortableSpatialReplacer;
     }
 
     @Override
     public void link(ItemStack stack, GlobalPos pos) {
-        PortableSpatialCloner.clearItemHandlerLink(stack);
+        if (stack.getItem() instanceof PortableSpatialCloner) {
+            PortableSpatialCloner.clearItemHandlerLink(stack);
+        }
 
         CompoundTag tag = stack.getOrCreateTag();
         CompoundTag linkTag = new CompoundTag();

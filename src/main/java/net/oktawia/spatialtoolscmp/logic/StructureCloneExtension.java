@@ -3,6 +3,7 @@ package net.oktawia.spatialtoolscmp.logic;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -42,6 +43,14 @@ public interface StructureCloneExtension {
             @Nullable CompoundTag blockMetadata
     );
 
+    default void onBlockRestored(
+            ServerLevel level,
+            BlockPos pos,
+            @Nullable BlockEntity be,
+            @Nullable CompoundTag savedBeTag
+    ) {
+    }
+
     default boolean collectUndoRefunds(
             ServerLevel level,
             BlockPos pos,
@@ -49,6 +58,18 @@ public interface StructureCloneExtension {
             @Nullable BlockEntity be,
             List<ItemStack> refunds
     ) {
+        return false;
+    }
+
+    default boolean hasNonEmptyStorage(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be
+    ) {
+        if (be instanceof Container container) {
+            return !container.isEmpty();
+        }
         return false;
     }
 }
