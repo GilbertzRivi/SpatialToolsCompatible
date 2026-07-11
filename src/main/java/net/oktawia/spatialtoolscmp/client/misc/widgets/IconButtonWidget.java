@@ -23,9 +23,18 @@ public class IconButtonWidget extends AbstractWidget {
                     "textures/gui/icons/button_bg.png"
             );
 
+    private static final ResourceLocation BACKGROUND_TEXTURE_DARK =
+            ResourceLocation.fromNamespaceAndPath(
+                    SpatialToolsCMP.MODID,
+                    "textures/gui/icons/button_bg_dark.png"
+            );
+
     @Setter
     @Getter
     private Icon icon;
+
+    @Setter
+    private boolean darkBackground = false;
 
     private Consumer<IconButtonWidget> onPress;
 
@@ -99,7 +108,7 @@ public class IconButtonWidget extends AbstractWidget {
         int y = this.getY();
 
         guiGraphics.blit(
-                BACKGROUND_TEXTURE,
+                this.darkBackground ? BACKGROUND_TEXTURE_DARK : BACKGROUND_TEXTURE,
                 x,
                 y,
                 0,

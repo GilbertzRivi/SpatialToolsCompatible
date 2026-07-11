@@ -536,8 +536,8 @@ public class PortableSpatialClonerScreen
         if (this.craftAllButton == null) return;
 
         int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
-        boolean show = hasCraftingUpgrade() && status != CraftingBufferStatusClientCache.UNKNOWN
-                && status != CraftingBufferStatusClientCache.NO_BUFFER;
+        boolean noBuffer = status == CraftingBufferStatusClientCache.NO_BUFFER;
+        boolean show = hasCraftingUpgrade() && status != CraftingBufferStatusClientCache.UNKNOWN;
 
         this.craftAllButton.visible = show;
 
@@ -549,6 +549,8 @@ public class PortableSpatialClonerScreen
                 && status == CraftingBufferStatusClientCache.AVAILABLE
                 && hasCraftableMissing;
 
+        this.craftAllButton.setDarkBackground(noBuffer);
+
         this.craftAllButton.setIcon(
                 status == CraftingBufferStatusClientCache.CRAFTING_SCHEDULED
                         ? Icon.CRAFT_HAMMER_DARK
@@ -558,17 +560,27 @@ public class PortableSpatialClonerScreen
 
     private void renderCraftAllHighlight(GuiGraphics graphics) {
         if (this.craftAllButton == null || !this.craftAllButton.visible) return;
-        if (CraftingBufferStatusClientCache.get(getMenu().containerId) != CraftingBufferStatusClientCache.CRAFTING_SCHEDULED) return;
+
+        int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
+
+        int color;
+        if (status == CraftingBufferStatusClientCache.CRAFTING_SCHEDULED) {
+            color = 0xFF44EE44;
+        } else if (status == CraftingBufferStatusClientCache.NO_BUFFER) {
+            color = 0xFFEEAA22;
+        } else {
+            return;
+        }
 
         int x = this.craftAllButton.getX();
         int y = this.craftAllButton.getY();
         int w = this.craftAllButton.getWidth();
         int h = this.craftAllButton.getHeight();
 
-        graphics.fill(x - 2, y - 2, x + w + 2, y, 0xFF44EE44);
-        graphics.fill(x - 2, y + h, x + w + 2, y + h + 2, 0xFF44EE44);
-        graphics.fill(x - 2, y, x, y + h, 0xFF44EE44);
-        graphics.fill(x + w, y, x + w + 2, y + h, 0xFF44EE44);
+        graphics.fill(x - 2, y - 2, x + w + 2, y, color);
+        graphics.fill(x - 2, y + h, x + w + 2, y + h + 2, color);
+        graphics.fill(x - 2, y, x, y + h, color);
+        graphics.fill(x + w, y, x + w + 2, y + h, color);
     }
 
     private void renderCraftAllTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -577,6 +589,24 @@ public class PortableSpatialClonerScreen
                 || mouseY < this.craftAllButton.getY() || mouseY >= this.craftAllButton.getY() + this.craftAllButton.getHeight()) return;
 
         int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
+        List<Component> lines = new ArrayList<>();
+
+        if (status == CraftingBufferStatusClientCache.NO_BUFFER) {
+            addWrappedTooltipLines(
+                    lines,
+                    Component.translatable(LangDefs.CRAFT_ALL_NEEDS_BUFFER_TITLE.getTranslationKey())
+                            .withStyle(ChatFormatting.YELLOW)
+            );
+            addWrappedTooltipLines(
+                    lines,
+                    Component.translatable(LangDefs.CRAFT_ALL_NEEDS_BUFFER_HINT.getTranslationKey())
+                            .withStyle(ChatFormatting.GRAY)
+            );
+
+            graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mouseX, mouseY);
+            return;
+        }
+
         boolean hasCraftableMissing = PortableSpatialClonerRequirementSync.getEntries(getMenu().containerId)
                 .stream()
                 .anyMatch(e -> e.craftable() && e.available() < e.required());
@@ -592,7 +622,6 @@ public class PortableSpatialClonerScreen
             key = LangDefs.CRAFT_ALL_TOOLTIP;
         }
 
-        List<Component> lines = new ArrayList<>();
         addWrappedTooltipLines(lines, Component.translatable(key.getTranslationKey()));
 
         graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mouseX, mouseY);

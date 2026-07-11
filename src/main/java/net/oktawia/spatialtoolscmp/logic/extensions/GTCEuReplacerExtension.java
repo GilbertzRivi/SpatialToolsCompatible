@@ -1,7 +1,11 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
 import com.gregtechceu.gtceu.api.block.PipeBlock;
+import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
+import com.gregtechceu.gtceu.api.pattern.MultiblockState;
+import com.gregtechceu.gtceu.api.pattern.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.pipenet.LevelPipeNet;
 import com.gregtechceu.gtceu.api.pipenet.PipeNet;
 import net.minecraft.core.BlockPos;
@@ -15,7 +19,9 @@ import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public final class GTCEuReplacerExtension implements ReplacerExtension {
@@ -97,6 +103,119 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
     public void onNewBlocksPlaced(ServerLevel level, Set<BlockPos> positions) {
         for (BlockPos pos : positions) {
             GTCEuStructureExtension.scheduleReplacedPipeInit(level, pos, buildConnectionHint(level, pos, positions));
+        }
+    }
+
+    private final Set<BlockPos> pendingControllers = new LinkedHashSet<>();
+    private final Map<BlockPos, MachineFacing> pendingFacings = new LinkedHashMap<>();
+
+    private record MachineFacing(Direction front, @Nullable Direction upwards) {
+    }
+
+    @Override
+    public void onBeforeReplacement(ServerLevel level, Set<BlockPos> positions) {
+        pendingControllers.clear();
+        collectAffectedControllers(level, positions, pendingControllers);
+
+        pendingFacings.clear();
+        captureMachineFacings(level, positions, pendingFacings);
+    }
+
+    @Override
+    public void onReplacementDone(ServerLevel level, Set<BlockPos> positions) {
+        Map<BlockPos, MachineFacing> facings = new LinkedHashMap<>(pendingFacings);
+        pendingFacings.clear();
+
+        for (Map.Entry<BlockPos, MachineFacing> entry : facings.entrySet()) {
+            restoreMachineFacing(level, entry.getKey(), entry.getValue());
+        }
+
+        Set<BlockPos> controllers = new LinkedHashSet<>(pendingControllers);
+        pendingControllers.clear();
+
+        collectAffectedControllers(level, positions, controllers);
+
+        MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(level);
+
+        for (BlockPos controllerPos : controllers) {
+            forceRevalidate(level, mwsd, controllerPos);
+        }
+    }
+
+    private static void captureMachineFacings(
+            ServerLevel level,
+            Set<BlockPos> positions,
+            Map<BlockPos, MachineFacing> out
+    ) {
+        for (BlockPos pos : positions) {
+            if (!(level.getBlockEntity(pos) instanceof MetaMachineBlockEntity mmbe)) {
+                continue;
+            }
+
+            var machine = mmbe.getMetaMachine();
+
+            if (!machine.hasFrontFacing()) {
+                continue;
+            }
+
+            Direction upwards = machine.allowExtendedFacing() ? machine.getUpwardsFacing() : null;
+            out.put(pos.immutable(), new MachineFacing(machine.getFrontFacing(), upwards));
+        }
+    }
+
+    private static void restoreMachineFacing(ServerLevel level, BlockPos pos, MachineFacing facing) {
+        if (!(level.getBlockEntity(pos) instanceof MetaMachineBlockEntity mmbe)) {
+            return;
+        }
+
+        try {
+            var machine = mmbe.getMetaMachine();
+
+            machine.setFrontFacing(facing.front());
+
+            if (facing.upwards() != null && machine.allowExtendedFacing()) {
+                machine.setUpwardsFacing(facing.upwards());
+            }
+        } catch (Throwable ignored) {
+        }
+    }
+
+    private static void collectAffectedControllers(ServerLevel level, Set<BlockPos> positions, Set<BlockPos> out) {
+        MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(level);
+
+        for (MultiblockState state : mwsd.mapping.values()) {
+            for (BlockPos pos : positions) {
+                if (state.isPosInCache(pos)) {
+                    out.add(state.controllerPos.immutable());
+                    break;
+                }
+            }
+        }
+    }
+
+    private static void forceRevalidate(ServerLevel level, MultiblockWorldSavedData mwsd, BlockPos controllerPos) {
+        try {
+            BlockEntity be = level.getBlockEntity(controllerPos);
+
+            if (!(be instanceof MetaMachineBlockEntity mmbe) || !(mmbe.getMetaMachine() instanceof IMultiController controller)) {
+                return;
+            }
+
+            MultiblockState state = controller.getMultiblockState();
+
+            controller.onStructureInvalid();
+
+            if (controller.checkPatternWithLock()) {
+                controller.self().setFlipped(state.isNeededFlip());
+                controller.onStructureFormed();
+                mwsd.addMapping(state);
+                controller.self().notifyBlockUpdate();
+                controller.self().markDirty();
+            } else {
+                mwsd.removeMapping(state);
+                mwsd.addAsyncLogic(controller);
+            }
+        } catch (Throwable ignored) {
         }
     }
 

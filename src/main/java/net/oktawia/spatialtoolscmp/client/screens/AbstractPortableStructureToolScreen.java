@@ -243,6 +243,10 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         List<Component> lines = new ArrayList<>();
 
         lines.add(Component.translatable(
+                LangDefs.CRAFTING_UPGRADE_SLOT_HINT.getTranslationKey()
+        ).withStyle(ChatFormatting.YELLOW));
+
+        lines.add(Component.translatable(
                 LangDefs.VALID_UPGRADES.getTranslationKey()
         ).withStyle(ChatFormatting.WHITE));
 
@@ -750,6 +754,10 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 getMenu().getMaxUpgradesCount()
         );
         this.powerUpgradePanel.renderBackground(graphics);
+        this.powerUpgradePanel.renderCraftingSlotBadge(
+                graphics,
+                getMenu().hasCraftingUpgradeInstalled()
+        );
     }
 
     static List<Component> buildCompatibleUpgradesTooltip() {

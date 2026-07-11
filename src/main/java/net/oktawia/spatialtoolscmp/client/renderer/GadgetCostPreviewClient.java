@@ -154,8 +154,12 @@ public class GadgetCostPreviewClient {
             return;
         }
 
+        LangDefs captureLabel = held.getItem() instanceof PortableSpatialCloner
+                ? LangDefs.CLONE_COST_PREVIEW
+                : LangDefs.CUT_COST_PREVIEW;
+
         currentText = Component.translatable(
-                LangDefs.CUT_COST_PREVIEW.getTranslationKey(),
+                captureLabel.getTranslationKey(),
                 String.format("%,d", cost)
         );
 

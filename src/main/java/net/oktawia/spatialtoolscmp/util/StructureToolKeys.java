@@ -9,6 +9,12 @@ public final class StructureToolKeys {
             "cable", "north", "south", "east", "west", "up", "down"
     );
 
+    public static final List<String> AE2_FACADE_KEYS = List.of(
+            "facadeNorth", "facadeSouth", "facadeEast", "facadeWest", "facadeUp", "facadeDown"
+    );
+
+    public static final String AE2_FACADE_ITEM_ID = "ae2:facade";
+
     public static final String CLONE_METADATA_KEY        = "clone_metadata";
     public static final String CLONE_METADATA_BLOCKS_KEY = "blocks";
     public static final String CLONE_REQUIREMENTS_KEY    = "requirements";

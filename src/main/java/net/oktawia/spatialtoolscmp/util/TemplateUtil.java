@@ -1621,7 +1621,35 @@ public final class TemplateUtil {
             result.put(KEY_CABLE, cable.copy());
         }
 
+        Map<Direction, Tag> facades = new EnumMap<>(Direction.class);
+
+        for (Direction dir : Direction.values()) {
+            String key = facadeKey(dir);
+            Tag facade = tag.get(key);
+
+            if (facade != null) {
+                facades.put(dir, facade);
+                result.remove(key);
+            }
+        }
+
+        for (Map.Entry<Direction, Tag> entry : facades.entrySet()) {
+            Direction mappedSide = mapCableBusSide(entry.getKey(), transform);
+            result.put(facadeKey(mappedSide), entry.getValue().copy());
+        }
+
         return result;
+    }
+
+    private static String facadeKey(Direction direction) {
+        return switch (direction) {
+            case NORTH -> "facadeNorth";
+            case SOUTH -> "facadeSouth";
+            case EAST -> "facadeEast";
+            case WEST -> "facadeWest";
+            case UP -> "facadeUp";
+            case DOWN -> "facadeDown";
+        };
     }
 
     private static void putMovedSide(

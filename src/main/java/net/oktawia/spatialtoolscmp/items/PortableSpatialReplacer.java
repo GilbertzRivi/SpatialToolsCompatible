@@ -532,6 +532,10 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         BlockState newState = targetBlock.defaultBlockState();
         List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoBlocks = new ArrayList<>();
 
+        for (ReplacerExtension ext : ReplacerExtensions.get()) {
+            ext.onBeforeReplacement(level, positions);
+        }
+
         int replaced = 0;
 
         for (BlockPos pos : positions) {
@@ -591,6 +595,12 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     ext.onNewBlocksPlaced(level, positions);
                     break;
                 }
+            }
+        }
+
+        if (replaced > 0) {
+            for (ReplacerExtension ext : ReplacerExtensions.get()) {
+                ext.onReplacementDone(level, positions);
             }
         }
 

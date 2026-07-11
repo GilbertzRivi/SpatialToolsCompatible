@@ -55,6 +55,18 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
     private static final List<PendingConnectInit> PENDING = new ArrayList<>();
     private static boolean registered = false;
 
+    private static final boolean HUB_AVAILABLE =
+            isClassPresent("com.glodblock.github.extendedae.common.tileentities.TileWirelessHub");
+
+    private static boolean isClassPresent(String name) {
+        try {
+            Class.forName(name, false, ExtendedAEStructureExtension.class.getClassLoader());
+            return true;
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     @Override
     public boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
@@ -84,10 +96,10 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
         NbtUtil.copyStringIfPresent(rawBeTag, data, NBT_COLOR);
 
         if (ID_CONNECTOR.equals(rawBeTag.getString(NBT_ID)) && be instanceof TileWirelessConnector connector) {
-            BlockPos otherPos = connector.getOtherSide();
+            BlockPos otherPos = readConnectorOtherSide(connector);
             if (otherPos != null) {
                 data.putBoolean(NBT_HAS_OTHER, true);
-                data.putBoolean(NBT_OTHER_IS_HUB, level.getBlockEntity(otherPos) instanceof TileWirelessHub);
+                data.putBoolean(NBT_OTHER_IS_HUB, HUB_AVAILABLE && HubOps.isHub(level.getBlockEntity(otherPos)));
                 data.putInt(NBT_OPX, otherPos.getX());
                 data.putInt(NBT_OPY, otherPos.getY());
                 data.putInt(NBT_OPZ, otherPos.getZ());
@@ -246,16 +258,11 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
     }
 
     private static boolean tryConnectTo(TileWirelessConnector connector, @Nullable BlockEntity otherBe) {
-        if (otherBe instanceof TileWirelessHub hub) {
-            int port = hub.allocatePort();
-            if (port < 0) {
-                return false;
+        if (HUB_AVAILABLE) {
+            Boolean hubResult = HubOps.tryConnectHub(connector, otherBe);
+            if (hubResult != null) {
+                return hubResult;
             }
-            long newFreq = connector.getNewFreq();
-            hub.setFrequency(newFreq, port);
-            connector.setFrequency(newFreq);
-            connector.setChanged();
-            return true;
         }
 
         if (otherBe instanceof TileWirelessConnector otherConnector && otherConnector.getFrequency() == 0L) {
@@ -276,6 +283,37 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
             CompoundTag data,
             long runAtGameTime
     ) {}
+
+    private static final class HubOps {
+        static boolean isHub(@Nullable BlockEntity be) {
+            return be instanceof TileWirelessHub;
+        }
+
+        @Nullable
+        static Boolean tryConnectHub(TileWirelessConnector connector, @Nullable BlockEntity otherBe) {
+            if (!(otherBe instanceof TileWirelessHub hub)) {
+                return null;
+            }
+            int port = hub.allocatePort();
+            if (port < 0) {
+                return false;
+            }
+            long newFreq = connector.getNewFreq();
+            hub.setFrequency(newFreq, port);
+            connector.setFrequency(newFreq);
+            connector.setChanged();
+            return true;
+        }
+    }
+
+    @Nullable
+    private static BlockPos readConnectorOtherSide(TileWirelessConnector connector) {
+        try {
+            return connector.getOtherSide();
+        } catch (Throwable ignored) {
+            return null;
+        }
+    }
 
     private static boolean isExPAPTag(@Nullable CompoundTag tag) {
         if (tag == null) {

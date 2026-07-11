@@ -98,6 +98,14 @@ public class SpatialToolsCMP {
             if (IsModLoaded.EXTENDEDAE) {
                 StructureToolExtensions.registerClonerExtension(new ExtendedAEStructureExtension());
             }
+            if (IsModLoaded.LOOTR) {
+                LootrStructureExtension lootrExtension = new LootrStructureExtension();
+                StructureToolExtensions.registerClonerExtension(lootrExtension);
+                StructureToolExtensions.registerPasteExtension(lootrExtension);
+            }
+            if (IsModLoaded.PRODUCTIVE_BEES) {
+                StructureToolExtensions.registerClonerExtension(new ProductiveBeesClonerExtension());
+            }
             NetworkHandler.registerMessages();
         });
     }

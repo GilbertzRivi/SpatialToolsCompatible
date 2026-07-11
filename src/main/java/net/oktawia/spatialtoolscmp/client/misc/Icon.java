@@ -18,7 +18,9 @@ public enum Icon {
     ARROW_BACK("textures/gui/icons/arrow_back.png"),
     ROTATE("textures/gui/icons/rotate.png"),
     PLAYER_INV("textures/gui/icons/player_inv.png"),
-    EXTERNAL_INV("textures/gui/icons/external_inv.png");
+    EXTERNAL_INV("textures/gui/icons/external_inv.png"),
+    ANCHOR("textures/gui/icons/anchor.png"),
+    ANCHOR_CROSS("textures/gui/icons/anchor_cross.png");
 
     private final ResourceLocation texture;
 

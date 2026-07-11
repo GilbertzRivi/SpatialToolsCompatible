@@ -571,18 +571,19 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     private void renderMiddleButtons(GuiGraphics guiGraphics, int mouseX, int mouseY, int top) {
         int left = getX() + PADDING;
         int right = getX() + getDropdownWidth() - PADDING;
-        int middle = left + (right - left) / 2;
 
         boolean canMove = !highlightedId.isBlank() && movingStructureId == null && !creatingFolder;
-        boolean canUnfolder = canMove && isHighlightedInFolder();
+        boolean inFolder = canMove && isHighlightedInFolder();
 
-        renderButton(guiGraphics, mouseX, mouseY, left, top, middle - 1, top + BUTTON_HEIGHT,
-                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_MOVE_TO_FOLDER.getTranslationKey()).getString(),
-                canMove ? 0xFF55FFFF : 0xFF777777);
+        LangDefs label = inFolder
+                ? LangDefs.STRUCTURE_GADGET_CLONER_REMOVE_FROM_FOLDER
+                : LangDefs.STRUCTURE_GADGET_CLONER_MOVE_TO_FOLDER;
 
-        renderButton(guiGraphics, mouseX, mouseY, middle + 1, top, right, top + BUTTON_HEIGHT,
-                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_REMOVE_FROM_FOLDER.getTranslationKey()).getString(),
-                canUnfolder ? 0xFF55FF55 : 0xFF777777);
+        int color = !canMove ? 0xFF777777 : (inFolder ? 0xFF55FF55 : 0xFF55FFFF);
+
+        renderButton(guiGraphics, mouseX, mouseY, left, top, right, top + BUTTON_HEIGHT,
+                Component.translatable(label.getTranslationKey()).getString(),
+                color);
     }
 
     private void renderBottomButtons(GuiGraphics guiGraphics, int mouseX, int mouseY, int top) {
@@ -666,18 +667,16 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         }
 
         if (mouseY >= middleButtonsTop && mouseY < middleButtonsTop + BUTTON_HEIGHT) {
-            if (mouseX >= buttonLeft && mouseX < buttonMiddle - 1) {
+            if (mouseX >= buttonLeft && mouseX < buttonRight) {
                 if (!highlightedId.isBlank() && movingStructureId == null && !creatingFolder) {
-                    this.movingStructureId = this.highlightedId;
-                    this.scrollOffset = 0;
-                }
-                return true;
-            }
-            if (mouseX >= buttonMiddle + 1 && mouseX < buttonRight) {
-                if (!highlightedId.isBlank() && isHighlightedInFolder()) {
-                    NetworkHandler.sendToServer(new MoveClonerStructureToFolderPacket(
-                            this.containerIdSupplier.getAsInt(), this.highlightedId, ""));
-                    this.movingStructureId = null;
+                    if (isHighlightedInFolder()) {
+                        NetworkHandler.sendToServer(new MoveClonerStructureToFolderPacket(
+                                this.containerIdSupplier.getAsInt(), this.highlightedId, ""));
+                        this.movingStructureId = null;
+                    } else {
+                        this.movingStructureId = this.highlightedId;
+                        this.scrollOffset = 0;
+                    }
                 }
                 return true;
             }

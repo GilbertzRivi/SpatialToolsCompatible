@@ -14,4 +14,6 @@ public class IsModLoaded {
     public static final boolean LASERIO = ModList.get().isLoaded("laserio");
     public static final boolean FLUXNETWORKS = ModList.get().isLoaded("fluxnetworks");
     public static final boolean EXTENDEDAE = ModList.get().isLoaded("expatternprovider");
+    public static final boolean LOOTR = ModList.get().isLoaded("lootr");
+    public static final boolean PRODUCTIVE_BEES = ModList.get().isLoaded("productivebees");
 }

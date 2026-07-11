@@ -2,11 +2,13 @@
   "required": true,
   "minVersion": "0.8",
   "package": "net.oktawia.spatialtoolscmp.mixin",
-  "compatibilityLevel": "JAVA_8",
+  "plugin": "net.oktawia.spatialtoolscmp.mixin.Plugin",
+  "compatibilityLevel": "JAVA_17",
   "refmap": "spatialtoolscmp.refmap.json",
   "mixins": [
   ],
   "client": [
+    "ae2.CableBusBakedModelAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -260,6 +260,34 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             keptAnything = true;
         }
 
+        for (String key : StructureToolKeys.AE2_FACADE_KEYS) {
+            if (!rawBeTag.contains(key, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            CompoundTag facadeSection = rawBeTag.getCompound(key);
+            ItemStack facade = NbtUtil.tryReadSavedItemStack(facadeSection);
+
+            if (facade.isEmpty()) {
+                continue;
+            }
+
+            ItemStack facadeCost = normalizeSinglePreservingTag(facade);
+
+            Map<Item, Integer> trialReserved = new HashMap<>(reserved);
+
+            if (!player.isCreative() && !ctx.canReserveForPaste(trialReserved, facadeCost, 1)) {
+                continue;
+            }
+
+            reserved.clear();
+            reserved.putAll(trialReserved);
+
+            filtered.put(key, facadeSection.copy());
+            costs.add(facadeCost);
+            keptAnything = true;
+        }
+
         return keptAnything
                 ? new PlacementPlan(true, stateToPlace, filtered, costs)
                 : PlacementPlan.none();
@@ -483,6 +511,14 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
 
             collectNestedSavedItemStacks(rawBeTag.get(key), requirements);
         }
+
+        for (String key : StructureToolKeys.AE2_FACADE_KEYS) {
+            if (!rawBeTag.contains(key)) {
+                continue;
+            }
+
+            collectNestedSavedItemStacks(rawBeTag.get(key), requirements);
+        }
     }
 
     private static void collectNestedSavedItemStacks(
@@ -576,6 +612,18 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         return copy;
     }
 
+    private static ItemStack normalizeSinglePreservingTag(ItemStack stack) {
+        if (stack.isEmpty()) {
+            return ItemStack.EMPTY;
+        }
+
+        ItemStack copy = stack.copy();
+
+        copy.setCount(1);
+
+        return copy;
+    }
+
     private static ItemStack normalizeCountPreserving(ItemStack stack) {
         if (stack.isEmpty()) {
             return ItemStack.EMPTY;
@@ -651,6 +699,14 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         }
 
         for (String key : StructureToolKeys.AE2_CABLE_BUS_KEYS) {
+            if (!rawBeTag.contains(key)) {
+                continue;
+            }
+
+            collectNestedSavedItemStacks(rawBeTag.get(key), refunds);
+        }
+
+        for (String key : StructureToolKeys.AE2_FACADE_KEYS) {
             if (!rawBeTag.contains(key)) {
                 continue;
             }

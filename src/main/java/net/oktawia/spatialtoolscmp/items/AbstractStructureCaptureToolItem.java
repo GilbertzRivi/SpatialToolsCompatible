@@ -9,6 +9,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -1040,15 +1041,18 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                     boolean hasAnyData = false;
 
                     for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
-                        if (extension.collectMetadata(
-                                level,
-                                worldPos,
-                                be,
-                                rawBeTag,
-                                requirements::add,
-                                blockEntry
-                        )) {
-                            hasAnyData = true;
+                        try {
+                            if (extension.collectMetadata(
+                                    level,
+                                    worldPos,
+                                    be,
+                                    rawBeTag,
+                                    requirements::add,
+                                    blockEntry
+                            )) {
+                                hasAnyData = true;
+                            }
+                        } catch (Throwable ignored) {
                         }
                     }
 
@@ -1103,7 +1107,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     }
 
     private static final class RequirementAccumulator {
-        private final Map<Item, RequirementEntry> entries = new LinkedHashMap<>();
+        private final Map<Object, RequirementEntry> entries = new LinkedHashMap<>();
 
         private void add(ItemStack stack, RequirementKind kind) {
             ItemStack normalized = normalize(stack);
@@ -1113,10 +1117,11 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             }
 
             int amount = Math.max(1, stack.getCount());
-            RequirementEntry existing = entries.get(normalized.getItem());
+            Object key = groupingKey(normalized);
+            RequirementEntry existing = entries.get(key);
 
             if (existing == null) {
-                entries.put(normalized.getItem(), new RequirementEntry(normalized, amount));
+                entries.put(key, new RequirementEntry(normalized, amount));
             } else {
                 existing.count += amount;
             }
@@ -1152,9 +1157,25 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
             ItemStack copy = stack.copy();
             copy.setCount(1);
-            copy.setTag(null);
+
+            if (!isFacade(copy)) {
+                copy.setTag(null);
+            }
 
             return copy;
+        }
+
+        private static Object groupingKey(ItemStack normalized) {
+            if (isFacade(normalized) && normalized.getTag() != null) {
+                return StructureToolKeys.AE2_FACADE_ITEM_ID + "|" + normalized.getTag();
+            }
+
+            return normalized.getItem();
+        }
+
+        private static boolean isFacade(ItemStack stack) {
+            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            return id != null && StructureToolKeys.AE2_FACADE_ITEM_ID.equals(id.toString());
         }
     }
 

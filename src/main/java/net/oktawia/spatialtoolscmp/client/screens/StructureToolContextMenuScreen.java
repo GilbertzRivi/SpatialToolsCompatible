@@ -459,7 +459,7 @@ public class StructureToolContextMenuScreen extends Screen {
         specs.add(new OptionButtonSpec(
                 StructureToolContextActionPacket.TOGGLE_ANCHOR,
                 LangDefs.CONTEXT_MENU_ANCHOR,
-                this.lastAnchorEnabled ? Icon.CHECK : Icon.CROSS,
+                this.lastAnchorEnabled ? Icon.ANCHOR : Icon.ANCHOR_CROSS,
                 this.lastHasStructure,
                 this.lastAnchorEnabled
         ));

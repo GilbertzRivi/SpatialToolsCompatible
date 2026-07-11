@@ -98,6 +98,28 @@ public class PowerUpgradePanelWidget {
         }
     }
 
+    public void renderCraftingSlotBadge(GuiGraphics graphics, boolean installed) {
+        if (installed) {
+            return;
+        }
+
+        int craftingSlot = getCraftingSlotIndex();
+
+        if (craftingSlot < 0) {
+            return;
+        }
+
+        int x = this.leftPos + SLOT_LEFT;
+        int y = this.topPos + SLOT_TOP + craftingSlot * SLOT_STEP;
+
+        int frame = 0xFFEEAA22;
+
+        graphics.fill(x - 2, y - 2, x + SLOT_SIZE + 2, y, frame);
+        graphics.fill(x - 2, y + SLOT_SIZE, x + SLOT_SIZE + 2, y + SLOT_SIZE + 2, frame);
+        graphics.fill(x - 2, y, x, y + SLOT_SIZE, frame);
+        graphics.fill(x + SLOT_SIZE, y, x + SLOT_SIZE + 2, y + SLOT_SIZE, frame);
+    }
+
     private int getCraftingSlotIndex() {
         return this.slots > this.maxUpgrades
                 ? this.maxUpgrades

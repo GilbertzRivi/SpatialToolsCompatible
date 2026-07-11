@@ -31,6 +31,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static final String NBT_ID = "id";
     private static final String NBT_CAMO = "camo";
+    private static final String NBT_GLOWING = "glowing";
     private static final String NBT_FACE = "face";
     private static final String NBT_OFFSETS = "offsets";
     private static final String NBT_STATE = "state";
@@ -38,6 +39,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static final String CLONE_KEY_FRAMED = "framed";
     private static final String CLONE_KEY_CAMO = "camo";
+    private static final String CLONE_KEY_GLOWING = "glowing";
 
     @Override
     public boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag) {
@@ -68,6 +70,11 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             addCamoRequirement(camoTag, requirements);
         }
 
+        if (rawBeTag != null && rawBeTag.getBoolean(NBT_GLOWING)) {
+            framedData.putBoolean(CLONE_KEY_GLOWING, true);
+            requirements.add(new ItemStack(Items.GLOWSTONE_DUST));
+        }
+
         if (framedData.isEmpty()) {
             return false;
         }
@@ -94,7 +101,6 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
         }
 
         CompoundTag framedData = getFramedMetadata(blockMetadata);
-        CompoundTag filteredTag = createWhitelistedFramedTag(rawBeTag, framedData);
 
         Map<Item, Integer> reserved = new LinkedHashMap<>();
         List<ItemStack> costs = new ArrayList<>();
@@ -123,6 +129,17 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
                 costs.add(camoItem);
             }
         }
+
+        boolean withGlowing = false;
+        if (framedData.getBoolean(CLONE_KEY_GLOWING)) {
+            ItemStack glowstone = new ItemStack(Items.GLOWSTONE_DUST);
+            if (player.isCreative() || ctx.canReserveForPaste(reserved, glowstone, 1)) {
+                costs.add(glowstone);
+                withGlowing = true;
+            }
+        }
+
+        CompoundTag filteredTag = createWhitelistedFramedTag(rawBeTag, framedData, withGlowing);
 
         return Optional.of(new PlacementPlan(true, state, filteredTag, costs));
     }
@@ -158,7 +175,8 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static CompoundTag createWhitelistedFramedTag(
             CompoundTag rawBeTag,
-            CompoundTag framedData
+            CompoundTag framedData,
+            boolean withGlowing
     ) {
         CompoundTag out = new CompoundTag();
 
@@ -177,6 +195,8 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
         if (offsetsTag != null) {
             out.put(NBT_OFFSETS, offsetsTag.copy());
         }
+
+        out.putBoolean(NBT_GLOWING, withGlowing);
 
         return out;
     }
@@ -307,6 +327,10 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             if (!camoItem.isEmpty()) {
                 refunds.add(camoItem);
             }
+        }
+
+        if (currentTag != null && currentTag.getBoolean(NBT_GLOWING)) {
+            refunds.add(new ItemStack(Items.GLOWSTONE_DUST));
         }
 
         return true;
