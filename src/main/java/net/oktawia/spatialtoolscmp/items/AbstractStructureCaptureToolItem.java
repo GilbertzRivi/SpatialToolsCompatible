@@ -744,7 +744,14 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             return null;
         }
 
-        CompoundTag metadata = getMetadata(level, player, min, max, savedTag);
+        CompoundTag metadata;
+
+        try {
+            metadata = getMetadata(level, player, min, max, savedTag);
+        } catch (Throwable throwable) {
+            showHud(player, HUD_TIME_MEDIUM, red(Component.translatable(LangDefs.CAPTURE_FAILED.getTranslationKey())));
+            return null;
+        }
 
         if (!metadata.isEmpty()) {
             savedTag.put(StructureToolKeys.CLONE_METADATA_KEY, metadata);
@@ -1078,7 +1085,13 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
     private static void addBaseBlockRequirement(ServerLevel level, BlockPos pos, RequirementAccumulator requirements) {
         BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
-        ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
+
+        ItemStack picked;
+        try {
+            picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
+        } catch (Throwable throwable) {
+            picked = ItemStack.EMPTY;
+        }
 
         if (!picked.isEmpty()) {
             requirements.addDefault(picked);

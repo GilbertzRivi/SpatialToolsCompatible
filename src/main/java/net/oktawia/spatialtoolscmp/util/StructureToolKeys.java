@@ -37,4 +37,15 @@ public final class StructureToolKeys {
 
     public static final String LASERIO_ID_PREFIX  = "laserio:";
     public static final String CLONE_KEY_LASERIO  = "laserio";
+
+    public static final String CHISELED_BE_ID     = "chiselsandbits:chiseled_block";
+    public static final String CLONE_KEY_CHISELED = "chiseled";
+    public static final String CHISELED_KEY_OPS   = "ops";
+
+    public static final int CHISELED_OP_ROTATE_CW  = 1;
+    public static final int CHISELED_OP_ROTATE_180 = 2;
+    public static final int CHISELED_OP_ROTATE_CCW = 3;
+    public static final int CHISELED_OP_MIRROR_Z   = 4;
+    public static final int CHISELED_OP_MIRROR_X   = 5;
+    public static final int CHISELED_OP_MIRROR_Y   = 6;
 }

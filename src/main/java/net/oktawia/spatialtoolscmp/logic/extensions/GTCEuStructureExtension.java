@@ -40,6 +40,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.compat.GTCEuAE2PostPasteOps;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
@@ -75,6 +76,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     private static final String NBT_ENERGY_CONTAINER = "energyContainer";
 
     private static final long NEXT_TICK_DELAY = 1L;
+    private static final long MULTIBLOCK_REFORM_DELAY = NEXT_TICK_DELAY + 1L;
 
     private static final Set<String> ENDER_LINK_COVER_IDS = Set.of(
             "gtceu:ender_item_link",
@@ -299,16 +301,33 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         machine.setPaintingColor(color);
     }
 
-    private static void markMultiblockForRecheck(ServerLevel level, @Nullable BlockEntity be) {
+    private static void reformMultiblock(ServerLevel level, @Nullable BlockEntity be) {
         if (!(be instanceof MetaMachineBlockEntity mmbe)
                 || !(mmbe.getMetaMachine() instanceof IMultiController controller)) {
             return;
         }
 
         try {
-            controller.getMultiblockState().setError(MultiblockState.UNLOAD_ERROR);
-            MultiblockWorldSavedData.getOrCreate(level).addAsyncLogic(controller);
-        } catch (Throwable ignored) {
+            MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(level);
+            MultiblockState state = controller.getMultiblockState();
+
+            // isFormed is @Persisted, so a pasted controller wakes up already "formed" with an empty part list.
+            // GTCEu gates asyncCheckPattern on hasError() || !isFormed, so the stale flag stops it from ever
+            // running onStructureFormed again. Clearing it hands the whole lifecycle back to GTCEu.
+            controller.onStructureInvalid();
+            mwsd.removeMapping(state);
+            state.setError(MultiblockState.UNINIT_ERROR);
+            mwsd.addAsyncLogic(controller);
+
+            SpatialToolsCMP.getLOGGER().info(
+                    "[gt] queued multiblock recheck at {} front={} upwards={} flipped={}",
+                    controller.self().getPos(),
+                    controller.self().getFrontFacing(),
+                    controller.self().getUpwardsFacing(),
+                    controller.self().isFlipped()
+            );
+        } catch (Throwable throwable) {
+            SpatialToolsCMP.getLOGGER().warn("[gt] multiblock recheck failed at {}", mmbe.getBlockPos(), throwable);
         }
     }
 
@@ -2193,6 +2212,12 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
                     syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
+
+                continue;
+            }
+
+            if (pendingBlock.mode() == PendingMode.MULTIBLOCK_REVALIDATE) {
+                reformMultiblock(level, blockEntity);
             }
         }
 
@@ -2493,6 +2518,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
     @Override
     public void onTemplatePasted(ServerLevel level, BlockPos placementOrigin, CompoundTag templateTag) {
         List<PendingBlockInit> blocks = new ArrayList<>();
+        List<PendingBlockInit> controllers = new ArrayList<>();
 
         for (TemplateUtil.BlockInfo info : TemplateUtil.parseRawBlocksFromTag(templateTag)) {
             BlockPos worldPos = placementOrigin.offset(info.pos()).immutable();
@@ -2521,7 +2547,16 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             if (blockEntity instanceof MetaMachineBlockEntity mmbe) {
                 reapplyFluidTankLockFilters(blockEntity);
                 reapplyPaintingColor(blockEntity);
-                markMultiblockForRecheck(level, blockEntity);
+
+                if (mmbe.getMetaMachine() instanceof IMultiController
+                        && !isPostPlacementAlreadyPending(level, worldPos, PendingMode.MULTIBLOCK_REVALIDATE)) {
+                    controllers.add(new PendingBlockInit(
+                            worldPos,
+                            PendingMode.MULTIBLOCK_REVALIDATE,
+                            new CompoundTag(),
+                            null
+                    ));
+                }
 
                 if (mmbe.getMetaMachine() instanceof TransformerMachine
                         && currentTag != null
@@ -2577,17 +2612,27 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             }
         }
 
-        if (blocks.isEmpty()) {
+        if (blocks.isEmpty() && controllers.isEmpty()) {
             return;
         }
 
         ensureRegistered();
 
-        PENDING.add(new PendingInit(
-                level,
-                blocks,
-                level.getGameTime() + NEXT_TICK_DELAY
-        ));
+        if (!blocks.isEmpty()) {
+            PENDING.add(new PendingInit(
+                    level,
+                    blocks,
+                    level.getGameTime() + NEXT_TICK_DELAY
+            ));
+        }
+
+        if (!controllers.isEmpty()) {
+            PENDING.add(new PendingInit(
+                    level,
+                    controllers,
+                    level.getGameTime() + MULTIBLOCK_REFORM_DELAY
+            ));
+        }
     }
 
     private static boolean isPostPlacementAlreadyPending(
@@ -2766,7 +2811,8 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         PATTERN_BUFFER_LINK,
         WORLD_ACCELERATOR_MODE,
         ENERGY_CONVERTER_DIRECTION,
-        MACHINE_COVER_REINIT
+        MACHINE_COVER_REINIT,
+        MULTIBLOCK_REVALIDATE
     }
 
     private record PendingBlockInit(

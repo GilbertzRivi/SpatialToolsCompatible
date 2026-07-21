@@ -171,6 +171,7 @@ dependencies {
     compileOnly fg.deobf("curse.maven:glodium-957920:5226922")
     compileOnly fg.deobf("curse.maven:lootr-361276:7263076")
     compileOnly fg.deobf("curse.maven:productivebees-377897:5566102")
+    compileOnly fg.deobf("curse.maven:chisels-bits-231095:7620767")
     // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:6420945")
@@ -198,6 +199,7 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:7986603")
     runtimeOnly fg.deobf("curse.maven:glodium-957920:5226922")
     runtimeOnly fg.deobf("curse.maven:lootr-361276:7263076")
+//    runtimeOnly fg.deobf("curse.maven:chisels-bits-231095:7620767") // does not work with gregtech
 //    runtimeOnly fg.deobf("curse.maven:productivebees-377897:5566102") // does not work with gregtech
 
     // Runtime utils

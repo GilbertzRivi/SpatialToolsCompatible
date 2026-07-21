@@ -106,6 +106,11 @@ public class SpatialToolsCMP {
             if (IsModLoaded.PRODUCTIVE_BEES) {
                 StructureToolExtensions.registerClonerExtension(new ProductiveBeesClonerExtension());
             }
+            if (IsModLoaded.CHISELS_BITS) {
+                ChiseledBitsStructureExtension chiseledExtension = new ChiseledBitsStructureExtension();
+                StructureToolExtensions.registerClonerExtension(chiseledExtension);
+                StructureToolExtensions.registerPasteExtension(chiseledExtension);
+            }
             NetworkHandler.registerMessages();
         });
     }
@@ -149,6 +154,9 @@ public class SpatialToolsCMP {
                 }
                 if (IsModLoaded.CB_MULTIPART) {
                     BlockRenderExtensions.register(new CBMultipartBlockRenderExtension());
+                }
+                if (IsModLoaded.CHISELS_BITS) {
+                    BlockRenderExtensions.register(new ChiseledBitsBlockRenderExtension());
                 }
                 MinecraftForge.EVENT_BUS.register(new PortableSpatialStoragePreviewRenderer());
                 MinecraftForge.EVENT_BUS.register(new PortableSpatialReplacerPreviewRenderer());

@@ -4,11 +4,13 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
@@ -159,13 +161,15 @@ public final class PreviewStructure {
 
     public static PreviewStructure fromTemplateTag(CompoundTag tag) {
         List<TemplateUtil.BlockInfo> parsed = TemplateUtil.parseBlocksFromTag(tag);
+        Map<BlockPos, CompoundTag> cloneMetadata = readCloneMetadata(tag);
         List<PreviewBlock> blocks = new ArrayList<>(parsed.size());
 
         for (TemplateUtil.BlockInfo info : parsed) {
             blocks.add(new PreviewBlock(
                     info.pos(),
                     info.state(),
-                    info.blockEntityTag()
+                    info.blockEntityTag(),
+                    cloneMetadata.get(info.pos())
             ));
         }
 
@@ -177,6 +181,33 @@ public final class PreviewStructure {
                 List.copyOf(blocks),
                 List.copyOf(surface)
         );
+    }
+
+    private static Map<BlockPos, CompoundTag> readCloneMetadata(CompoundTag tag) {
+        if (tag == null || !tag.contains(StructureToolKeys.CLONE_METADATA_KEY, Tag.TAG_COMPOUND)) {
+            return Map.of();
+        }
+
+        BlockPos templateOffset = TemplateUtil.getTemplateOffset(tag);
+        ListTag entries = tag.getCompound(StructureToolKeys.CLONE_METADATA_KEY)
+                .getList(StructureToolKeys.CLONE_METADATA_BLOCKS_KEY, Tag.TAG_COMPOUND);
+
+        Map<BlockPos, CompoundTag> result = new HashMap<>();
+
+        for (int i = 0; i < entries.size(); i++) {
+            CompoundTag entry = entries.getCompound(i);
+            CompoundTag posTag = entry.getCompound(StructureToolKeys.CLONE_KEY_POS);
+
+            BlockPos pos = new BlockPos(
+                    posTag.getInt("x"),
+                    posTag.getInt("y"),
+                    posTag.getInt("z")
+            ).offset(templateOffset);
+
+            result.put(pos, entry);
+        }
+
+        return result;
     }
 
     private static BlockPos readSize(CompoundTag tag, List<PreviewBlock> blocks) {

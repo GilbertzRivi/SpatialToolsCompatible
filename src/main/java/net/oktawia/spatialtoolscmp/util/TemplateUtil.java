@@ -815,11 +815,46 @@ public final class TemplateUtil {
                 blockEntry.put(StructureToolKeys.CLONE_KEY_GREG, gregTag);
             }
 
+            if (blockEntry.contains(StructureToolKeys.CLONE_KEY_CHISELED, Tag.TAG_COMPOUND)) {
+                blockEntry.put(
+                        StructureToolKeys.CLONE_KEY_CHISELED,
+                        appendChiseledOp(
+                                blockEntry.getCompound(StructureToolKeys.CLONE_KEY_CHISELED),
+                                cableBusTransform
+                        )
+                );
+            }
+
             newBlocks.add(blockEntry);
         }
 
         cloneMetadata.put(StructureToolKeys.CLONE_METADATA_BLOCKS_KEY, newBlocks);
         tag.put(StructureToolKeys.CLONE_METADATA_KEY, cloneMetadata);
+    }
+
+    private static CompoundTag appendChiseledOp(CompoundTag chiseledData, CableBusTransform transform) {
+        CompoundTag result = chiseledData.copy();
+
+        int opCode = switch (transform) {
+            case ROTATE_CW     -> StructureToolKeys.CHISELED_OP_ROTATE_CW;
+            case ROTATE_180    -> StructureToolKeys.CHISELED_OP_ROTATE_180;
+            case ROTATE_CCW    -> StructureToolKeys.CHISELED_OP_ROTATE_CCW;
+            case FLIP_H_AXIS_Z -> StructureToolKeys.CHISELED_OP_MIRROR_Z;
+            case FLIP_H_AXIS_X -> StructureToolKeys.CHISELED_OP_MIRROR_X;
+            case FLIP_V        -> StructureToolKeys.CHISELED_OP_MIRROR_Y;
+            case NONE          -> 0;
+        };
+
+        if (opCode == 0) {
+            return result;
+        }
+
+        int[] existing = result.getIntArray(StructureToolKeys.CHISELED_KEY_OPS);
+        int[] updated = Arrays.copyOf(existing, existing.length + 1);
+        updated[existing.length] = opCode;
+        result.putIntArray(StructureToolKeys.CHISELED_KEY_OPS, updated);
+
+        return result;
     }
 
     private static CompoundTag transformDirectionalMetadataTag(CompoundTag tag, CableBusTransform transform) {

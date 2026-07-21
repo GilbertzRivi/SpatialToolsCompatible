@@ -10,6 +10,7 @@ public enum LangDefs {
     CORNER_B_SELECTED("gui.spatialtoolscmp.corner_b_selected", "Right click air to cut or shift click block to cancel."),
     SELECTION_RESTARTED("gui.spatialtoolscmp.selection_restarted", "Selection restarted."),
     FAILED_TO_SAVE_STRUCTURE("gui.spatialtoolscmp.failed_to_save_structure", "Failed to save structure."),
+    CAPTURE_FAILED("gui.spatialtoolscmp.capture_failed", "Failed to capture structure: an incompatible block threw an error."),
     STRUCTURE_CUT_AND_SAVED("gui.spatialtoolscmp.structure_cut_and_saved", "Right click to paste."),
     FAILED_TO_LOAD_STRUCTURE("gui.spatialtoolscmp.failed_to_load_structure", "Failed to load structure."),
     STORED_STRUCTURE_NOT_FOUND("gui.spatialtoolscmp.stored_structure_not_found", "Stored structure not found."),
