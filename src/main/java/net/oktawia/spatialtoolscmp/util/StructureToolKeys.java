@@ -38,6 +38,13 @@ public final class StructureToolKeys {
     public static final String LASERIO_ID_PREFIX  = "laserio:";
     public static final String CLONE_KEY_LASERIO  = "laserio";
 
+    public static final String MEKANISM_ID_PREFIX = "mekanism:";
+    public static final String CLONE_KEY_MEKANISM = "mekanism";
+
+    public static final List<String> MEKANISM_SIDE_KEY_PREFIXES = List.of(
+            "connection", "mode"
+    );
+
     public static final String CHISELED_BE_ID     = "chiselsandbits:chiseled_block";
     public static final String CLONE_KEY_CHISELED = "chiseled";
     public static final String CHISELED_KEY_OPS   = "ops";

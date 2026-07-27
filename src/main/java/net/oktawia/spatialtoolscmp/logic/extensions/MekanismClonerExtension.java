@@ -160,23 +160,10 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
             return out;
         }
 
-        copyStringIfPresent(rawBeTag, out, NBT_ID);
+        copyWhitelistedKeys(rawBeTag, out);
 
-        copyTagIfPresent(rawBeTag, out, NBT_COMPONENT_CONFIG);
-        copyTagIfPresent(rawBeTag, out, NBT_COMPONENT_EJECTOR);
-
-        copyPrimitiveIfPresent(rawBeTag, out, "controlType");
-        copyPrimitiveIfPresent(rawBeTag, out, "redstone");
-        copyPrimitiveIfPresent(rawBeTag, out, "strictInput");
-        copyPrimitiveIfPresent(rawBeTag, out, "autoEject");
-        copyPrimitiveIfPresent(rawBeTag, out, "roundRobin");
-
-        for (int side = 0; side < Direction.values().length; side++) {
-            copyPrimitiveIfPresent(rawBeTag, out, "side" + side);
-            copyPrimitiveIfPresent(rawBeTag, out, "eject" + side);
-            copyPrimitiveIfPresent(rawBeTag, out, "color" + side);
-            copyPrimitiveIfPresent(rawBeTag, out, "connection" + side);
-        }
+        out.remove(NBT_COMPONENT_UPGRADE);
+        out.remove(NBT_UPGRADES);
 
         copyUpgradeData(rawBeTag, out);
 
@@ -226,30 +213,42 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
         CompoundTag out = new CompoundTag();
 
         if (rawBeTag != null) {
-            copyStringIfPresent(rawBeTag, out, NBT_ID);
+            copyWhitelistedKeys(rawBeTag, out);
+
+            out.remove(NBT_COMPONENT_UPGRADE);
+            out.remove(NBT_UPGRADES);
         }
 
-        copyStringIfPresent(mekanismData, out, NBT_ID);
-
-        copyTagIfPresent(mekanismData, out, NBT_COMPONENT_CONFIG);
-        copyTagIfPresent(mekanismData, out, NBT_COMPONENT_EJECTOR);
-        copyTagIfPresent(mekanismData, out, NBT_COMPONENT_UPGRADE);
-        copyTagIfPresent(mekanismData, out, NBT_UPGRADES);
-
-        copyPrimitiveIfPresent(mekanismData, out, "controlType");
-        copyPrimitiveIfPresent(mekanismData, out, "redstone");
-        copyPrimitiveIfPresent(mekanismData, out, "strictInput");
-        copyPrimitiveIfPresent(mekanismData, out, "autoEject");
-        copyPrimitiveIfPresent(mekanismData, out, "roundRobin");
-
-        for (int side = 0; side < Direction.values().length; side++) {
-            copyPrimitiveIfPresent(mekanismData, out, "side" + side);
-            copyPrimitiveIfPresent(mekanismData, out, "eject" + side);
-            copyPrimitiveIfPresent(mekanismData, out, "color" + side);
-            copyPrimitiveIfPresent(mekanismData, out, "connection" + side);
-        }
+        copyWhitelistedKeys(mekanismData, out);
 
         return out;
+    }
+
+    private static void copyWhitelistedKeys(CompoundTag from, CompoundTag to) {
+        copyStringIfPresent(from, to, NBT_ID);
+
+        copyTagIfPresent(from, to, NBT_COMPONENT_CONFIG);
+        copyTagIfPresent(from, to, NBT_COMPONENT_EJECTOR);
+        copyTagIfPresent(from, to, NBT_COMPONENT_UPGRADE);
+        copyTagIfPresent(from, to, NBT_UPGRADES);
+
+        copyPrimitiveIfPresent(from, to, "controlType");
+        copyPrimitiveIfPresent(from, to, "redstone");
+        copyPrimitiveIfPresent(from, to, "strictInput");
+        copyPrimitiveIfPresent(from, to, "autoEject");
+        copyPrimitiveIfPresent(from, to, "roundRobin");
+
+        copySideKeys(from, to);
+    }
+
+    private static void copySideKeys(CompoundTag from, CompoundTag to) {
+        for (int side = 0; side < Direction.values().length; side++) {
+            copyPrimitiveIfPresent(from, to, "side" + side);
+            copyPrimitiveIfPresent(from, to, "eject" + side);
+            copyPrimitiveIfPresent(from, to, "color" + side);
+            copyPrimitiveIfPresent(from, to, "connection" + side);
+            copyPrimitiveIfPresent(from, to, "mode" + side);
+        }
     }
 
     private static List<ItemStack> getUpgradeCosts(CompoundTag mekanismData) {

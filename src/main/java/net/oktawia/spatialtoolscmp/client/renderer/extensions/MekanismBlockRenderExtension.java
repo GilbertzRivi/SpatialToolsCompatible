@@ -56,7 +56,6 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
                 previewBlock,
                 localLevel,
                 localPos,
-                sideMap,
                 modelData
         );
 
@@ -87,7 +86,6 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
                 previewBlock,
                 localLevel,
                 localPos,
-                sideMap,
                 modelData
         );
 
@@ -126,7 +124,6 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
                 previewBlock,
                 localLevel,
                 localPos,
-                sideMap,
                 ModelData.EMPTY
         );
 
@@ -158,27 +155,24 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
             PreviewBlock previewBlock,
             PreviewBlockAndTintGetter localLevel,
             BlockPos localPos,
-            int[] sideMap,
             ModelData fallback
     ) {
         CompoundTag rawTag = getRawBlockEntityTag(previewBlock, localLevel, localPos);
 
         TransmitterModelData transmitterData = new TransmitterModelData();
 
-        for (Direction originalSide : Direction.values()) {
-            Direction renderedSide = mapWithSideMap(originalSide, sideMap);
-
-            ConnectionType configuredType = readConnectionType(rawTag, originalSide);
+        for (Direction side : Direction.values()) {
+            ConnectionType configuredType = readConnectionType(rawTag, side);
 
             if (configuredType == ConnectionType.NONE) {
-                transmitterData.setConnectionData(renderedSide, ConnectionType.NONE);
+                transmitterData.setConnectionData(side, ConnectionType.NONE);
                 continue;
             }
 
-            if (hasConnectableNeighbor(localLevel, localPos, renderedSide)) {
-                transmitterData.setConnectionData(renderedSide, configuredType);
+            if (hasConnectableNeighbor(localLevel, localPos, side)) {
+                transmitterData.setConnectionData(side, configuredType);
             } else {
-                transmitterData.setConnectionData(renderedSide, ConnectionType.NONE);
+                transmitterData.setConnectionData(side, ConnectionType.NONE);
             }
         }
 
@@ -295,21 +289,6 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
         }
 
         return null;
-    }
-
-    private static Direction mapWithSideMap(Direction side, int[] sideMap) {
-        if (sideMap == null || side.ordinal() < 0 || side.ordinal() >= sideMap.length) {
-            return side;
-        }
-
-        int mappedOrdinal = sideMap[side.ordinal()];
-        Direction[] values = Direction.values();
-
-        if (mappedOrdinal < 0 || mappedOrdinal >= values.length) {
-            return side;
-        }
-
-        return values[mappedOrdinal];
     }
 
     private static RenderType toGuiSafeRenderType(RenderType renderType) {

@@ -815,6 +815,16 @@ public final class TemplateUtil {
                 blockEntry.put(StructureToolKeys.CLONE_KEY_GREG, gregTag);
             }
 
+            if (blockEntry.contains(StructureToolKeys.CLONE_KEY_MEKANISM, Tag.TAG_COMPOUND)) {
+                blockEntry.put(
+                        StructureToolKeys.CLONE_KEY_MEKANISM,
+                        transformMekanismSideKeys(
+                                blockEntry.getCompound(StructureToolKeys.CLONE_KEY_MEKANISM),
+                                cableBusTransform
+                        )
+                );
+            }
+
             if (blockEntry.contains(StructureToolKeys.CLONE_KEY_CHISELED, Tag.TAG_COMPOUND)) {
                 blockEntry.put(
                         StructureToolKeys.CLONE_KEY_CHISELED,
@@ -906,11 +916,67 @@ public final class TemplateUtil {
             return transformLaserIOBlockEntityTag(tag, transform);
         }
 
+        if (!id.isBlank() && id.startsWith(StructureToolKeys.MEKANISM_ID_PREFIX)) {
+            return transformMekanismSideKeys(tag, transform);
+        }
+
         if (isFramedCollapsibleBlockEntityTag(tag)) {
             return transformCollapsibleBlockEntityTag(tag, transform);
         }
 
         return tag.copy();
+    }
+
+    private static boolean hasMekanismConnectionKeys(CompoundTag tag) {
+        for (Direction side : Direction.values()) {
+            if (tag.contains("connection" + side.ordinal(), Tag.TAG_ANY_NUMERIC)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static CompoundTag transformMekanismSideKeys(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        if (transform == CableBusTransform.NONE || !hasMekanismConnectionKeys(tag)) {
+            return result;
+        }
+
+        Direction[] directions = Direction.values();
+
+        for (String prefix : StructureToolKeys.MEKANISM_SIDE_KEY_PREFIXES) {
+            Tag[] values = new Tag[directions.length];
+            boolean present = false;
+
+            for (Direction side : directions) {
+                Tag value = tag.get(prefix + side.ordinal());
+
+                if (value != null) {
+                    values[side.ordinal()] = value.copy();
+                    present = true;
+                }
+            }
+
+            if (!present) {
+                continue;
+            }
+
+            for (Direction side : directions) {
+                result.remove(prefix + side.ordinal());
+            }
+
+            for (Direction side : directions) {
+                Tag value = values[side.ordinal()];
+
+                if (value != null) {
+                    result.put(prefix + mapCableBusSide(side, transform).ordinal(), value);
+                }
+            }
+        }
+
+        return result;
     }
 
     private static void transformLaserIOConnectionOffsets(CompoundTag laserMeta, CableBusTransform transform) {
