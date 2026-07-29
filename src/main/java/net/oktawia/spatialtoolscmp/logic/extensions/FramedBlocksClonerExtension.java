@@ -31,6 +31,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static final String NBT_ID = "id";
     private static final String NBT_CAMO = "camo";
+    private static final String NBT_CAMO_TWO = "camo_two";
     private static final String NBT_GLOWING = "glowing";
     private static final String NBT_FACE = "face";
     private static final String NBT_OFFSETS = "offsets";
@@ -39,7 +40,13 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static final String CLONE_KEY_FRAMED = "framed";
     private static final String CLONE_KEY_CAMO = "camo";
+    private static final String CLONE_KEY_CAMO_TWO = "camo_two";
     private static final String CLONE_KEY_GLOWING = "glowing";
+
+    private static final String[][] CAMO_KEYS = {
+            {NBT_CAMO, CLONE_KEY_CAMO},
+            {NBT_CAMO_TWO, CLONE_KEY_CAMO_TWO}
+    };
 
     @Override
     public boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag) {
@@ -63,11 +70,17 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
         CompoundTag framedData = new CompoundTag();
 
-        if (rawBeTag != null && rawBeTag.contains(NBT_CAMO, Tag.TAG_COMPOUND)) {
-            CompoundTag camoTag = rawBeTag.getCompound(NBT_CAMO).copy();
+        if (rawBeTag != null) {
+            for (String[] camoKey : CAMO_KEYS) {
+                if (!rawBeTag.contains(camoKey[0], Tag.TAG_COMPOUND)) {
+                    continue;
+                }
 
-            framedData.put(CLONE_KEY_CAMO, camoTag);
-            addCamoRequirement(camoTag, requirements);
+                CompoundTag camoTag = rawBeTag.getCompound(camoKey[0]).copy();
+
+                framedData.put(camoKey[1], camoTag);
+                addCamoRequirement(camoTag, requirements);
+            }
         }
 
         if (rawBeTag != null && rawBeTag.getBoolean(NBT_GLOWING)) {
@@ -117,8 +130,12 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             return Optional.of(PlacementPlan.none());
         }
 
-        if (framedData.contains(CLONE_KEY_CAMO, Tag.TAG_COMPOUND)) {
-            CompoundTag camoTag = framedData.getCompound(CLONE_KEY_CAMO);
+        for (String[] camoKey : CAMO_KEYS) {
+            if (!framedData.contains(camoKey[1], Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            CompoundTag camoTag = framedData.getCompound(camoKey[1]);
             ItemStack camoItem = normalizeSingle(getCamoRequirement(camoTag));
 
             if (!camoItem.isEmpty()) {
@@ -182,8 +199,10 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
         NbtUtil.copyStringIfPresent(rawBeTag, out, NBT_ID);
 
-        if (framedData.contains(CLONE_KEY_CAMO, Tag.TAG_COMPOUND)) {
-            out.put(NBT_CAMO, framedData.getCompound(CLONE_KEY_CAMO).copy());
+        for (String[] camoKey : CAMO_KEYS) {
+            if (framedData.contains(camoKey[1], Tag.TAG_COMPOUND)) {
+                out.put(camoKey[0], framedData.getCompound(camoKey[1]).copy());
+            }
         }
 
         Tag faceTag = rawBeTag.get(NBT_FACE);
@@ -321,11 +340,17 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
         addBaseBlockRefund(level, pos, refunds);
 
-        if (currentTag != null && currentTag.contains(NBT_CAMO, Tag.TAG_COMPOUND)) {
-            ItemStack camoItem = getCamoRequirement(currentTag.getCompound(NBT_CAMO));
+        if (currentTag != null) {
+            for (String[] camoKey : CAMO_KEYS) {
+                if (!currentTag.contains(camoKey[0], Tag.TAG_COMPOUND)) {
+                    continue;
+                }
 
-            if (!camoItem.isEmpty()) {
-                refunds.add(camoItem);
+                ItemStack camoItem = getCamoRequirement(currentTag.getCompound(camoKey[0]));
+
+                if (!camoItem.isEmpty()) {
+                    refunds.add(camoItem);
+                }
             }
         }
 
