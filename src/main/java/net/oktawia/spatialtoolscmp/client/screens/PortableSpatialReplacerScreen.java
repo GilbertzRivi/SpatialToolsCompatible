@@ -240,10 +240,12 @@ public class PortableSpatialReplacerScreen
         int panelX = this.leftPos + TARGET_PANEL_X;
         int panelY = this.topPos + TARGET_PANEL_Y;
 
+        Component targetLabel = Component.translatable(LangDefs.REPLACER_TARGET_LABEL.getTranslationKey());
+
         graphics.drawString(
                 this.font,
-                Component.translatable(LangDefs.REPLACER_TARGET_LABEL.getTranslationKey()),
-                panelX + 6,
+                targetLabel,
+                panelX + (TARGET_PANEL_W - this.font.width(targetLabel)) / 2,
                 panelY + 8,
                 0xFF111111,
                 false);
@@ -332,14 +334,11 @@ public class PortableSpatialReplacerScreen
                     INFO_PANEL_W - 18,
                     0xFFFFFFFF);
         } else {
-            graphics.renderItem(target, cx - 8, panelY + 14);
-            graphics.renderItemDecorations(this.font, target, cx - 8, panelY + 14);
-
             drawCenteredWrapped(
                     graphics,
                     target.getHoverName().copy().withStyle(ChatFormatting.AQUA),
                     cx,
-                    panelY + 38,
+                    panelY + 28,
                     INFO_PANEL_W - 18,
                     0xFF55FFFF);
 

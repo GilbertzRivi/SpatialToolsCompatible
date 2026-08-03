@@ -13,9 +13,11 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -80,8 +82,6 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     private static final String TAG_ROUTE_DIMENSION = "piperRouteDimension";
     private static final String TAG_FILL_MODE = "piperFillMode";
     private static final String TAG_PIPE_DIRECTION_MODE = "piperPipeDirectionMode";
-
-    public static final int MAX_FILL_POINTS = 4;
 
     public static final double POWER_COST_SCALE = 5.0D;
 
@@ -208,6 +208,24 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
         }
     }
 
+    public static @Nullable ResourceKey<Level> getRouteDimension(ItemStack stack) {
+        CompoundTag tag = stack.getTag();
+
+        if (tag == null || !tag.contains(TAG_ROUTE_DIMENSION, Tag.TAG_STRING)) {
+            return null;
+        }
+
+        ResourceLocation id = ResourceLocation.tryParse(tag.getString(TAG_ROUTE_DIMENSION));
+
+        return id == null ? null : ResourceKey.create(Registries.DIMENSION, id);
+    }
+
+    public static boolean isRouteInLevel(ItemStack stack, Level level) {
+        ResourceKey<Level> routeDimension = getRouteDimension(stack);
+
+        return routeDimension == null || routeDimension.equals(level.dimension());
+    }
+
     public static int getMaxRouteBlocks() {
         return Math.max(1, SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_MAX_BLOCKS.get());
     }
@@ -276,7 +294,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     }
 
     public static boolean acceptsMorePoints(ItemStack stack, List<BlockPos> route) {
-        return getFillMode(stack) != FillMode.FILL || route.size() < MAX_FILL_POINTS;
+        return getFillMode(stack) != FillMode.FILL || route.size() < 4;
     }
 
     public static PiperExtension.PathAction defaultPathAction(BlockState state, Block targetBlock) {
@@ -327,7 +345,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     }
 
     private static Vec3 rayEnd(Player player) {
-        double range = Math.max(1, SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_SELECTION_RANGE.get());
+        double range = Math.max(1, 64);
 
         return player.getEyePosition().add(player.getLookAngle().normalize().scale(range));
     }
@@ -377,12 +395,10 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             return InteractionResultHolder.success(stack);
         }
 
-        ensureRouteDimension(serverLevel, serverPlayer, stack);
-
         if (player.isShiftKeyDown()) {
             if (getRoute(stack).isEmpty()) {
                 openPiperGui(serverPlayer);
-            } else {
+            } else if (checkRouteDimension(serverLevel, serverPlayer, stack)) {
                 performBuild(serverLevel, serverPlayer, stack);
             }
 
@@ -420,14 +436,12 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
         ServerPlayer serverPlayer = (ServerPlayer) player;
         ItemStack stack = player.getMainHandItem();
 
-        ensureRouteDimension(serverLevel, serverPlayer, stack);
-
         BlockPos clicked = context.getClickedPos();
 
         if (player.isShiftKeyDown()) {
             if (getRoute(stack).isEmpty()) {
                 pickTarget(serverLevel, serverPlayer, stack, clicked);
-            } else {
+            } else if (checkRouteDimension(serverLevel, serverPlayer, stack)) {
                 performBuild(serverLevel, serverPlayer, stack);
             }
 
@@ -496,6 +510,10 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             ServerPlayer player,
             ItemStack toolStack,
             BlockPos pos) {
+        if (!checkRouteDimension(level, player, toolStack)) {
+            return;
+        }
+
         if (getTargetBlock(toolStack).isEmpty()) {
             sendHud(
                     player,
@@ -528,7 +546,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     HUD_DURATION,
                     red(Component.translatable(
                             LangDefs.PIPER_FILL_TOO_MANY_POINTS.getTranslationKey(),
-                            MAX_FILL_POINTS)));
+                            4)));
             return;
         }
 
@@ -776,11 +794,9 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             ServerPlayer player,
             ItemStack toolStack) {
-        ensureRouteDimension(level, player, toolStack);
-
         List<BlockPos> route = new ArrayList<>(getRoute(toolStack));
 
-        if (!route.isEmpty()) {
+        if (!route.isEmpty() && isRouteInLevel(toolStack, level)) {
             route.remove(route.size() - 1);
             setRoute(toolStack, route);
 
@@ -911,27 +927,25 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                         : null);
     }
 
-    private void ensureRouteDimension(
+    private boolean checkRouteDimension(
             ServerLevel level,
             ServerPlayer player,
             ItemStack toolStack) {
-        CompoundTag tag = toolStack.getTag();
-
-        if (tag == null || !tag.contains(TAG_ROUTE_DIMENSION, Tag.TAG_STRING)) {
-            return;
+        if (getRoute(toolStack).isEmpty() || isRouteInLevel(toolStack, level)) {
+            return true;
         }
 
-        if (tag.getString(TAG_ROUTE_DIMENSION).equals(level.dimension().location().toString())) {
-            return;
-        }
-
-        clearRoute(toolStack);
+        ResourceKey<Level> routeDimension = getRouteDimension(toolStack);
 
         sendHud(
                 player,
                 HUD_DURATION,
-                red(Component.translatable(LangDefs.STRUCTURE_GADGET_DIMENSION_CHANGED.getTranslationKey())),
-                red(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_CLEARED.getTranslationKey())));
+                red(Component.translatable(
+                        LangDefs.PIPER_ROUTE_OTHER_DIMENSION.getTranslationKey(),
+                        routeDimension == null ? "" : routeDimension.location().toString())),
+                red(Component.translatable(LangDefs.PIPER_CANCEL_HINT.getTranslationKey())));
+
+        return false;
     }
 
     private double getBuildPowerCost(Collection<BlockPos> positions, BlockPos origin) {
@@ -1048,6 +1062,15 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                             ? PiperRoute.regionSize(route)
                             : PiperRoute.length(route))
                     .withStyle(ChatFormatting.GRAY));
+
+            if (!route.isEmpty() && level != null && !isRouteInLevel(stack, level)) {
+                ResourceKey<Level> routeDimension = getRouteDimension(stack);
+
+                tooltip.add(Component.translatable(
+                        LangDefs.PIPER_ROUTE_OTHER_DIMENSION.getTranslationKey(),
+                        routeDimension == null ? "" : routeDimension.location().toString())
+                        .withStyle(ChatFormatting.RED));
+            }
 
             if (IsModLoaded.AE2) {
                 try {

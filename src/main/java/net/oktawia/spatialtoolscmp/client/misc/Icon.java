@@ -21,7 +21,8 @@ public enum Icon {
     PLAYER_INV("textures/gui/icons/player_inv.png"),
     EXTERNAL_INV("textures/gui/icons/external_inv.png"),
     ANCHOR("textures/gui/icons/anchor.png"),
-    ANCHOR_CROSS("textures/gui/icons/anchor_cross.png");
+    ANCHOR_CROSS("textures/gui/icons/anchor_cross.png"),
+    QUESTION("textures/gui/icons/question.png");
 
     private final ResourceLocation texture;
 

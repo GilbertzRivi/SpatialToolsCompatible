@@ -243,7 +243,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        var hit = StructureToolUtil.rayTrace(level, player, 50.0D);
+        var hit = StructureToolUtil.rayTrace(level, player, 64.0D);
 
         if (hit.getType() != HitResult.Type.BLOCK) {
             showHud(player, Component.translatable(LangDefs.NO_BLOCK_IN_RANGE.getTranslationKey()));

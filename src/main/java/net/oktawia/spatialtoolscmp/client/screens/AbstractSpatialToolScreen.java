@@ -6,7 +6,9 @@ import java.util.List;
 import java.util.Map;
 
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
@@ -17,6 +19,8 @@ import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.client.misc.Icon;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.IconButtonWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.PowerUpgradePanelWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
@@ -29,6 +33,9 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
 
     protected static final int TOOL_MODE_DROPDOWN_GAP = 4;
 
+    private static final int GUIDE_BUTTON_SIZE = 16;
+    private static final int GUIDE_BUTTON_INSET = 4;
+
     protected final PowerUpgradePanelWidget powerUpgradePanel = new PowerUpgradePanelWidget();
     protected final ToolModeDropdownWidget toolModeDropdown = new ToolModeDropdownWidget();
 
@@ -37,6 +44,26 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
 
     protected AbstractSpatialToolScreen(M menu, Inventory playerInventory, Component title) {
         super(menu, playerInventory, title);
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+
+        int guideButtonY = this.topPos - GUIDE_BUTTON_SIZE - TOOL_MODE_DROPDOWN_GAP;
+        boolean fitsAbovePanel = guideButtonY >= 0;
+
+        IconButtonWidget guideButton = new IconButtonWidget(
+                this.leftPos + this.imageWidth - GUIDE_BUTTON_SIZE - (fitsAbovePanel ? 0 : GUIDE_BUTTON_INSET),
+                fitsAbovePanel ? guideButtonY : this.topPos + GUIDE_BUTTON_INSET,
+                GUIDE_BUTTON_SIZE,
+                GUIDE_BUTTON_SIZE,
+                Icon.QUESTION,
+                () -> Minecraft.getInstance().setScreen(new GuideScreen(this, getMenu().getItemStack())));
+
+        guideButton.setTooltip(Tooltip.create(Component.translatable(LangDefs.GUIDE_BUTTON.getTranslationKey())));
+
+        addRenderableWidget(guideButton);
     }
 
     protected void renderToolModeDropdown(GuiGraphics graphics, int mouseX, int mouseY) {

@@ -11,6 +11,8 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.level.EmptyBlockGetter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
@@ -20,8 +22,6 @@ import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public final class PreviewStructure {
-
-    private static final int SURFACE_RENDER_DEPTH = 3;
 
     private final BlockPos size;
     private final List<PreviewBlock> blocks;
@@ -171,7 +171,7 @@ public final class PreviewStructure {
         }
 
         BlockPos size = readSize(tag, blocks);
-        List<PreviewBlock> surface = computeSurfaceDepth(blocks, SURFACE_RENDER_DEPTH);
+        List<PreviewBlock> surface = computeVisibleBlocks(blocks);
 
         return new PreviewStructure(
                 size,
@@ -237,9 +237,7 @@ public final class PreviewStructure {
                 maxZ + 1);
     }
 
-    private static List<PreviewBlock> computeSurfaceDepth(
-            List<PreviewBlock> blocks,
-            int maxDepth) {
+    private static List<PreviewBlock> computeVisibleBlocks(List<PreviewBlock> blocks) {
         if (blocks.isEmpty()) {
             return List.of();
         }
@@ -276,45 +274,33 @@ public final class PreviewStructure {
                 maxY + 1,
                 maxZ + 1);
 
-        Map<BlockPos, Integer> bestDepth = new HashMap<>();
-        Queue<DepthNode> queue = new ArrayDeque<>();
+        Set<BlockPos> visited = new HashSet<>();
+        Queue<BlockPos> queue = new ArrayDeque<>();
         Set<BlockPos> renderPositions = new HashSet<>();
 
-        enqueueBoundary(bounds, bestDepth, queue);
+        enqueueBoundary(bounds, visited, queue);
 
         while (!queue.isEmpty()) {
-            DepthNode node = queue.poll();
-
-            Integer knownDepth = bestDepth.get(node.pos());
-
-            if (knownDepth == null || knownDepth != node.depth()) {
-                continue;
-            }
+            BlockPos pos = queue.poll();
 
             for (Direction direction : Direction.values()) {
-                BlockPos next = node.pos().relative(direction);
+                BlockPos next = pos.relative(direction);
 
-                if (!bounds.contains(next)) {
+                if (!bounds.contains(next) || !visited.add(next)) {
                     continue;
                 }
 
                 PreviewBlock nextBlock = byPos.get(next);
 
                 if (nextBlock == null) {
-                    enqueueIfBetter(next, node.depth(), bestDepth, queue);
-                    continue;
-                }
-
-                int nextDepth = node.depth() + 1;
-
-                if (nextDepth > maxDepth) {
+                    queue.add(next);
                     continue;
                 }
 
                 renderPositions.add(next);
 
-                if (canSeeThroughForPreview(nextBlock.state()) && nextDepth < maxDepth) {
-                    enqueueIfBetter(next, nextDepth, bestDepth, queue);
+                if (!hidesBlocksBehind(nextBlock.state())) {
+                    queue.add(next);
                 }
             }
         }
@@ -330,52 +316,46 @@ public final class PreviewStructure {
         return result;
     }
 
-    private static boolean canSeeThroughForPreview(BlockState state) {
-        return !state.canOcclude();
+    // A block only counts as cover when it renders as a full opaque cube. Torches, leaves, glass,
+    // slabs and the like leave the blocks behind them visible, so the preview has to keep them.
+    private static boolean hidesBlocksBehind(BlockState state) {
+        return state.canOcclude()
+                && Block.isShapeFullBlock(state.getOcclusionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));
     }
 
     private static void enqueueBoundary(
             Bounds bounds,
-            Map<BlockPos, Integer> bestDepth,
-            Queue<DepthNode> queue) {
+            Set<BlockPos> visited,
+            Queue<BlockPos> queue) {
         for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
             for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
-                enqueueIfBetter(new BlockPos(x, y, bounds.minZ()), 0, bestDepth, queue);
-                enqueueIfBetter(new BlockPos(x, y, bounds.maxZ()), 0, bestDepth, queue);
+                enqueueBoundaryPos(new BlockPos(x, y, bounds.minZ()), visited, queue);
+                enqueueBoundaryPos(new BlockPos(x, y, bounds.maxZ()), visited, queue);
             }
         }
 
         for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
             for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                enqueueIfBetter(new BlockPos(x, bounds.minY(), z), 0, bestDepth, queue);
-                enqueueIfBetter(new BlockPos(x, bounds.maxY(), z), 0, bestDepth, queue);
+                enqueueBoundaryPos(new BlockPos(x, bounds.minY(), z), visited, queue);
+                enqueueBoundaryPos(new BlockPos(x, bounds.maxY(), z), visited, queue);
             }
         }
 
         for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
             for (int z = bounds.minZ(); z <= bounds.maxZ(); z++) {
-                enqueueIfBetter(new BlockPos(bounds.minX(), y, z), 0, bestDepth, queue);
-                enqueueIfBetter(new BlockPos(bounds.maxX(), y, z), 0, bestDepth, queue);
+                enqueueBoundaryPos(new BlockPos(bounds.minX(), y, z), visited, queue);
+                enqueueBoundaryPos(new BlockPos(bounds.maxX(), y, z), visited, queue);
             }
         }
     }
 
-    private static void enqueueIfBetter(
+    private static void enqueueBoundaryPos(
             BlockPos pos,
-            int depth,
-            Map<BlockPos, Integer> bestDepth,
-            Queue<DepthNode> queue) {
-        Integer oldDepth = bestDepth.get(pos);
-
-        if (oldDepth != null && oldDepth <= depth) {
-            return;
+            Set<BlockPos> visited,
+            Queue<BlockPos> queue) {
+        if (visited.add(pos)) {
+            queue.add(pos);
         }
-
-        bestDepth.put(pos, depth);
-        queue.add(new DepthNode(pos, depth));
-    }
-
-    private record DepthNode(BlockPos pos, int depth) {
     }
 
     private record Bounds(

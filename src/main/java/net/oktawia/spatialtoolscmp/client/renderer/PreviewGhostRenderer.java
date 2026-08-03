@@ -3,8 +3,6 @@ package net.oktawia.spatialtoolscmp.client.renderer;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -44,8 +42,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
 
-import net.oktawia.spatialtoolscmp.SpatialConfig;
-
 public final class PreviewGhostRenderer {
 
     public enum PreviewPass {
@@ -78,32 +74,6 @@ public final class PreviewGhostRenderer {
 
     public static boolean isTripwireStage(RenderLevelStageEvent.Stage stage) {
         return stage == RenderLevelStageEvent.Stage.AFTER_TRIPWIRE_BLOCKS;
-    }
-
-    public static Set<BlockPos> limitToPreviewCap(Set<BlockPos> positions) {
-        int cap = Math.max(0, SpatialConfig.COMMON.PREVIEW_MAX_BLOCKS.get());
-
-        if (positions.size() <= cap) {
-            return positions;
-        }
-
-        Set<BlockPos> limited = new LinkedHashSet<>(cap);
-
-        for (BlockPos pos : positions) {
-            if (limited.size() >= cap) {
-                break;
-            }
-
-            limited.add(pos);
-        }
-
-        return limited;
-    }
-
-    public static List<BlockPos> limitToPreviewCap(List<BlockPos> positions) {
-        int cap = Math.max(0, SpatialConfig.COMMON.PREVIEW_MAX_BLOCKS.get());
-
-        return positions.size() <= cap ? positions : positions.subList(0, cap);
     }
 
     @Nullable

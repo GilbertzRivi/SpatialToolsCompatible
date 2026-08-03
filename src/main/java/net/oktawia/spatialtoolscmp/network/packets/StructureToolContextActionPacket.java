@@ -49,6 +49,8 @@ public class StructureToolContextActionPacket {
     public static final int TOGGLE_ANCHOR = 60;
     public static final int TOGGLE_SELECTION_MODE = 61;
     public static final int CANCEL_SELECTION = 62;
+    public static final int SELECT_CORNER_RED = 63;
+    public static final int SELECT_CORNER_GREEN = 64;
 
     public static final int MOVE_SELECTION_RED_WEST = 80;
     public static final int MOVE_SELECTION_RED_EAST = 81;
@@ -186,6 +188,15 @@ public class StructureToolContextActionPacket {
                 return;
             }
 
+            if (packet.action == SELECT_CORNER_RED || packet.action == SELECT_CORNER_GREEN) {
+                StructureToolStackState.setGreenCornerSelected(
+                        stack,
+                        packet.action == SELECT_CORNER_GREEN);
+
+                syncStack(player);
+                return;
+            }
+
             if (isMoveSelectionAction(packet.action)) {
                 moveSelectionCorner(player, stack, packet.action);
                 return;
@@ -241,7 +252,7 @@ public class StructureToolContextActionPacket {
     }
 
     private static BlockPos getCurrentPasteOrigin(ServerPlayer player) {
-        BlockHitResult hit = StructureToolUtil.rayTrace(player.level(), player, 50.0D);
+        BlockHitResult hit = StructureToolUtil.rayTrace(player.level(), player, 64.0D);
 
         if (hit.getType() != HitResult.Type.BLOCK) {
             return null;

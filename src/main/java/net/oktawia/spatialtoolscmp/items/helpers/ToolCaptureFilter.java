@@ -1,18 +1,24 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BedPart;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
@@ -78,6 +84,67 @@ public final class ToolCaptureFilter {
         removeCloneMetadataEntriesAt(filtered, skippedLocalPositions);
 
         return filtered;
+    }
+
+    // Doors, tall plants and beds break when only one of their halves is captured: the cut leaves a
+    // dangling half behind and the paste places a half that pops off on the first block update.
+    public static CompoundTag filterIncompleteMultiBlocksFromTemplate(CompoundTag templateTag) {
+        CompoundTag filtered = templateTag.copy();
+        List<TemplateUtil.BlockInfo> parsedBlocks = TemplateUtil.parseRawBlocksFromTag(filtered);
+
+        if (parsedBlocks.isEmpty()) {
+            return filtered;
+        }
+
+        Map<BlockPos, BlockState> statesByPos = new HashMap<>();
+
+        for (TemplateUtil.BlockInfo info : parsedBlocks) {
+            statesByPos.put(info.pos(), info.state());
+        }
+
+        Set<BlockPos> incompleteLocalPositions = new HashSet<>();
+
+        for (TemplateUtil.BlockInfo info : parsedBlocks) {
+            BlockPos partnerPos = multiBlockPartnerPos(info.state(), info.pos());
+
+            if (partnerPos == null) {
+                continue;
+            }
+
+            BlockState partnerState = statesByPos.get(partnerPos);
+
+            if (partnerState == null || !partnerState.is(info.state().getBlock())) {
+                incompleteLocalPositions.add(info.pos());
+            }
+        }
+
+        if (incompleteLocalPositions.isEmpty()) {
+            return filtered;
+        }
+
+        removeTemplateBlockEntriesAt(filtered, incompleteLocalPositions);
+        removeCloneMetadataEntriesAt(filtered, incompleteLocalPositions);
+
+        return filtered;
+    }
+
+    private static @Nullable BlockPos multiBlockPartnerPos(BlockState state, BlockPos pos) {
+        if (state.hasProperty(BlockStateProperties.DOUBLE_BLOCK_HALF)) {
+            return state.getValue(BlockStateProperties.DOUBLE_BLOCK_HALF) == DoubleBlockHalf.LOWER
+                    ? pos.above()
+                    : pos.below();
+        }
+
+        if (state.hasProperty(BlockStateProperties.BED_PART)
+                && state.hasProperty(BlockStateProperties.HORIZONTAL_FACING)) {
+            Direction facing = state.getValue(BlockStateProperties.HORIZONTAL_FACING);
+
+            return state.getValue(BlockStateProperties.BED_PART) == BedPart.FOOT
+                    ? pos.relative(facing)
+                    : pos.relative(facing.getOpposite());
+        }
+
+        return null;
     }
 
     private static void removeTemplateBlockEntriesAt(

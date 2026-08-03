@@ -50,7 +50,7 @@ import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public class PortableSpatialStoragePreviewRenderer {
 
-    private static final double MAX_DISTANCE = 50.0D;
+    private static final double MAX_DISTANCE = 64.0D;
     private static final int PREVIEW_BUFFER_SIZE = 262_144;
 
     private final BufferBuilder previewBufferBuilder = new BufferBuilder(PREVIEW_BUFFER_SIZE);

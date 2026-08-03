@@ -274,14 +274,13 @@ public enum LangDefs {
     PIPER_PIPE_DIRECTION_UNSUPPORTED("gui.spatialtoolscmp.piper.pipe_direction_unsupported",
             "Only GregTech item and fluid pipes can be given a direction"),
     PIPER_FILL_TOO_MANY_POINTS("gui.spatialtoolscmp.piper.fill_too_many_points", "Fill mode uses at most %s points."),
+    PIPER_ROUTE_OTHER_DIMENSION("gui.spatialtoolscmp.piper.route_other_dimension",
+            "The saved route is in another dimension: %s"),
     CONFIG_TITLE("gui.spatialtoolscmp.config.title", "Spatial Tools Compatible"),
     CONFIG_CATEGORY_SETTINGS("gui.spatialtoolscmp.config.category_settings", "Settings"),
     CONFIG_ENTRY_USE_POWER("gui.spatialtoolscmp.config.entry_use_power", "Use power"),
     CONFIG_DESC_USE_POWER("gui.spatialtoolscmp.config.desc_use_power",
             "Turn off and every spatial tool works for free, ignoring its own cost settings."),
-    CONFIG_ENTRY_PREVIEW_MAX_BLOCKS("gui.spatialtoolscmp.config.entry_preview_max_blocks", "Preview max blocks"),
-    CONFIG_DESC_PREVIEW_MAX_BLOCKS("gui.spatialtoolscmp.config.desc_preview_max_blocks",
-            "How many ghost blocks the replacer and piper previews may draw at once. Only limits rendering, the tools still act on every block within their own cap."),
     CONFIG_SECTION_ENERGY_UPGRADES("gui.spatialtoolscmp.config.section_energy_upgrades", "Energy upgrades"),
     CONFIG_SECTION_ENERGY_UPGRADES_DESC("gui.spatialtoolscmp.config.section_energy_upgrades_desc",
             "Items accepted in the energy upgrade slots of every spatial tool."),
@@ -318,7 +317,10 @@ public enum LangDefs {
     CONFIG_ENTRY_SELECTION_RANGE("gui.spatialtoolscmp.config.entry_selection_range", "Selection range"),
     CONFIG_DESC_SELECTION_RANGE("gui.spatialtoolscmp.config.desc_selection_range",
             "How far the piper can place route points, in blocks."),
-    CONFIG_DESC_UNLIMITED_MINUS_ONE("gui.spatialtoolscmp.config.desc_unlimited_minus_one", "-1 means no limit.");
+    CONFIG_DESC_UNLIMITED_MINUS_ONE("gui.spatialtoolscmp.config.desc_unlimited_minus_one", "-1 means no limit."),
+
+    GUIDE_BUTTON("gui.spatialtoolscmp.guide.button", "Guide"),
+    GUIDE_MISSING("gui.spatialtoolscmp.guide.missing", "No guide for this item yet.");
 
     private final String key;
     private final String value;

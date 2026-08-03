@@ -10,6 +10,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
@@ -17,6 +18,7 @@ import net.minecraft.world.item.ItemStack;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.DirectionStarWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
@@ -31,7 +33,7 @@ import net.oktawia.spatialtoolscmp.network.packets.StructureToolContextActionPac
 
 public class StructureToolContextMenuScreen extends Screen {
 
-    private static final int PANEL_WIDTH = 124;
+    private static final int PANEL_WIDTH = 144;
     private static final int OPTIONS_PANEL_WIDTH = 154;
 
     private static final int PANEL_PADDING = 8;
@@ -42,12 +44,10 @@ public class StructureToolContextMenuScreen extends Screen {
     private static final int BUTTON_GAP = 6;
     private static final int BUTTON_STEP = BUTTON_SIZE + BUTTON_GAP;
 
-    private static final int MOVE_PANEL_HEIGHT = 154;
-    private static final int SELECTION_PANEL_HEIGHT = 184;
+    private static final int MOVE_PANEL_HEIGHT = 168;
+    private static final int SELECTION_PANEL_HEIGHT = 198;
     private static final int TRANSFORM_PANEL_HEIGHT = 92;
     private static final int OPTIONS_PANEL_HEIGHT = 62;
-
-    private static final int MOVE_GRID_WIDTH = BUTTON_SIZE * 3 + BUTTON_GAP * 2;
 
     private static final int TOOLTIP_MAX_CHARS = 30;
 
@@ -69,9 +69,6 @@ public class StructureToolContextMenuScreen extends Screen {
     private static final int TEXT_GREEN = 0xFF55FF55;
 
     private static final int TOOL_DROPDOWN_TOP_OFFSET = 15;
-
-    private static final int LOCAL_SELECT_RED = -1;
-    private static final int LOCAL_SELECT_GREEN = -2;
 
     private static final int PIPER_PANEL_WIDTH = 150;
     private static final int PIPER_PANEL_HEIGHT = 62;
@@ -108,6 +105,10 @@ public class StructureToolContextMenuScreen extends Screen {
 
     private final ToolModeDropdownWidget toolModeDropdown = new ToolModeDropdownWidget();
 
+    private final DirectionStarWidget movementStar = new DirectionStarWidget();
+
+    private boolean movementStarVisible = false;
+
     public StructureToolContextMenuScreen() {
         super(Component.translatable(LangDefs.CONTEXT_MENU_TITLE.getTranslationKey()));
     }
@@ -120,6 +121,7 @@ public class StructureToolContextMenuScreen extends Screen {
     private void rebuildLayout() {
         this.panels.clear();
         this.buttons.clear();
+        this.movementStarVisible = false;
 
         ItemStack held = getHeldStack();
 
@@ -143,15 +145,12 @@ public class StructureToolContextMenuScreen extends Screen {
         this.lastAnchorEnabled = StructureToolStackState.isAnchorEnabled(held);
         this.lastNestedMode = getNestedInventoryMode();
         this.lastSelectionMode = getSelectionMode();
+        this.selectedGreenCorner = StructureToolStackState.isGreenCornerSelected(held);
 
         if (this.lastHoldingReplacer) {
             this.lastReplacerRadius = PortableSpatialReplacer.getRadius(held);
             this.lastReplacerConnectivity = PortableSpatialReplacer.getConnectivityMode(held);
             this.lastReplacerBlockstateMode = PortableSpatialReplacer.isSameBlockstate(held);
-        }
-
-        if (!this.lastHasSelectionB) {
-            this.selectedGreenCorner = false;
         }
 
         int centerX = this.width / 2;
@@ -388,7 +387,7 @@ public class StructureToolContextMenuScreen extends Screen {
         int selectorX = panelX + (PANEL_WIDTH - selectorTotalWidth) / 2;
 
         addButton(
-                LOCAL_SELECT_RED,
+                StructureToolContextActionPacket.SELECT_CORNER_RED,
                 false,
                 LangDefs.CONTEXT_MENU_RED_CORNER,
                 Icon.CROSS,
@@ -398,7 +397,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 !this.selectedGreenCorner);
 
         addButton(
-                LOCAL_SELECT_GREEN,
+                StructureToolContextActionPacket.SELECT_CORNER_GREEN,
                 false,
                 LangDefs.CONTEXT_MENU_GREEN_CORNER,
                 Icon.CHECK,
@@ -441,60 +440,20 @@ public class StructureToolContextMenuScreen extends Screen {
             int southAction,
             int upAction,
             int downAction) {
-        int baseX = panelX + (PANEL_WIDTH - MOVE_GRID_WIDTH) / 2;
-
-        int centerButtonX = baseX + BUTTON_STEP;
-        int middleY = baseY + BUTTON_STEP;
-
-        addButton(
+        this.movementStar.setActions(
+                westAction,
+                eastAction,
                 northAction,
-                false,
-                LangDefs.OFFSET_NORTH_TOOLTIP,
-                Icon.ARROW_UP,
-                centerButtonX,
+                southAction,
+                upAction,
+                downAction);
+
+        this.movementStar.setPosition(
+                panelX + (PANEL_WIDTH - DirectionStarWidget.SIZE) / 2,
                 baseY);
 
-        addButton(
-                westAction,
-                false,
-                LangDefs.OFFSET_WEST_TOOLTIP,
-                Icon.ARROW_LEFT,
-                baseX,
-                middleY);
-
-        addButton(
-                eastAction,
-                false,
-                LangDefs.OFFSET_EAST_TOOLTIP,
-                Icon.ARROW_RIGHT,
-                baseX + BUTTON_STEP * 2,
-                middleY);
-
-        addButton(
-                southAction,
-                false,
-                LangDefs.OFFSET_SOUTH_TOOLTIP,
-                Icon.ARROW_DOWN,
-                centerButtonX,
-                baseY + BUTTON_STEP * 2);
-
-        int yAxisY = baseY + BUTTON_STEP * 3 + 8;
-
-        addButton(
-                downAction,
-                false,
-                LangDefs.OFFSET_DOWN_TOOLTIP,
-                Icon.ARROW_DOWN,
-                baseX,
-                yAxisY);
-
-        addButton(
-                upAction,
-                false,
-                LangDefs.OFFSET_UP_TOOLTIP,
-                Icon.ARROW_UP,
-                baseX + BUTTON_STEP * 2,
-                yAxisY);
+        this.movementStar.setEnabled(true);
+        this.movementStarVisible = true;
     }
 
     private void buildTransformPanel(int panelX, int panelY) {
@@ -653,6 +612,7 @@ public class StructureToolContextMenuScreen extends Screen {
         boolean hasSelectionA = StructureToolStackState.getSelectionA(held) != null;
         boolean hasSelectionB = StructureToolStackState.getSelectionB(held) != null;
         boolean anchorEnabled = StructureToolStackState.isAnchorEnabled(held);
+        boolean greenCorner = StructureToolStackState.isGreenCornerSelected(held);
 
         PortableSpatialCloner.NestedInventoryResourceMode nestedMode = getNestedInventoryMode();
         StructureToolStackState.SelectionMode selectionMode = getSelectionMode();
@@ -696,6 +656,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 || hasSelectionA != this.lastHasSelectionA
                 || hasSelectionB != this.lastHasSelectionB
                 || anchorEnabled != this.lastAnchorEnabled
+                || greenCorner != this.selectedGreenCorner
                 || nestedMode != this.lastNestedMode
                 || selectionMode != this.lastSelectionMode
                 || replacerRadius != this.lastReplacerRadius
@@ -744,6 +705,10 @@ public class StructureToolContextMenuScreen extends Screen {
             return true;
         }
 
+        if (this.movementStarVisible && clickMovementStar(mouseX, mouseY)) {
+            return true;
+        }
+
         ContextButton hovered = getHoveredButton(mouseX, mouseY);
 
         if (hovered == null) {
@@ -754,19 +719,17 @@ public class StructureToolContextMenuScreen extends Screen {
             return true;
         }
 
-        if (hovered.action() == LOCAL_SELECT_RED) {
-            this.selectedGreenCorner = false;
-            rebuildLayout();
-            return true;
-        }
+        if (hovered.action() == StructureToolContextActionPacket.SELECT_CORNER_RED
+                || hovered.action() == StructureToolContextActionPacket.SELECT_CORNER_GREEN) {
+            ItemStack held = getHeldStack();
 
-        if (hovered.action() == LOCAL_SELECT_GREEN) {
-            if (this.lastHasSelectionB) {
-                this.selectedGreenCorner = true;
+            if (!held.isEmpty()) {
+                StructureToolStackState.setGreenCornerSelected(
+                        held,
+                        hovered.action() == StructureToolContextActionPacket.SELECT_CORNER_GREEN);
+
                 rebuildLayout();
             }
-
-            return true;
         }
 
         if (isStructureAction(hovered.action()) && !hasStoredStructure()) {
@@ -844,6 +807,28 @@ public class StructureToolContextMenuScreen extends Screen {
         return true;
     }
 
+    private boolean clickMovementStar(double mouseX, double mouseY) {
+        Integer action = this.movementStar.getActionAt(mouseX, mouseY);
+
+        if (action == null) {
+            return false;
+        }
+
+        if (isStructureAction(action) && !hasStoredStructure()) {
+            showClientMessage(LangDefs.CONTEXT_MENU_STRUCTURE_REQUIRED);
+            return true;
+        }
+
+        if (isMoveSelectionAction(action) && !hasAnySelection()) {
+            showClientMessage(LangDefs.CONTEXT_MENU_SELECT_SOMETHING_FIRST);
+            return true;
+        }
+
+        NetworkHandler.sendToServer(new StructureToolContextActionPacket(action, false));
+
+        return true;
+    }
+
     private void showClientMessage(LangDefs message) {
         Minecraft mc = Minecraft.getInstance();
 
@@ -869,6 +854,10 @@ public class StructureToolContextMenuScreen extends Screen {
 
         renderPanels(graphics);
 
+        if (this.movementStarVisible) {
+            this.movementStar.render(graphics, mouseX, mouseY, partialTick);
+        }
+
         ContextButton hovered = getHoveredButton(mouseX, mouseY);
 
         for (ContextButton button : this.buttons) {
@@ -883,7 +872,29 @@ public class StructureToolContextMenuScreen extends Screen {
                     tooltipFor(hovered),
                     mouseX,
                     mouseY);
+
+            return;
         }
+
+        renderMovementStarTooltip(graphics, mouseX, mouseY);
+    }
+
+    private void renderMovementStarTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (!this.movementStarVisible) {
+            return;
+        }
+
+        Direction hovered = this.movementStar.getHoveredDirection(mouseX, mouseY);
+
+        if (hovered == null) {
+            return;
+        }
+
+        graphics.renderComponentTooltip(
+                this.font,
+                List.of(Component.translatable(this.movementStar.tooltipFor(hovered).getTranslationKey())),
+                mouseX,
+                mouseY);
     }
 
     private void renderTopInfo(GuiGraphics graphics) {
@@ -1036,7 +1047,8 @@ public class StructureToolContextMenuScreen extends Screen {
     private List<Component> tooltipFor(ContextButton button) {
         List<Component> lines = new ArrayList<>();
 
-        if (button.action() == LOCAL_SELECT_RED || button.action() == LOCAL_SELECT_GREEN) {
+        if (button.action() == StructureToolContextActionPacket.SELECT_CORNER_RED
+                || button.action() == StructureToolContextActionPacket.SELECT_CORNER_GREEN) {
             lines.add(Component.translatable(button.label().getTranslationKey()));
             return lines;
         }

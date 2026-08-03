@@ -172,7 +172,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        BlockHitResult hit = rayTrace(level, player, 50.0D);
+        BlockHitResult hit = rayTrace(level, player, 64.0D);
 
         if (hit.getType() == HitResult.Type.BLOCK) {
             BlockPos pasteOrigin = hit.getBlockPos().relative(hit.getDirection());
@@ -260,6 +260,17 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(savedTag);
         BlockPos templateOffset = TemplateUtil.getTemplateOffset(savedTag);
         BlockPos placementOrigin = origin.subtract(energyOrigin).offset(templateOffset);
+
+        double requiredPower = StructureToolUtil.calculatePreviewStructurePower(
+                savedTag,
+                energyOrigin,
+                getPowerPerBlockPaste(),
+                getEnergyCostMultiplier());
+
+        if (!tryUsePower(player, stack, requiredPower)) {
+            showNotEnoughPower(player, stack, requiredPower);
+            return false;
+        }
 
         StructurePlaceSettings settings = new StructurePlaceSettings()
                 .setIgnoreEntities(true);

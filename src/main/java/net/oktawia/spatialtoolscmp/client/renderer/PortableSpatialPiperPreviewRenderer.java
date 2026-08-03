@@ -96,6 +96,11 @@ public class PortableSpatialPiperPreviewRenderer {
             return;
         }
 
+        if (!PortableSpatialPiper.isRouteInLevel(stack, mc.level)) {
+            clearCache();
+            return;
+        }
+
         ItemStack targetItem = PortableSpatialPiper.getTargetBlock(stack);
 
         if (targetItem.isEmpty()) {
@@ -360,10 +365,10 @@ public class PortableSpatialPiperPreviewRenderer {
                 ? 0.0D
                 : SpatialPowerCost.distanceSum(routeBoxes, route.get(0));
 
-        this.cachedBuildPositions = PreviewGhostRenderer.limitToPreviewCap(buildPositions);
-        this.cachedRouteBoxes = PreviewGhostRenderer.limitToPreviewCap(routeBoxes);
-        this.cachedPendingBoxes = PreviewGhostRenderer.limitToPreviewCap(pendingBoxes);
-        this.cachedBlockedBoxes = PreviewGhostRenderer.limitToPreviewCap(blockedBoxes);
+        this.cachedBuildPositions = buildPositions;
+        this.cachedRouteBoxes = routeBoxes;
+        this.cachedPendingBoxes = pendingBoxes;
+        this.cachedBlockedBoxes = blockedBoxes;
     }
 
     private static Map<BlockPos, Integer> pipeBlockedMasks(

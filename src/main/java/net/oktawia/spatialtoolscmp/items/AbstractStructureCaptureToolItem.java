@@ -624,7 +624,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         if (StructureToolStackState.isBlockInFrontSelectionMode(stack)) {
             pos = StructureToolStackState.getBlockInFrontSelectionPos(player).immutable();
         } else {
-            BlockHitResult hit = StructureToolUtil.rayTrace(level, player, 50.0D);
+            BlockHitResult hit = StructureToolUtil.rayTrace(level, player, 64.0D);
 
             if (hit.getType() != HitResult.Type.BLOCK) {
                 showHud(player, Component.translatable(LangDefs.NO_BLOCK_IN_RANGE.getTranslationKey()));
@@ -706,6 +706,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         }
 
         savedTag = TemplateUtil.stripAirFromTag(savedTag);
+        savedTag = ToolCaptureFilter.filterIncompleteMultiBlocksFromTemplate(savedTag);
         TemplateUtil.setTemplateOffset(savedTag, BlockPos.ZERO);
 
         if (isTemplateEmpty(savedTag)) {

@@ -133,7 +133,7 @@ public class GadgetCostPreviewClient {
                     mc.level.dimension());
 
             if (anchor == null) {
-                BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
+                BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 64.0D);
 
                 if (hit.getType() != HitResult.Type.BLOCK) {
                     return;
@@ -171,7 +171,7 @@ public class GadgetCostPreviewClient {
         } else if (StructureToolStackState.isBlockInFrontSelectionMode(held)) {
             previewB = StructureToolStackState.getBlockInFrontSelectionPos(mc.player).immutable();
         } else {
-            BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
+            BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 64.0D);
 
             if (hit.getType() != HitResult.Type.BLOCK) {
                 return;

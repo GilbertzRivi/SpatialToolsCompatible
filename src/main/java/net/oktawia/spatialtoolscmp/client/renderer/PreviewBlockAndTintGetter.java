@@ -5,12 +5,14 @@ import java.util.Map;
 
 import org.jetbrains.annotations.Nullable;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.ColorResolver;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.LevelLightEngine;
@@ -19,11 +21,15 @@ import net.minecraft.world.level.material.FluidState;
 public final class PreviewBlockAndTintGetter implements BlockAndTintGetter {
 
     private final ClientLevel level;
+    private final BlockPos tintPos;
     private final Map<BlockPos, BlockState> states = new HashMap<>();
     private final Map<BlockPos, BlockEntity> blockEntities = new HashMap<>();
 
     public PreviewBlockAndTintGetter(ClientLevel level, PreviewStructure structure, BlockPos origin) {
         this.level = level;
+        this.tintPos = Minecraft.getInstance().player != null
+                ? Minecraft.getInstance().player.blockPosition()
+                : origin;
         Map<BlockPos, BlockEntity> localBEs = structure.blockEntities(level);
         for (PreviewBlock block : structure.blocks()) {
             BlockPos worldPos = origin.offset(block.pos());
@@ -46,19 +52,21 @@ public final class PreviewBlockAndTintGetter implements BlockAndTintGetter {
 
     @Override
     public int getBlockTint(BlockPos pos, ColorResolver colorResolver) {
-        return level.getBlockTint(pos, colorResolver);
+        return level.getBlockTint(tintPos, colorResolver);
     }
 
     @Override
     public @Nullable BlockEntity getBlockEntity(BlockPos pos) {
-        BlockEntity previewBe = blockEntities.get(pos);
-        return previewBe != null ? previewBe : level.getBlockEntity(pos);
+        return blockEntities.get(pos);
     }
 
+    // Preview geometry is baked in structure local space, so anything outside the structure has to
+    // read as air. Falling back to the world would sample blocks around world origin and bake their
+    // ambient occlusion into the preview.
     @Override
     public BlockState getBlockState(BlockPos pos) {
         BlockState previewState = states.get(pos);
-        return previewState != null ? previewState : level.getBlockState(pos);
+        return previewState != null ? previewState : Blocks.AIR.defaultBlockState();
     }
 
     @Override

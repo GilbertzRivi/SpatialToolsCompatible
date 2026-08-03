@@ -41,11 +41,6 @@ public class SpatialConfigScreen {
                 .setSaveConsumer(cfg.USE_POWER::set)
                 .build());
 
-        root.addEntry(integer(eb, LangDefs.CONFIG_ENTRY_PREVIEW_MAX_BLOCKS,
-                cfg.PREVIEW_MAX_BLOCKS.get(), 512, 0,
-                cfg.PREVIEW_MAX_BLOCKS::set,
-                LangDefs.CONFIG_DESC_PREVIEW_MAX_BLOCKS));
-
         addSection(root, eb, t(LangDefs.CONFIG_SECTION_ENERGY_UPGRADES), entries -> {
             entries.add(strings(eb, LangDefs.CONFIG_ENTRY_ENERGY_UPGRADE_ITEMS,
                     cfg.ENERGY_UPGRADE_ITEMS.get(), List.of("ae2:energy_card"),
@@ -137,10 +132,6 @@ public class SpatialConfigScreen {
                     cfg.PORTABLE_SPATIAL_PIPER_MAX_BLOCKS.get(), 1024, 0,
                     cfg.PORTABLE_SPATIAL_PIPER_MAX_BLOCKS::set,
                     LangDefs.CONFIG_DESC_PIPER_MAX_BLOCKS));
-            entries.add(integer(eb, LangDefs.CONFIG_ENTRY_SELECTION_RANGE,
-                    cfg.PORTABLE_SPATIAL_PIPER_SELECTION_RANGE.get(), 32, 1,
-                    cfg.PORTABLE_SPATIAL_PIPER_SELECTION_RANGE::set,
-                    LangDefs.CONFIG_DESC_SELECTION_RANGE));
         });
 
         addSection(root, eb, itemName(SpatialItemRegistrar.PORTABLE_SPATIAL_TOOL.get()), entries -> {

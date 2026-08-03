@@ -10,6 +10,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TagsUpdatedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
@@ -26,6 +27,7 @@ import net.minecraftforge.registries.RegisterEvent;
 
 import lombok.Getter;
 
+import net.oktawia.spatialtoolscmp.client.misc.guide.GuideLoader;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtensions;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialPiperPreviewRenderer;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialReplacerPreviewRenderer;
@@ -180,6 +182,11 @@ public class SpatialToolsCMP {
 
     @Mod.EventBusSubscriber(modid = MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
     public static class ClientModEvents {
+
+        @SubscribeEvent
+        public static void onRegisterClientReloadListeners(RegisterClientReloadListenersEvent event) {
+            event.registerReloadListener(new GuideLoader());
+        }
 
         @SubscribeEvent
         public static void onClientSetup(FMLClientSetupEvent event) {

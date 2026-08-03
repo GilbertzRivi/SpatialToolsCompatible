@@ -182,7 +182,7 @@ public class PortableSpatialReplacerPreviewRenderer {
         this.cachedLookPos = lookPos;
         this.cachedTargetState = targetState;
         this.cachedPositions = computePositions(mc, stack, lookPos, targetState);
-        this.cachedRenderPositions = PreviewGhostRenderer.limitToPreviewCap(this.cachedPositions);
+        this.cachedRenderPositions = this.cachedPositions;
 
         previewBlocks = lookPos == null ? 0 : this.cachedPositions.size();
         previewDistanceSum = lookPos == null

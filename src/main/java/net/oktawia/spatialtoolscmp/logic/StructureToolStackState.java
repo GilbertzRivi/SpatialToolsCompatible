@@ -28,6 +28,7 @@ public final class StructureToolStackState {
     private static final String TAG_ANCHOR_DIMENSION = "anchor_dimension";
 
     private static final String TAG_SELECTION_MODE = "selection_mode";
+    private static final String TAG_GREEN_CORNER_SELECTED = "green_corner_selected";
 
     public static final String TAG_PREVIEW_SIDE_MAP = "crazy_preview_side_map";
 
@@ -175,6 +176,7 @@ public final class StructureToolStackState {
         tag.remove(TAG_SEL_B);
         tag.remove(TAG_ORIGIN);
         tag.remove(TAG_SRC_FACING);
+        tag.remove(TAG_GREEN_CORNER_SELECTED);
     }
 
     public static void clearStructure(ItemStack stack) {
@@ -272,6 +274,37 @@ public final class StructureToolStackState {
         stack.getOrCreateTag().putInt(
                 TAG_SELECTION_MODE,
                 mode == null ? SelectionMode.DEFAULT.id() : mode.id());
+    }
+
+    public static boolean isGreenCornerSelected(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return false;
+        }
+
+        if (getSelectionB(stack) == null) {
+            return false;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        return tag != null && tag.getBoolean(TAG_GREEN_CORNER_SELECTED);
+    }
+
+    public static void setGreenCornerSelected(ItemStack stack, boolean selected) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        if (selected) {
+            stack.getOrCreateTag().putBoolean(TAG_GREEN_CORNER_SELECTED, true);
+            return;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        if (tag != null) {
+            tag.remove(TAG_GREEN_CORNER_SELECTED);
+        }
     }
 
     public static SelectionMode cycleSelectionMode(ItemStack stack) {

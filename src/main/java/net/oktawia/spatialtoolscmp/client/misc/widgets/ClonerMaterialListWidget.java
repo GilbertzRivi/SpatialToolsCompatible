@@ -54,7 +54,8 @@ public class ClonerMaterialListWidget extends AbstractWidget {
     private static final int ICON_SIZE = 16;
 
     private static final Comparator<MaterialEntry> ENTRY_SORTER = Comparator
-            .<MaterialEntry>comparingInt(entry -> entry.complete() ? 0 : 1)
+            .<MaterialEntry>comparingInt(entry -> entry.complete() ? 1 : 0)
+            .thenComparing(Comparator.comparingLong(MaterialEntry::missing).reversed())
             .thenComparing(Comparator.comparingLong(MaterialEntry::clampedAvailable).reversed())
             .thenComparing(Comparator.comparingLong(MaterialEntry::required).reversed())
             .thenComparing(MaterialEntry::sortName, String.CASE_INSENSITIVE_ORDER);

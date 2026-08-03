@@ -28,7 +28,6 @@ public final class SpatialConfig {
 
     public static final class Common {
         public final ForgeConfigSpec.BooleanValue USE_POWER;
-        public final ForgeConfigSpec.IntValue PREVIEW_MAX_BLOCKS;
         public final ForgeConfigSpec.ConfigValue<List<? extends String>> ENERGY_UPGRADE_ITEMS;
 
         public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_STORAGE_COST;
@@ -51,7 +50,6 @@ public final class SpatialConfig {
         public final ForgeConfigSpec.DoubleValue PORTABLE_SPATIAL_PIPER_ENERGY_COST_MULTIPLIER;
         public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_PIPER_BASE_INTERNAL_POWER_CAPACITY;
         public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_PIPER_MAX_BLOCKS;
-        public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_PIPER_SELECTION_RANGE;
 
         public final ForgeConfigSpec.IntValue PORTABLE_SPATIAL_TOOL_BASE_INTERNAL_POWER_CAPACITY;
 
@@ -65,11 +63,6 @@ public final class SpatialConfig {
                             "Whether portable spatial tools consume energy at all.",
                             "Set to false and every tool works for free, ignoring its own cost settings.")
                     .define("usePower", true);
-
-            PREVIEW_MAX_BLOCKS = nonNegativeInt(builder,
-                    "previewMaxBlocks", 512,
-                    "How many ghost blocks the replacer and piper previews may draw at once.",
-                    "Only limits rendering, the tools still act on every block within their own cap.");
 
             builder.comment(
                     "Energy upgrade items accepted by portable spatial tools.",
@@ -217,11 +210,6 @@ public final class SpatialConfig {
                     "maxBlocks", 1024,
                     "Hard cap on how many blocks a single piper route can contain.",
                     "Route points that would exceed this cap are rejected.");
-
-            PORTABLE_SPATIAL_PIPER_SELECTION_RANGE = nonNegativeInt(builder,
-                    "selectionRange", 32,
-                    "How far the piper looks for a block when picking a route point.",
-                    "Used when the vanilla reach is not enough to hit the block you aim at.");
 
             builder.pop();
 
