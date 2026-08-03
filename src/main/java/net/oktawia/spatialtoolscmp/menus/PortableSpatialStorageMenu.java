@@ -1,9 +1,12 @@
 package net.oktawia.spatialtoolscmp.menus;
 
+import java.util.UUID;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
@@ -12,8 +15,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolStructureStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
-import java.util.UUID;
-
 public class PortableSpatialStorageMenu extends AbstractPortableStructureToolMenu {
 
     public PortableSpatialStorageMenu(int id, Inventory playerInventory) {
@@ -21,23 +22,20 @@ public class PortableSpatialStorageMenu extends AbstractPortableStructureToolMen
                 SpatialMenuRegistrar.PORTABLE_SPATIAL_STORAGE_MENU.get(),
                 id,
                 playerInventory,
-                findToolStack(playerInventory)
-        );
+                findToolStack(playerInventory));
     }
 
     private static ItemStack findToolStack(Inventory playerInventory) {
         ItemStack stack = StructureToolUtil.findActive(
                 playerInventory.player,
                 PortableSpatialStorage.class,
-                PortableSpatialCloner.class
-        );
+                PortableSpatialCloner.class);
 
         if (stack.isEmpty()) {
             stack = StructureToolUtil.findHeld(
                     playerInventory.player,
                     PortableSpatialStorage.class,
-                    PortableSpatialCloner.class
-            );
+                    PortableSpatialCloner.class);
         }
 
         return stack;

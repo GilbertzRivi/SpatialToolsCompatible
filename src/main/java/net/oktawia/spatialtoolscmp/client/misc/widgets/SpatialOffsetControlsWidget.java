@@ -1,5 +1,7 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
+import org.jetbrains.annotations.NotNull;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -9,9 +11,9 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
-import org.jetbrains.annotations.NotNull;
 
 public class SpatialOffsetControlsWidget extends AbstractWidget {
 
@@ -50,8 +52,7 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
             Runnable offsetUp,
             Runnable offsetDown,
             Runnable offsetNorth,
-            Runnable offsetSouth
-    ) {
+            Runnable offsetSouth) {
         super(0, 0, WIDTH, HEIGHT, Component.empty());
 
         this.offsetNorthButton = new IconButtonWidget(Icon.ARROW_BACK, offsetNorth);
@@ -62,23 +63,17 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
         this.offsetDownButton = new IconButtonWidget(Icon.ARROW_DOWN, offsetDown);
 
         this.offsetNorthButton.setTooltip(Tooltip.create(
-                Component.translatable(LangDefs.OFFSET_NORTH_TOOLTIP.getTranslationKey())
-        ));
+                Component.translatable(LangDefs.OFFSET_NORTH_TOOLTIP.getTranslationKey())));
         this.offsetSouthButton.setTooltip(Tooltip.create(
-                Component.translatable(LangDefs.OFFSET_SOUTH_TOOLTIP.getTranslationKey())
-        ));
+                Component.translatable(LangDefs.OFFSET_SOUTH_TOOLTIP.getTranslationKey())));
         this.offsetWestButton.setTooltip(Tooltip.create(
-                Component.translatable(LangDefs.OFFSET_WEST_TOOLTIP.getTranslationKey())
-        ));
+                Component.translatable(LangDefs.OFFSET_WEST_TOOLTIP.getTranslationKey())));
         this.offsetEastButton.setTooltip(Tooltip.create(
-                Component.translatable(LangDefs.OFFSET_EAST_TOOLTIP.getTranslationKey())
-        ));
+                Component.translatable(LangDefs.OFFSET_EAST_TOOLTIP.getTranslationKey())));
         this.offsetUpButton.setTooltip(Tooltip.create(
-                Component.translatable(LangDefs.OFFSET_UP_TOOLTIP.getTranslationKey())
-        ));
+                Component.translatable(LangDefs.OFFSET_UP_TOOLTIP.getTranslationKey())));
         this.offsetDownButton.setTooltip(Tooltip.create(
-                Component.translatable(LangDefs.OFFSET_DOWN_TOOLTIP.getTranslationKey())
-        ));
+                Component.translatable(LangDefs.OFFSET_DOWN_TOOLTIP.getTranslationKey())));
 
         this.offsetDisplayX = new SimpleTextFieldWidget(
                 Minecraft.getInstance().font,
@@ -86,13 +81,11 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
                 0,
                 DISPLAY_WIDTH,
                 DISPLAY_HEIGHT,
-                Component.empty()
-        );
+                Component.empty());
         this.offsetDisplayX.setEditable(false);
         this.offsetDisplayX.setMaxLength(8);
         this.offsetDisplayX.setTooltip(Tooltip.create(Component.translatable(
-                LangDefs.OFFSET_X_TOOLTIP.getTranslationKey()
-        )));
+                LangDefs.OFFSET_X_TOOLTIP.getTranslationKey())));
         this.offsetDisplayX.setValue("X:0");
 
         this.offsetDisplayY = new SimpleTextFieldWidget(
@@ -101,13 +94,11 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
                 0,
                 DISPLAY_WIDTH,
                 DISPLAY_HEIGHT,
-                Component.empty()
-        );
+                Component.empty());
         this.offsetDisplayY.setEditable(false);
         this.offsetDisplayY.setMaxLength(8);
         this.offsetDisplayY.setTooltip(Tooltip.create(Component.translatable(
-                LangDefs.OFFSET_Y_TOOLTIP.getTranslationKey()
-        )));
+                LangDefs.OFFSET_Y_TOOLTIP.getTranslationKey())));
         this.offsetDisplayY.setValue("Y:0");
 
         this.offsetDisplayZ = new SimpleTextFieldWidget(
@@ -116,13 +107,11 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
                 0,
                 DISPLAY_WIDTH,
                 DISPLAY_HEIGHT,
-                Component.empty()
-        );
+                Component.empty());
         this.offsetDisplayZ.setEditable(false);
         this.offsetDisplayZ.setMaxLength(8);
         this.offsetDisplayZ.setTooltip(Tooltip.create(Component.translatable(
-                LangDefs.OFFSET_Z_TOOLTIP.getTranslationKey()
-        )));
+                LangDefs.OFFSET_Z_TOOLTIP.getTranslationKey())));
         this.offsetDisplayZ.setValue("Z:0");
 
         updateChildPositions();
@@ -188,8 +177,7 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
             @NotNull GuiGraphics graphics,
             int mouseX,
             int mouseY,
-            float partialTick
-    ) {
+            float partialTick) {
         if (!this.visible) {
             return;
         }
@@ -248,8 +236,7 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
             double mouseY,
             int button,
             double dragX,
-            double dragY
-    ) {
+            double dragY) {
         return this.offsetNorthButton.mouseDragged(mouseX, mouseY, button, dragX, dragY)
                 || this.offsetSouthButton.mouseDragged(mouseX, mouseY, button, dragX, dragY)
                 || this.offsetWestButton.mouseDragged(mouseX, mouseY, button, dragX, dragY)
@@ -277,7 +264,6 @@ public class SpatialOffsetControlsWidget extends AbstractWidget {
                 screen.getGuiLeft() + LEFT,
                 screen.getGuiTop() + TOP,
                 WIDTH,
-                HEIGHT
-        );
+                HEIGHT);
     }
 }

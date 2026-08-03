@@ -1,11 +1,12 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 
 public record RequestCraftAllPacket(int containerId) {
 
@@ -21,9 +22,12 @@ public record RequestCraftAllPacket(int containerId) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
-            if (player == null) return;
-            if (!(player.containerMenu instanceof PortableSpatialClonerMenu menu)) return;
-            if (menu.containerId != packet.containerId) return;
+            if (player == null)
+                return;
+            if (!(player.containerMenu instanceof PortableSpatialClonerMenu menu))
+                return;
+            if (menu.containerId != packet.containerId)
+                return;
             menu.handleCraftAll();
         });
         context.setPacketHandled(true);

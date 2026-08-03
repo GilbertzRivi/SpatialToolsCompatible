@@ -1,6 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
@@ -14,10 +17,10 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
-import org.jetbrains.annotations.Nullable;
 
 public final class FramedBlocksRenderExtension implements BlockRenderExtension {
 
@@ -40,8 +43,7 @@ public final class FramedBlocksRenderExtension implements BlockRenderExtension {
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         ModelData modelData = getModelData(localLevel, model, state, localPos);
 
         for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(seed), modelData)) {
@@ -57,8 +59,7 @@ public final class FramedBlocksRenderExtension implements BlockRenderExtension {
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     modelData,
-                    renderType
-            );
+                    renderType);
         }
 
         return true;
@@ -68,8 +69,7 @@ public final class FramedBlocksRenderExtension implements BlockRenderExtension {
             PreviewBlockAndTintGetter localLevel,
             BakedModel model,
             BlockState state,
-            BlockPos localPos
-    ) {
+            BlockPos localPos) {
         ModelData baseData;
 
         try {

@@ -1,11 +1,7 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
-import appeng.api.implementations.blockentities.IWirelessAccessPoint;
-import appeng.api.implementations.menuobjects.ItemMenuHost;
-import appeng.api.networking.IGridNode;
-import appeng.api.networking.security.IActionHost;
-import appeng.api.storage.ISubMenuHost;
-import appeng.menu.ISubMenu;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,8 +11,15 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkHooks;
+
+import appeng.api.implementations.blockentities.IWirelessAccessPoint;
+import appeng.api.implementations.menuobjects.ItemMenuHost;
+import appeng.api.networking.IGridNode;
+import appeng.api.networking.security.IActionHost;
+import appeng.api.storage.ISubMenuHost;
+import appeng.menu.ISubMenu;
+
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
-import org.jetbrains.annotations.Nullable;
 
 public final class AE2ClonerCraftingHost extends ItemMenuHost implements ISubMenuHost, IActionHost {
 
@@ -27,8 +30,7 @@ public final class AE2ClonerCraftingHost extends ItemMenuHost implements ISubMen
             Player player,
             int slot,
             ItemStack itemStack,
-            @Nullable IActionHost actionHost
-    ) {
+            @Nullable IActionHost actionHost) {
         super(player, slot, itemStack);
         this.actionHost = actionHost;
     }
@@ -39,8 +41,7 @@ public final class AE2ClonerCraftingHost extends ItemMenuHost implements ISubMen
         if (!player.level().isClientSide() && player.level() instanceof ServerLevel serverLevel) {
             IWirelessAccessPoint wap = AE2GridLinkableHandler.getLinkedWirelessAccessPoint(
                     serverLevel,
-                    itemStack
-            );
+                    itemStack);
 
             if (wap != null && wap.isActive()) {
                 actionHost = wap;
@@ -75,14 +76,12 @@ public final class AE2ClonerCraftingHost extends ItemMenuHost implements ISubMen
                     public @Nullable AbstractContainerMenu createMenu(
                             int containerId,
                             Inventory inventory,
-                            Player menuPlayer
-                    ) {
+                            Player menuPlayer) {
                         return SpatialMenuRegistrar.PORTABLE_SPATIAL_CLONER_MENU
                                 .get()
                                 .create(containerId, inventory);
                     }
-                }
-        );
+                });
     }
 
     @Override

@@ -1,9 +1,10 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import codechicken.multipart.api.ItemMultipart;
-import codechicken.multipart.api.part.MultiPart;
-import codechicken.multipart.block.TileMultipart;
-import codechicken.multipart.util.MultipartPlaceContext;
+import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -20,13 +21,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import codechicken.multipart.api.ItemMultipart;
+import codechicken.multipart.api.part.MultiPart;
+import codechicken.multipart.block.TileMultipart;
+import codechicken.multipart.util.MultipartPlaceContext;
+
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.Set;
 
 public final class CBMultipartReplacerExtension implements ReplacerExtension {
 
@@ -43,8 +46,7 @@ public final class CBMultipartReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos startPos,
             BlockState sourceState,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         Item sourceItem = partItem(level, startPos);
 
         if (sourceItem == null) {
@@ -55,8 +57,7 @@ public final class CBMultipartReplacerExtension implements ReplacerExtension {
                 level,
                 startPos,
                 ctx,
-                (checkedLevel, pos) -> partItem(checkedLevel, pos) == sourceItem
-        );
+                (checkedLevel, pos) -> partItem(checkedLevel, pos) == sourceItem);
     }
 
     @Nullable
@@ -173,8 +174,7 @@ public final class CBMultipartReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos pos,
             ItemStack target,
-            @Nullable ServerPlayer player
-    ) {
+            @Nullable ServerPlayer player) {
         if (player == null || !(target.getItem() instanceof ItemMultipart multipartItem)) {
             return false;
         }
@@ -196,8 +196,7 @@ public final class CBMultipartReplacerExtension implements ReplacerExtension {
             ItemMultipart multipartItem,
             ItemStack placed,
             ServerPlayer player,
-            Direction clickedFace
-    ) {
+            Direction clickedFace) {
         ItemStack held = player.getMainHandItem();
 
         try {
@@ -207,11 +206,9 @@ public final class CBMultipartReplacerExtension implements ReplacerExtension {
                     Vec3.atCenterOf(pos).relative(clickedFace.getOpposite(), 0.5D),
                     clickedFace,
                     pos,
-                    false
-            );
+                    false);
 
-            MultipartPlaceContext context =
-                    new MultipartPlaceContext(player, InteractionHand.MAIN_HAND, hit);
+            MultipartPlaceContext context = new MultipartPlaceContext(player, InteractionHand.MAIN_HAND, hit);
 
             MultiPart part = multipartItem.newPart(context);
 
@@ -256,8 +253,7 @@ public final class CBMultipartReplacerExtension implements ReplacerExtension {
             Direction.EAST
     };
 
-    private static final ResourceLocation MULTIPART_BLOCK_ID =
-            new ResourceLocation("cb_multipart", "multipart");
+    private static final ResourceLocation MULTIPART_BLOCK_ID = new ResourceLocation("cb_multipart", "multipart");
 
     private static Block multipartBlock = null;
 

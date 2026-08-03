@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Set;
+
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
@@ -8,6 +13,9 @@ import com.gregtechceu.gtceu.api.pattern.MultiblockState;
 import com.gregtechceu.gtceu.api.pattern.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.pipenet.LevelPipeNet;
 import com.gregtechceu.gtceu.api.pipenet.PipeNet;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -15,14 +23,9 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Set;
 
 public final class GTCEuReplacerExtension implements ReplacerExtension {
 
@@ -37,8 +40,7 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos startPos,
             BlockState sourceState,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         BlockEntity be = level.getBlockEntity(startPos);
 
         if (!(be instanceof PipeBlockEntity<?, ?> pipe)) {
@@ -145,8 +147,7 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
     private static void captureMachineFacings(
             ServerLevel level,
             Set<BlockPos> positions,
-            Map<BlockPos, MachineFacing> out
-    ) {
+            Map<BlockPos, MachineFacing> out) {
         for (BlockPos pos : positions) {
             if (!(level.getBlockEntity(pos) instanceof MetaMachineBlockEntity mmbe)) {
                 continue;
@@ -197,7 +198,8 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
         try {
             BlockEntity be = level.getBlockEntity(controllerPos);
 
-            if (!(be instanceof MetaMachineBlockEntity mmbe) || !(mmbe.getMetaMachine() instanceof IMultiController controller)) {
+            if (!(be instanceof MetaMachineBlockEntity mmbe)
+                    || !(mmbe.getMetaMachine() instanceof IMultiController controller)) {
                 return;
             }
 

@@ -1,8 +1,16 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+
 import com.glodblock.github.extendedae.common.tileentities.TileWirelessConnector;
 import com.glodblock.github.extendedae.common.tileentities.TileWirelessHub;
 import com.glodblock.github.extendedae.config.EPPConfig;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -22,41 +30,36 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Optional;
 
 public final class ExtendedAEStructureExtension implements StructureCloneExtension {
 
-    private static final String ID_NAMESPACE  = "expatternprovider";
-    private static final String ID_CONNECTOR  = "expatternprovider:wireless_connect";
-    private static final String CLONE_KEY     = "expatternprovider";
+    private static final String ID_NAMESPACE = "expatternprovider";
+    private static final String ID_CONNECTOR = "expatternprovider:wireless_connect";
+    private static final String CLONE_KEY = "expatternprovider";
 
-    private static final String NBT_ID          = "id";
-    private static final String NBT_COLOR       = "color";
-    private static final String NBT_HAS_OTHER   = "hasOther";
+    private static final String NBT_ID = "id";
+    private static final String NBT_COLOR = "color";
+    private static final String NBT_HAS_OTHER = "hasOther";
     private static final String NBT_OTHER_IS_HUB = "otherIsHub";
-    private static final String NBT_OPX         = "opx";
-    private static final String NBT_OPY         = "opy";
-    private static final String NBT_OPZ         = "opz";
-    private static final String NBT_OX          = "ox";
-    private static final String NBT_OY          = "oy";
-    private static final String NBT_OZ          = "oz";
+    private static final String NBT_OPX = "opx";
+    private static final String NBT_OPY = "opy";
+    private static final String NBT_OPZ = "opz";
+    private static final String NBT_OX = "ox";
+    private static final String NBT_OY = "oy";
+    private static final String NBT_OZ = "oz";
 
     private static final long NEXT_TICK_DELAY = 1L;
     private static final List<PendingConnectInit> PENDING = new ArrayList<>();
     private static boolean registered = false;
 
-    private static final boolean HUB_AVAILABLE =
-            isClassPresent("com.glodblock.github.extendedae.common.tileentities.TileWirelessHub");
+    private static final boolean HUB_AVAILABLE = isClassPresent(
+            "com.glodblock.github.extendedae.common.tileentities.TileWirelessHub");
 
     private static boolean isClassPresent(String name) {
         try {
@@ -83,8 +86,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isExPAPTag(rawBeTag)) {
             return false;
         }
@@ -120,8 +122,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isExPAPTag(rawBeTag)) {
             return Optional.empty();
         }
@@ -140,7 +141,8 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
 
         CompoundTag beTag = new CompoundTag();
         NbtUtil.copyStringIfPresent(rawBeTag, beTag, NBT_ID);
-        String color = data.contains(NBT_COLOR, Tag.TAG_STRING) ? data.getString(NBT_COLOR) : rawBeTag.getString(NBT_COLOR);
+        String color = data.contains(NBT_COLOR, Tag.TAG_STRING) ? data.getString(NBT_COLOR)
+                : rawBeTag.getString(NBT_COLOR);
         if (!color.isBlank()) {
             beTag.putString(NBT_COLOR, color);
         }
@@ -153,8 +155,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (!(be instanceof TileWirelessConnector)) {
             return;
         }
@@ -171,8 +172,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
                 level,
                 pos.immutable(),
                 data.copy(),
-                level.getGameTime() + NEXT_TICK_DELAY
-        ));
+                level.getGameTime() + NEXT_TICK_DELAY));
     }
 
     @Override
@@ -181,8 +181,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
         if (blockId == null || !ID_NAMESPACE.equals(blockId.getNamespace())) {
             return false;
@@ -281,8 +280,8 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
             ServerLevel level,
             BlockPos connectorPos,
             CompoundTag data,
-            long runAtGameTime
-    ) {}
+            long runAtGameTime) {
+    }
 
     private static final class HubOps {
         static boolean isHub(@Nullable BlockEntity be) {
@@ -343,8 +342,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
     private static void addBaseBlockRequirement(
             ServerLevel level,
             BlockPos pos,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
         if (!picked.isEmpty()) {

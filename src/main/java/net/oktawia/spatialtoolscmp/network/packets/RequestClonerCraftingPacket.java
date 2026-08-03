@@ -1,18 +1,18 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 
 public record RequestClonerCraftingPacket(
         int containerId,
         ResourceLocation itemId,
-        long amount
-) {
+        long amount) {
     public static void encode(RequestClonerCraftingPacket packet, FriendlyByteBuf buffer) {
         buffer.writeInt(packet.containerId);
         buffer.writeResourceLocation(packet.itemId);
@@ -23,14 +23,12 @@ public record RequestClonerCraftingPacket(
         return new RequestClonerCraftingPacket(
                 buffer.readInt(),
                 buffer.readResourceLocation(),
-                buffer.readLong()
-        );
+                buffer.readLong());
     }
 
     public static void handle(
             RequestClonerCraftingPacket packet,
-            Supplier<NetworkEvent.Context> contextSupplier
-    ) {
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {

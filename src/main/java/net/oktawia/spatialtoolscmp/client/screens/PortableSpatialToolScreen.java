@@ -5,14 +5,14 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialToolMenu;
 
 public class PortableSpatialToolScreen extends AbstractSpatialToolScreen<PortableSpatialToolMenu> {
 
-    private static final ResourceLocation BACKGROUND =
-            SpatialToolsCMP.makeId("textures/gui/background.png");
+    private static final ResourceLocation BACKGROUND = SpatialToolsCMP.makeId("textures/gui/background.png");
 
     private static final int PANEL_W = 256;
     private static final int PANEL_H = 256;
@@ -25,8 +25,7 @@ public class PortableSpatialToolScreen extends AbstractSpatialToolScreen<Portabl
     public PortableSpatialToolScreen(
             PortableSpatialToolMenu menu,
             Inventory playerInventory,
-            Component title
-    ) {
+            Component title) {
         super(menu, playerInventory, title);
 
         this.imageWidth = PANEL_W;
@@ -58,8 +57,7 @@ public class PortableSpatialToolScreen extends AbstractSpatialToolScreen<Portabl
                 this.imageWidth,
                 this.imageHeight,
                 256,
-                256
-        );
+                256);
 
         int panelX = this.leftPos + HINT_PANEL_X;
         int panelY = this.topPos + HINT_PANEL_Y;
@@ -73,8 +71,7 @@ public class PortableSpatialToolScreen extends AbstractSpatialToolScreen<Portabl
                         .withStyle(ChatFormatting.GRAY),
                 panelX + HINT_PANEL_W / 2,
                 panelY + HINT_PANEL_H / 2 - 4,
-                0xFFE0E0E0
-        );
+                0xFFE0E0E0);
     }
 
     @Override
@@ -94,8 +91,7 @@ public class PortableSpatialToolScreen extends AbstractSpatialToolScreen<Portabl
                 this.titleLabelX,
                 this.titleLabelY,
                 0xFF111111,
-                false
-        );
+                false);
 
         graphics.drawString(
                 this.font,
@@ -103,7 +99,6 @@ public class PortableSpatialToolScreen extends AbstractSpatialToolScreen<Portabl
                 this.inventoryLabelX,
                 this.inventoryLabelY,
                 0xFF111111,
-                false
-        );
+                false);
     }
 }

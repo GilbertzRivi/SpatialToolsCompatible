@@ -1,5 +1,11 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -10,18 +16,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
 import net.oktawia.spatialtoolscmp.items.helpers.ClonerBlockPlacer;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
 
 public final class FramedBlocksReplacerExtension implements ReplacerExtension {
 
@@ -42,8 +44,7 @@ public final class FramedBlocksReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos startPos,
             BlockState sourceState,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         return Set.of();
     }
 
@@ -112,8 +113,7 @@ public final class FramedBlocksReplacerExtension implements ReplacerExtension {
                 continue;
             }
 
-            ItemStack camoItem =
-                    FramedBlocksClonerExtension.getCamoRequirement(camo.getCompound(camoKey[0]));
+            ItemStack camoItem = FramedBlocksClonerExtension.getCamoRequirement(camo.getCompound(camoKey[0]));
 
             if (!camoItem.isEmpty()) {
                 cost.add(camoItem);
@@ -155,8 +155,7 @@ public final class FramedBlocksReplacerExtension implements ReplacerExtension {
         }
 
         CompoundTag current = extractFramedState(
-                FramedBlocksClonerExtension.saveCurrentTag(level.getBlockEntity(pos))
-        );
+                FramedBlocksClonerExtension.saveCurrentTag(level.getBlockEntity(pos)));
 
         return !current.equals(wanted);
     }
@@ -166,8 +165,7 @@ public final class FramedBlocksReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos pos,
             ItemStack target,
-            @Nullable ServerPlayer player
-    ) {
+            @Nullable ServerPlayer player) {
         if (!isFramedTarget(target)) {
             return false;
         }
@@ -184,8 +182,7 @@ public final class FramedBlocksReplacerExtension implements ReplacerExtension {
                 level,
                 pos,
                 state,
-                camo == null ? null : camo.copy()
-        );
+                camo == null ? null : camo.copy());
     }
 
     @Nullable
@@ -196,8 +193,7 @@ public final class FramedBlocksReplacerExtension implements ReplacerExtension {
             try {
                 BlockState state = NbtUtils.readBlockState(
                         BuiltInRegistries.BLOCK.asLookup(),
-                        tag.getCompound(TARGET_BLOCKSTATE_KEY)
-                );
+                        tag.getCompound(TARGET_BLOCKSTATE_KEY));
 
                 if (!state.isAir()) {
                     return state;

@@ -1,17 +1,18 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
-
-import java.util.function.Supplier;
 
 public class RequestStructureToolPreviewPacket {
 
@@ -22,7 +23,8 @@ public class RequestStructureToolPreviewPacket {
         return new RequestStructureToolPreviewPacket();
     }
 
-    public static void handle(RequestStructureToolPreviewPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
+    public static void handle(RequestStructureToolPreviewPacket packet,
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {
@@ -42,16 +44,14 @@ public class RequestStructureToolPreviewPacket {
                 stack = StructureToolUtil.findActive(
                         sender,
                         PortableSpatialStorage.class,
-                        PortableSpatialCloner.class
-                );
+                        PortableSpatialCloner.class);
             }
 
             if (stack.isEmpty()) {
                 stack = StructureToolUtil.findHeld(
                         sender,
                         PortableSpatialStorage.class,
-                        PortableSpatialCloner.class
-                );
+                        PortableSpatialCloner.class);
             }
 
             if (stack.isEmpty()) {

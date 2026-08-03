@@ -1,6 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.misc;
 
 import com.mojang.blaze3d.platform.InputConstants;
+
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
@@ -9,13 +12,13 @@ import net.minecraftforge.client.event.RegisterKeyMappingsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.screens.StructureToolContextMenuScreen;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialTool;
-import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT)
 public final class StructureToolContextMenuClient {
@@ -24,8 +27,7 @@ public final class StructureToolContextMenuClient {
             LangDefs.KEY_STRUCTURE_TOOL_CONTEXT_MENU.getTranslationKey(),
             InputConstants.Type.KEYSYM,
             GLFW.GLFW_KEY_LEFT_ALT,
-            LangDefs.KEY_CATEGORY.getTranslationKey()
-    );
+            LangDefs.KEY_CATEGORY.getTranslationKey());
 
     private static boolean suppressUntilRelease = false;
 
@@ -68,8 +70,8 @@ public final class StructureToolContextMenuClient {
 
         return !held.isEmpty()
                 && (held.getItem() instanceof AbstractStructureCaptureToolItem
-                    || held.getItem() instanceof PortableSpatialReplacer
-                    || held.getItem() instanceof PortableSpatialTool);
+                        || held.getItem() instanceof PortableSpatialReplacer
+                        || held.getItem() instanceof PortableSpatialTool);
     }
 
     @SubscribeEvent
@@ -100,11 +102,7 @@ public final class StructureToolContextMenuClient {
         }
     }
 
-    @Mod.EventBusSubscriber(
-            modid = SpatialToolsCMP.MODID,
-            value = Dist.CLIENT,
-            bus = Mod.EventBusSubscriber.Bus.MOD
-    )
+    @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.MOD)
     public static final class ModBusEvents {
 
         private ModBusEvents() {

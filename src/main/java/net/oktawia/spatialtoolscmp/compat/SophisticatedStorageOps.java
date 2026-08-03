@@ -1,12 +1,13 @@
 package net.oktawia.spatialtoolscmp.compat;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.p3pp3rf1y.sophisticatedcore.api.IStorageWrapper;
 import net.p3pp3rf1y.sophisticatedcore.inventory.InventoryHandler;
 import net.p3pp3rf1y.sophisticatedstorage.item.CapabilityStorageWrapper;
 import net.p3pp3rf1y.sophisticatedstorage.item.StorageBlockItem;
-import org.jetbrains.annotations.Nullable;
 
 public final class SophisticatedStorageOps {
 
@@ -22,8 +23,7 @@ public final class SophisticatedStorageOps {
     public static long count(
             @Nullable MinecraftServer server,
             ItemStack storageStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         if (server == null || !server.isSameThread()) {
             return 0L;
         }
@@ -56,8 +56,7 @@ public final class SophisticatedStorageOps {
             ItemStack storageStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (server == null || !server.isSameThread()) {
             return 0L;
         }

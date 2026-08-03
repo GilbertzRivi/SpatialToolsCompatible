@@ -1,5 +1,23 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import com.google.common.collect.ImmutableSet;
+
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+
 import appeng.api.config.Actionable;
 import appeng.api.networking.IGridNode;
 import appeng.api.networking.crafting.ICraftingLink;
@@ -14,27 +32,14 @@ import appeng.api.util.IConfigManager;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
-import com.google.common.collect.ImmutableSet;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.entity.BlockEntity;
-import net.minecraft.world.level.block.state.BlockState;
-import net.oktawia.spatialtoolscmp.logic.buffer.ManagedBuffer;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import net.oktawia.spatialtoolscmp.logic.buffer.ManagedBuffer;
 
 public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         implements PatternProviderLogicHost, ICraftingRequester, IGridTickable {
 
-    public record DisplayEntry(ItemStack stack, long requestedAmount, long bufferedAmount) {}
+    public record DisplayEntry(ItemStack stack, long requestedAmount, long bufferedAmount) {
+    }
 
     private final ManagedBuffer buffer;
 
@@ -51,8 +56,7 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
                 this,
                 this::setChanged,
                 this::onBufferReady,
-                () -> hasActiveRequest
-        );
+                () -> hasActiveRequest);
 
         getMainNode()
                 .setIdlePowerUsage(1.0)
@@ -194,8 +198,7 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
                 result.add(new DisplayEntry(
                         entry.getKey().toStack(),
                         requestedAmount,
-                        bufferedAmount
-                ));
+                        bufferedAmount));
             }
         }
 

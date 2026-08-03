@@ -1,14 +1,16 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.texture.OverlayTexture;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-import java.util.ArrayList;
-import java.util.List;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 
 public final class CachedPreviewBuffer implements VertexConsumer {
 
@@ -133,8 +135,7 @@ public final class CachedPreviewBuffer implements VertexConsumer {
                 light,
                 nx,
                 ny,
-                nz
-        ));
+                nz));
 
         colorSet = false;
 
@@ -194,7 +195,6 @@ public final class CachedPreviewBuffer implements VertexConsumer {
             int light,
             float nx,
             float ny,
-            float nz
-    ) {
+            float nz) {
     }
 }

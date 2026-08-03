@@ -1,23 +1,23 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
-import appeng.api.stacks.AEKey;
-import appeng.menu.locator.MenuLocator;
-import appeng.menu.me.crafting.CraftAmountMenu;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.fml.loading.LoadingModList;
-import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
-
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-public class AE2CL {
-        public static final boolean IS_AE2CL = LoadingModList.get().getMods().stream()
-                .anyMatch(
-                        info -> info.getModId().equals("ae2")
-                                && info.getVersion().getQualifier() != null
-                                && info.getVersion().getQualifier().contains("cosmolite")
-                );
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.fml.loading.LoadingModList;
 
+import appeng.api.stacks.AEKey;
+import appeng.menu.locator.MenuLocator;
+import appeng.menu.me.crafting.CraftAmountMenu;
+
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+
+public class AE2CL {
+    public static final boolean IS_AE2CL = LoadingModList.get().getMods().stream()
+            .anyMatch(
+                    info -> info.getModId().equals("ae2")
+                            && info.getVersion().getQualifier() != null
+                            && info.getVersion().getQualifier().contains("cosmolite"));
 
     private AE2CL() {
     }
@@ -37,8 +37,7 @@ public class AE2CL {
                     ServerPlayer.class,
                     MenuLocator.class,
                     AEKey.class,
-                    long.class
-            );
+                    long.class);
 
             method.invoke(null, player, locator, whatToCraft, amount);
         } catch (NoSuchMethodException e) {
@@ -57,8 +56,7 @@ public class AE2CL {
                     ServerPlayer.class,
                     MenuLocator.class,
                     AEKey.class,
-                    int.class
-            );
+                    int.class);
 
             int clampedAmount = (int) Math.min(amount, Integer.MAX_VALUE);
             method.invoke(null, player, locator, whatToCraft, clampedAmount);

@@ -1,10 +1,16 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.api.pipenet.IPipeNode;
 import com.gregtechceu.gtceu.client.model.GTModelProperties;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
@@ -21,13 +27,10 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
 
@@ -48,8 +51,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         if (!(state.getBlock() instanceof PipeBlock<?, ?, ?>)) {
             return null;
         }
@@ -69,15 +71,13 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                 state,
                 localPos,
                 tag,
-                modelData
-        );
+                modelData);
 
         try {
             for (RenderType type : model.getRenderTypes(
                     state,
                     RandomSource.create(seed),
-                    gregModelData
-            )) {
+                    gregModelData)) {
                 types.add(type);
             }
         } catch (Throwable ignored) {
@@ -92,8 +92,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                 for (RenderType frameType : frameModel.getRenderTypes(
                         frameState,
                         RandomSource.create(seed),
-                        ModelData.EMPTY
-                )) {
+                        ModelData.EMPTY)) {
                     types.add(frameType);
                 }
             }
@@ -116,8 +115,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         if (!(state.getBlock() instanceof PipeBlock<?, ?, ?>)) {
             return false;
         }
@@ -139,8 +137,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                 vertexConsumer,
                 renderType,
                 seed,
-                modelData
-        );
+                modelData);
 
         if (getPipeNode(localLevel, localPos) == null) {
             renderedAnything |= renderFallbackFrame(
@@ -152,8 +149,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                     poseStack,
                     vertexConsumer,
                     renderType,
-                    seed
-            );
+                    seed);
         }
 
         return renderedAnything;
@@ -170,8 +166,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         if (!(state.getBlock() instanceof PipeBlock<?, ?, ?>)) {
             return false;
         }
@@ -189,8 +184,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                 state,
                 localPos,
                 tag,
-                seed
-        );
+                seed);
 
         boolean renderedAnything = false;
 
@@ -208,8 +202,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                     consumer,
                     renderType,
                     seed,
-                    ModelData.EMPTY
-            );
+                    ModelData.EMPTY);
 
             if (getPipeNode(localLevel, localPos) == null) {
                 renderedAnything |= renderFallbackFrame(
@@ -221,8 +214,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                         poseStack,
                         consumer,
                         renderType,
-                        seed
-                );
+                        seed);
             }
         }
 
@@ -240,16 +232,14 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData sourceModelData
-    ) {
+            ModelData sourceModelData) {
         ModelData gregModelData = createGregPipeModelData(
                 localLevel,
                 model,
                 state,
                 localPos,
                 tag,
-                sourceModelData
-        );
+                sourceModelData);
 
         CountingVertexConsumer countingConsumer = new CountingVertexConsumer(vertexConsumer);
 
@@ -266,8 +256,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     gregModelData,
-                    renderType
-            );
+                    renderType);
         } catch (Throwable ignored) {
             return false;
         }
@@ -281,8 +270,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             BlockState state,
             BlockPos localPos,
             CompoundTag tag,
-            ModelData sourceModelData
-    ) {
+            ModelData sourceModelData) {
         ModelData inputData = sourceModelData == null ? ModelData.EMPTY : sourceModelData;
 
         IPipeNode<?, ?> pipeNode = getPipeNode(localLevel, localPos);
@@ -310,8 +298,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                     localLevel,
                     localPos,
                     state,
-                    baseData
-            );
+                    baseData);
 
             if (discoveredData != null) {
                 return discoveredData;
@@ -324,8 +311,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                     localLevel,
                     localPos,
                     state,
-                    inputData
-            );
+                    inputData);
 
             if (discoveredData != null) {
                 return discoveredData;
@@ -345,8 +331,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             PoseStack poseStack,
             VertexConsumer vertexConsumer,
             RenderType renderType,
-            long seed
-    ) {
+            long seed) {
         BlockState frameState = getGregFrameState(tag);
 
         if (frameState == null) {
@@ -374,8 +359,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     ModelData.EMPTY,
-                    renderType
-            );
+                    renderType);
         } catch (Throwable ignored) {
             return false;
         }
@@ -385,8 +369,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
 
     private static @Nullable IPipeNode<?, ?> getPipeNode(
             PreviewBlockAndTintGetter localLevel,
-            BlockPos localPos
-    ) {
+            BlockPos localPos) {
         if (localLevel.getBlockEntity(localPos) instanceof IPipeNode<?, ?> pipeNode) {
             return pipeNode;
         }
@@ -401,8 +384,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             BlockState state,
             BlockPos localPos,
             CompoundTag tag,
-            long seed
-    ) {
+            long seed) {
         Set<RenderType> renderTypes = new LinkedHashSet<>();
         renderTypes.add(PIPE_RENDER_TYPE);
 
@@ -412,15 +394,13 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                 state,
                 localPos,
                 tag,
-                ModelData.EMPTY
-        );
+                ModelData.EMPTY);
 
         try {
             for (RenderType type : model.getRenderTypes(
                     state,
                     RandomSource.create(seed),
-                    gregModelData
-            )) {
+                    gregModelData)) {
                 renderTypes.add(type);
             }
         } catch (Throwable ignored) {
@@ -435,8 +415,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
                 for (RenderType frameType : frameModel.getRenderTypes(
                         frameState,
                         RandomSource.create(seed),
-                        ModelData.EMPTY
-                )) {
+                        ModelData.EMPTY)) {
                     renderTypes.add(frameType);
                 }
             }
@@ -463,13 +442,11 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
             BakedModel frameModel,
             BlockState frameState,
             RenderType renderType,
-            long seed
-    ) {
+            long seed) {
         for (RenderType frameType : frameModel.getRenderTypes(
                 frameState,
                 RandomSource.create(seed),
-                ModelData.EMPTY
-        )) {
+                ModelData.EMPTY)) {
             if (frameType == renderType) {
                 return true;
             }
@@ -568,8 +545,7 @@ public final class GTCEuBlockRenderExtension implements BlockRenderExtension {
 
         ResourceLocation frameId = ResourceLocation.fromNamespaceAndPath(
                 "gtceu",
-                materialPath + "_frame"
-        );
+                materialPath + "_frame");
 
         Block frameBlock = ForgeRegistries.BLOCKS.getValue(frameId);
 

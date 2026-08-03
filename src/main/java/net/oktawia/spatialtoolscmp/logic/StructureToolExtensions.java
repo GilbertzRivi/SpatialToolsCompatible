@@ -1,11 +1,11 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
-
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class StructureToolExtensions {
     private static final List<StructureCloneExtension> CLONER_EXTENSIONS = new CopyOnWriteArrayList<>();

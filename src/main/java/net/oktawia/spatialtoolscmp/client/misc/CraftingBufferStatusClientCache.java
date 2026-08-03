@@ -24,5 +24,6 @@ public final class CraftingBufferStatusClientCache {
         cache.remove(containerId);
     }
 
-    private CraftingBufferStatusClientCache() {}
+    private CraftingBufferStatusClientCache() {
+    }
 }

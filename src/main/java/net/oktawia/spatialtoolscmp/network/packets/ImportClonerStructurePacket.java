@@ -1,19 +1,20 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.List;
+import java.util.function.Supplier;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-
-import java.util.List;
-import java.util.function.Supplier;
 
 public class ImportClonerStructurePacket {
 
@@ -39,8 +40,7 @@ public class ImportClonerStructurePacket {
         return new ImportClonerStructurePacket(
                 buffer.readVarInt(),
                 buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH),
-                buffer.readByteArray(MAX_IMPORT_BYTES)
-        );
+                buffer.readByteArray(MAX_IMPORT_BYTES));
     }
 
     public static void handle(ImportClonerStructurePacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -65,20 +65,17 @@ public class ImportClonerStructurePacket {
                         player.server,
                         player.getUUID(),
                         packet.bytes,
-                        packet.name
-                );
+                        packet.name);
 
                 CompoundTag tag = ClonerStructureLibraryStore.load(
                         player.server,
                         player.getUUID(),
-                        entry.id()
-                );
+                        entry.id());
 
                 StructureToolStackState.setSelectedClonerLibraryEntry(
                         stack,
                         player.getUUID(),
-                        entry.id()
-                );
+                        entry.id());
 
                 if (tag != null) {
                     TemplateUtil.copyPreviewTransformState(tag, stack.getOrCreateTag());
@@ -88,16 +85,14 @@ public class ImportClonerStructurePacket {
                         player,
                         SyncClonerLibraryPacket.fromStoreEntries(
                                 ClonerStructureLibraryStore.list(player.server, player.getUUID()),
-                                StructureToolStackState.getStructureId(stack)
-                        )
-                );
+                                StructureToolStackState.getStructureId(stack)));
 
                 StructureToolPreviewDispatcher.sendPreviewToPlayer(player, tag);
             } catch (Exception ignored) {
                 NetworkHandler.sendToPlayer(
                         player,
-                        SyncClonerLibraryPacket.fromStoreEntries(List.of(), StructureToolStackState.getStructureId(stack))
-                );
+                        SyncClonerLibraryPacket.fromStoreEntries(List.of(),
+                                StructureToolStackState.getStructureId(stack)));
             }
         });
 

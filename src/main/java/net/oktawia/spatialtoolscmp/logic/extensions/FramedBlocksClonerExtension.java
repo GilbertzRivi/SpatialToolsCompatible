@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.*;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -16,14 +20,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
 
 public final class FramedBlocksClonerExtension implements StructureCloneExtension {
 
@@ -44,8 +46,8 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     private static final String CLONE_KEY_GLOWING = "glowing";
 
     static final String[][] CAMO_KEYS = {
-            {NBT_CAMO, CLONE_KEY_CAMO},
-            {NBT_CAMO_TWO, CLONE_KEY_CAMO_TWO}
+            { NBT_CAMO, CLONE_KEY_CAMO },
+            { NBT_CAMO_TWO, CLONE_KEY_CAMO_TWO }
     };
 
     @Override
@@ -60,8 +62,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isFramedBlock(level.getBlockState(pos), rawBeTag)) {
             return false;
         }
@@ -103,8 +104,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isFramedBlock(state, rawBeTag)) {
             return Optional.empty();
         }
@@ -166,8 +166,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (be == null || getFramedMetadata(blockMetadata).isEmpty()) {
             return;
         }
@@ -193,8 +192,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     private static CompoundTag createWhitelistedFramedTag(
             CompoundTag rawBeTag,
             CompoundTag framedData,
-            boolean withGlowing
-    ) {
+            boolean withGlowing) {
         CompoundTag out = new CompoundTag();
 
         NbtUtil.copyStringIfPresent(rawBeTag, out, NBT_ID);
@@ -222,8 +220,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
 
     private static void addCamoRequirement(
             CompoundTag camoTag,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         ItemStack camoItem = getCamoRequirement(camoTag);
 
         if (!camoItem.isEmpty()) {
@@ -288,14 +285,12 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     private static void addBaseBlockRequirement(
             ServerLevel level,
             BlockPos pos,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         BlockHitResult hit = new BlockHitResult(
                 Vec3.atCenterOf(pos),
                 Direction.UP,
                 pos,
-                false
-        );
+                false);
 
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
 
@@ -330,8 +325,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag currentTag = saveCurrentTag(be);
 
         if (!isFramedBlock(state, currentTag)) {
@@ -377,14 +371,12 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     private static void addBaseBlockRefund(
             ServerLevel level,
             BlockPos pos,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         BlockHitResult hit = new BlockHitResult(
                 Vec3.atCenterOf(pos),
                 Direction.UP,
                 pos,
-                false
-        );
+                false);
 
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
 

@@ -1,10 +1,18 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Supplier;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
@@ -13,12 +21,6 @@ import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialTool;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Supplier;
 
 public final class SpatialMultiTool {
 
@@ -34,8 +36,7 @@ public final class SpatialMultiTool {
             AE2_GRID_LINK_NBT_KEY,
             CRAFTING_UPGRADE_NBT_KEY,
             MULTI_TOOL_NBT_KEY,
-            MODE_STATES_NBT_KEY
-    );
+            MODE_STATES_NBT_KEY);
 
     public enum Mode {
         STORAGE(SpatialItemRegistrar.PORTABLE_SPATIAL_STORAGE::get),
@@ -63,13 +64,10 @@ public final class SpatialMultiTool {
         int largestToolCapacity = Math.max(
                 Math.max(
                         SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY.get(),
-                        SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_BASE_INTERNAL_POWER_CAPACITY.get()
-                ),
+                        SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_BASE_INTERNAL_POWER_CAPACITY.get()),
                 Math.max(
                         SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_BASE_INTERNAL_POWER_CAPACITY.get(),
-                        SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_BASE_INTERNAL_POWER_CAPACITY.get()
-                )
-        );
+                        SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_BASE_INTERNAL_POWER_CAPACITY.get()));
 
         int configured = SpatialConfig.COMMON.PORTABLE_SPATIAL_TOOL_BASE_INTERNAL_POWER_CAPACITY.get();
 

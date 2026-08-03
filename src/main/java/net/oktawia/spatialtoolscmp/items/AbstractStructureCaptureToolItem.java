@@ -1,6 +1,12 @@
 package net.oktawia.spatialtoolscmp.items;
 
-import lombok.Getter;
+import java.io.IOException;
+import java.util.*;
+import java.util.function.IntSupplier;
+
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,7 +15,6 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -44,6 +49,10 @@ import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkHooks;
+import net.minecraftforge.registries.ForgeRegistries;
+
+import lombok.Getter;
+
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
@@ -62,12 +71,6 @@ import net.oktawia.spatialtoolscmp.network.packets.ShowHudMessagePacket;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import net.oktawia.spatialtoolscmp.util.Utils;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.*;
-import java.util.function.IntSupplier;
 
 public abstract class AbstractStructureCaptureToolItem extends Item {
 
@@ -81,8 +84,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     private static final int HUD_TIME_SHORT = 60;
     protected static final int HUD_TIME_MEDIUM = 100;
 
-    private static final int CUT_CLEAR_FLAGS =
-            Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
+    private static final int CUT_CLEAR_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE
+            | Block.UPDATE_SUPPRESS_DROPS;
 
     private static final long DEFAULT_MAX_CAPTURE_BOUNDS_VOLUME = 1_000_000L;
 
@@ -98,13 +101,13 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             IntSupplier basePowerCapacitySupplier,
             int powerUpgradeSlots,
             int maxPowerUpgrades,
-            Item.Properties properties
-    ) {
+            Item.Properties properties) {
         super(properties.stacksTo(1));
 
         this.powerUpgradeSlots = Math.max(0, powerUpgradeSlots);
         this.maxPowerUpgrades = Mth.clamp(maxPowerUpgrades, 0, this.powerUpgradeSlots);
-        this.powerManager = new ToolPowerManager(basePowerCapacitySupplier, this.powerUpgradeSlots, this.maxPowerUpgrades);
+        this.powerManager = new ToolPowerManager(basePowerCapacitySupplier, this.powerUpgradeSlots,
+                this.maxPowerUpgrades);
     }
 
     @Override
@@ -123,8 +126,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             BlockPos min,
             BlockPos max,
             BlockPos origin,
-            double usedPower
-    ) {
+            double usedPower) {
     }
 
     protected abstract MenuType<?> getToolMenuType();
@@ -169,8 +171,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             ServerLevel level,
             Player player,
             ItemStack stack,
-            CapturedStructureResult result
-    ) {
+            CapturedStructureResult result) {
     }
 
     protected boolean tryUsePower(Player player, ItemStack stack, double amount) {
@@ -238,8 +239,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 HUD_TIME_MEDIUM,
                 red(Component.translatable(LangDefs.NOT_ENOUGH_POWER.getTranslationKey())),
                 cyan(Component.translatable(LangDefs.NEED_FE.getTranslationKey(), needed)),
-                cyan(Component.translatable(LangDefs.HAVE_FE.getTranslationKey(), current))
-        );
+                cyan(Component.translatable(LangDefs.HAVE_FE.getTranslationKey(), current)));
     }
 
     @Override
@@ -305,8 +305,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 HUD_TIME_MEDIUM,
                 red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())),
                 cyan(Component.translatable(LangDefs.STRUCTURE_SIZE.getTranslationKey(), blockCount)),
-                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxSize))
-        );
+                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxSize)));
 
         return false;
     }
@@ -322,8 +321,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     protected static CompoundTag filterUncapturableBlocksFromTemplate(
             Level level,
             BlockPos worldOrigin,
-            CompoundTag templateTag
-    ) {
+            CompoundTag templateTag) {
         return ToolCaptureFilter.filterUncapturableBlocksFromTemplate(level, worldOrigin, templateTag);
     }
 
@@ -331,8 +329,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             Level level,
             Player player,
             ItemStack stack,
-            boolean notify
-    ) {
+            boolean notify) {
         if (StructureToolStackState.hasStructure(stack)) {
             clearSelectionDimension(stack);
             return true;
@@ -370,8 +367,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_CLEARED.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_DIMENSION_CHANGED.getTranslationKey()))
-            );
+                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_DIMENSION_CHANGED.getTranslationKey())));
         }
 
         return false;
@@ -388,8 +384,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     private static void rememberSelectionDimension(ItemStack stack, Level level) {
         stack.getOrCreateTag().putString(
                 SELECTION_DIMENSION_NBT_KEY,
-                level.dimension().location().toString()
-        );
+                level.dimension().location().toString());
     }
 
     protected static void clearSelectionState(ItemStack stack) {
@@ -421,8 +416,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                             (ServerLevel) level,
                             player,
                             stack,
-                            StructureToolStackState.getBlockInFrontSelectionPos(player).immutable()
-                    );
+                            StructureToolStackState.getBlockInFrontSelectionPos(player).immutable());
 
                     return InteractionResultHolder.success(stack);
                 }
@@ -444,8 +438,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                             (ServerLevel) level,
                             player,
                             stack,
-                            StructureToolStackState.getBlockInFrontSelectionPos(player).immutable()
-                    );
+                            StructureToolStackState.getBlockInFrontSelectionPos(player).immutable());
                 }
 
                 return InteractionResultHolder.success(stack);
@@ -498,16 +491,14 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             BlockPos selectedPos = StructureToolStackState.resolveSelectionPos(
                     stack,
                     player,
-                    clickedPos
-            ).immutable();
+                    clickedPos).immutable();
 
             if (!level.isClientSide()) {
                 selectNextCornerAt(
                         (ServerLevel) level,
                         player,
                         stack,
-                        selectedPos
-                );
+                        selectedPos);
             }
 
             return InteractionResult.sidedSuccess(level.isClientSide());
@@ -519,8 +510,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                         (ServerLevel) level,
                         player,
                         stack,
-                        clickedPos.relative(context.getClickedFace())
-                );
+                        clickedPos.relative(context.getClickedFace()));
             }
 
             return InteractionResult.sidedSuccess(level.isClientSide());
@@ -532,8 +522,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                         (ServerLevel) level,
                         player,
                         stack,
-                        StructureToolStackState.getBlockInFrontSelectionPos(player).immutable()
-                );
+                        StructureToolStackState.getBlockInFrontSelectionPos(player).immutable());
             }
 
             return InteractionResult.sidedSuccess(level.isClientSide());
@@ -582,7 +571,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         showHud(player, getStoredStructureActionNotImplementedMessage());
     }
 
-    protected void onUseOnWithStoredStructure(ServerLevel level, Player player, ItemStack stack, BlockPos clickedFacePos) {
+    protected void onUseOnWithStoredStructure(ServerLevel level, Player player, ItemStack stack,
+            BlockPos clickedFacePos) {
         showHud(player, getStoredStructureActionNotImplementedMessage());
     }
 
@@ -620,8 +610,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             int containerId,
             Inventory inventory,
             Player player,
-            InteractionHand hand
-    ) {
+            InteractionHand hand) {
         return getToolMenuType().create(containerId, inventory);
     }
 
@@ -666,14 +655,12 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         BlockPos min = new BlockPos(
                 Math.min(a.getX(), b.getX()),
                 Math.min(a.getY(), b.getY()),
-                Math.min(a.getZ(), b.getZ())
-        );
+                Math.min(a.getZ(), b.getZ()));
 
         BlockPos max = new BlockPos(
                 Math.max(a.getX(), b.getX()),
                 Math.max(a.getY(), b.getY()),
-                Math.max(a.getZ(), b.getZ())
-        );
+                Math.max(a.getZ(), b.getZ()));
 
         captureStructureFromBounds(
                 level,
@@ -685,8 +672,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 true,
                 removeCapturedBlocks(),
                 !player.isCreative(),
-                true
-        );
+                true);
     }
 
     protected @Nullable CapturedStructureResult captureStructureFromBounds(
@@ -699,8 +685,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             boolean consumePower,
             boolean removeBlocks,
             boolean filterUncapturable,
-            boolean showSuccess
-    ) {
+            boolean showSuccess) {
         if (!preflightCaptureBounds(level, player, stack, min, max, consumePower, filterUncapturable)) {
             return null;
         }
@@ -736,9 +721,9 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_EMPTY_OR_SKIPPED.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_CAPTURED.getTranslationKey()))
-            );
+                    red(Component
+                            .translatable(LangDefs.STRUCTURE_GADGET_SELECTION_EMPTY_OR_SKIPPED.getTranslationKey())),
+                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_CAPTURED.getTranslationKey())));
 
             return null;
         }
@@ -768,8 +753,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 savedTag,
                 localOrigin,
                 getPowerPerBlockCapture(),
-                getEnergyCostMultiplier()
-        );
+                getEnergyCostMultiplier());
 
         double usedPower = 0.0D;
 
@@ -811,8 +795,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                         player,
                         HUD_TIME_MEDIUM,
                         cyan(getCaptureSuccessMessage()),
-                        cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey()))
-                );
+                        cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey())));
             } else {
                 showHud(player, getCaptureSuccessMessage());
             }
@@ -828,8 +811,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             BlockPos min,
             BlockPos max,
             boolean consumePower,
-            boolean filterUncapturable
-    ) {
+            boolean filterUncapturable) {
         long sizeX = boundsSizeX(min, max);
         long sizeY = boundsSizeY(min, max);
         long sizeZ = boundsSizeZ(min, max);
@@ -838,8 +820,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
-                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())));
             return false;
         }
 
@@ -847,8 +828,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
-                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())));
             return false;
         }
 
@@ -861,8 +841,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())),
                     cyan(Component.translatable(LangDefs.STRUCTURE_SIZE.getTranslationKey(), volume)),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxVolume))
-            );
+                    cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxVolume)));
             return false;
         }
 
@@ -907,9 +886,10 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                                 player,
                                 HUD_TIME_MEDIUM,
                                 red(Component.translatable(LangDefs.STRUCTURE_TOO_LARGE.getTranslationKey())),
-                                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE.getTranslationKey(), countedBlocks)),
-                                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(), maxStructureSize))
-                        );
+                                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE.getTranslationKey(),
+                                        countedBlocks)),
+                                cyan(Component.translatable(LangDefs.STRUCTURE_SIZE_LIMIT.getTranslationKey(),
+                                        maxStructureSize)));
                         return false;
                     }
 
@@ -962,8 +942,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             ServerLevel level,
             BlockPos min,
             CompoundTag savedTag,
-            boolean skipUncapturable
-    ) {
+            boolean skipUncapturable) {
         BlockState air = Blocks.AIR.defaultBlockState();
         List<TemplateUtil.BlockInfo> blocksToRemove = TemplateUtil.parseRawBlocksFromTag(savedTag);
 
@@ -1000,7 +979,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         }
     }
 
-    private CompoundTag getMetadata(ServerLevel level, Player player, BlockPos min, BlockPos max, CompoundTag savedTag) {
+    private CompoundTag getMetadata(ServerLevel level, Player player, BlockPos min, BlockPos max,
+            CompoundTag savedTag) {
         CompoundTag data = new CompoundTag();
         ListTag blocks = new ListTag();
         RequirementAccumulator requirements = new RequirementAccumulator();
@@ -1058,8 +1038,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                                     be,
                                     rawBeTag,
                                     requirements::add,
-                                    blockEntry
-                            )) {
+                                    blockEntry)) {
                                 hasAnyData = true;
                             }
                         } catch (Throwable ignored) {
@@ -1211,8 +1190,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
             ServerLevel level,
             Player player,
             ItemStack stack,
-            CompoundTag savedTag
-    ) throws IOException {
+            CompoundTag savedTag) throws IOException {
         String id = UUID.randomUUID().toString();
         StructureToolStructureStore.save(level.getServer(), id, savedTag);
         return id;
@@ -1222,8 +1200,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     public Component getName(ItemStack stack) {
         if (SpatialMultiTool.isMultiTool(stack)) {
             return Component.translatable(
-                    SpatialItemRegistrar.PORTABLE_SPATIAL_TOOL.get().getDescriptionId()
-            );
+                    SpatialItemRegistrar.PORTABLE_SPATIAL_TOOL.get().getDescriptionId());
         }
 
         return super.getName(stack);
@@ -1237,52 +1214,47 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         if (SpatialMultiTool.isMultiTool(stack)) {
             tooltip.add(Component.translatable(
                     LangDefs.MULTITOOL_ACTIVE_MODE.getTranslationKey(),
-                    Component.translatable(getDescriptionId()).withStyle(ChatFormatting.AQUA)
-            ).withStyle(ChatFormatting.GRAY));
+                    Component.translatable(getDescriptionId()).withStyle(ChatFormatting.AQUA))
+                    .withStyle(ChatFormatting.GRAY));
         }
 
         tooltip.add(Component.translatable(LangDefs.HOTKEY_TOOLTIP.getTranslationKey())
                 .copy().withStyle(ChatFormatting.GRAY)
                 .append(StructureToolContextMenuClient.OPEN_CONTEXT_MENU.getKey().getDisplayName()
-                        .copy().withStyle(ChatFormatting.AQUA)
-                ));
+                        .copy().withStyle(ChatFormatting.AQUA)));
 
         tooltip.add(Component.translatable(
-                LangDefs.STRUCTURE_TOOL_HOLD_TO_OPEN.getTranslationKey()
-        ).withStyle(ChatFormatting.GRAY));
+                LangDefs.STRUCTURE_TOOL_HOLD_TO_OPEN.getTranslationKey()).withStyle(ChatFormatting.GRAY));
 
         tooltip.add(Component.translatable(
                 LangDefs.STRUCTURE_TOOL_STORED_ENERGY.getTranslationKey(),
                 energyValueComponent(stored),
                 energyValueComponent(capacity),
-                energyPercentComponent(stored, capacity)
-        ).withStyle(ChatFormatting.GRAY));
+                energyPercentComponent(stored, capacity)).withStyle(ChatFormatting.GRAY));
     }
 
     private static Component energyValueComponent(int value) {
         return Component.translatable(
                 LangDefs.STRUCTURE_TOOL_ENERGY_VALUE.getTranslationKey(),
-                Utils.shortenNumber(value, 1)
-        ).withStyle(ChatFormatting.AQUA);
+                Utils.shortenNumber(value, 1)).withStyle(ChatFormatting.AQUA);
     }
 
     private static Component energyPercentComponent(int stored, int capacity) {
-        int percent = capacity <= 0 ? 0 : Mth.clamp(
-                Math.round(stored * 100.0F / capacity),
-                0,
-                100
-        );
+        int percent = capacity <= 0 ? 0
+                : Mth.clamp(
+                        Math.round(stored * 100.0F / capacity),
+                        0,
+                        100);
 
         ChatFormatting color = percent >= 100
                 ? ChatFormatting.GREEN
                 : percent <= 10
-                  ? ChatFormatting.RED
-                  : ChatFormatting.YELLOW;
+                        ? ChatFormatting.RED
+                        : ChatFormatting.YELLOW;
 
         return Component.translatable(
                 LangDefs.STRUCTURE_TOOL_ENERGY_PERCENT.getTranslationKey(),
-                percent
-        ).withStyle(color);
+                percent).withStyle(color);
     }
 
     @Override
@@ -1330,8 +1302,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         @Override
         public @NotNull <T> LazyOptional<T> getCapability(
                 @NotNull Capability<T> capability,
-                @Nullable Direction side
-        ) {
+                @Nullable Direction side) {
             if (capability == ForgeCapabilities.ENERGY) {
                 return this.energy.cast();
             }

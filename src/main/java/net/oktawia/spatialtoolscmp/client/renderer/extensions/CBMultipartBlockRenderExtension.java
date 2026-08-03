@@ -1,14 +1,13 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
-import codechicken.lib.render.CCRenderState;
-import codechicken.lib.render.buffer.TransformingVertexConsumer;
-import codechicken.multipart.api.MultipartClientRegistry;
-import codechicken.multipart.api.part.MultiPart;
-import codechicken.multipart.api.part.render.PartRenderer;
-import codechicken.multipart.block.TileMultipart;
+import java.util.List;
+
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -25,12 +24,17 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import codechicken.lib.render.CCRenderState;
+import codechicken.lib.render.buffer.TransformingVertexConsumer;
+import codechicken.multipart.api.MultipartClientRegistry;
+import codechicken.multipart.api.part.MultiPart;
+import codechicken.multipart.api.part.render.PartRenderer;
+import codechicken.multipart.block.TileMultipart;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 public final class CBMultipartBlockRenderExtension implements BlockRenderExtension {
 
@@ -41,8 +45,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
     private static final String NBT_PARTS = "parts";
 
     private static final List<RenderType> PREVIEW_RENDER_TYPES = List.of(
-            RenderType.cutout()
-    );
+            RenderType.cutout());
 
     @Override
     public boolean canRender(BlockState state, @Nullable CompoundTag rawBeTag) {
@@ -60,8 +63,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         if (!isCbMultipart(state, previewBlock.blockEntityTag())) {
             return null;
         }
@@ -83,16 +85,14 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         if (!isCbMultipart(state, previewBlock.blockEntityTag())) {
             return false;
         }
 
         TileMultipart tile = createPreviewTile(
                 previewBlock.blockEntityTag(),
-                localPos
-        );
+                localPos);
 
         if (tile == null) {
             return true;
@@ -105,8 +105,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
                 poseStack,
                 vertexConsumer,
                 LightTexture.FULL_BRIGHT,
-                OverlayTexture.NO_OVERLAY
-        );
+                OverlayTexture.NO_OVERLAY);
 
         return true;
     }
@@ -122,16 +121,14 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         if (!isCbMultipart(state, previewBlock.blockEntityTag())) {
             return false;
         }
 
         TileMultipart tile = createPreviewTile(
                 previewBlock.blockEntityTag(),
-                localPos
-        );
+                localPos);
 
         if (tile == null) {
             return true;
@@ -146,8 +143,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
                 poseStack,
                 consumer,
                 LightTexture.FULL_BRIGHT,
-                OverlayTexture.NO_OVERLAY
-        );
+                OverlayTexture.NO_OVERLAY);
 
         return true;
     }
@@ -155,8 +151,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
     @Nullable
     public static TileMultipart createPreviewTile(
             @Nullable CompoundTag rawBeTag,
-            BlockPos localPos
-    ) {
+            BlockPos localPos) {
         return createPreviewTile(rawBeTag, localPos, Minecraft.getInstance().level);
     }
 
@@ -164,8 +159,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
     public static TileMultipart createPreviewTile(
             @Nullable CompoundTag rawBeTag,
             BlockPos localPos,
-            @Nullable Level previewLevel
-    ) {
+            @Nullable Level previewLevel) {
         if (rawBeTag == null || !rawBeTag.contains(NBT_PARTS, Tag.TAG_LIST)) {
             return null;
         }
@@ -215,8 +209,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
             PoseStack poseStack,
             VertexConsumer vertexConsumer,
             int packedLight,
-            int packedOverlay
-    ) {
+            int packedOverlay) {
         for (Object object : tile.getPartList()) {
             if (!(object instanceof MultiPart part)) {
                 continue;
@@ -231,8 +224,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
                     poseStack,
                     vertexConsumer,
                     packedLight,
-                    packedOverlay
-            );
+                    packedOverlay);
 
             renderPartStatic(part, ccrs);
         }
@@ -245,8 +237,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
             PoseStack poseStack,
             VertexConsumer vertexConsumer,
             int packedLight,
-            int packedOverlay
-    ) {
+            int packedOverlay) {
         ccrs.reset();
         ccrs.brightness = packedLight;
         ccrs.overlay = packedOverlay;
@@ -254,17 +245,14 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
         ccrs.bind(
                 new TransformingVertexConsumer(
                         new ForcedLightVertexConsumer(vertexConsumer, packedLight),
-                        poseStack
-                ),
-                DefaultVertexFormat.BLOCK
-        );
+                        poseStack),
+                DefaultVertexFormat.BLOCK);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static void renderPartStatic(
             MultiPart part,
-            CCRenderState ccrs
-    ) {
+            CCRenderState ccrs) {
         PartRenderer renderer;
 
         try {

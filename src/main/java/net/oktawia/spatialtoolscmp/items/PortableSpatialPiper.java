@@ -1,5 +1,13 @@
 package net.oktawia.spatialtoolscmp.items;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -24,16 +32,17 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
@@ -52,13 +61,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialPiperMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.ShowHudMessagePacket;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
 
 public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
 
@@ -90,8 +92,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_BASE_INTERNAL_POWER_CAPACITY::get,
                 4,
                 4,
-                properties
-        );
+                properties);
     }
 
     @Override
@@ -122,7 +123,8 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     @Override
     protected double getEnergyCostMultiplier() {
         return POWER_COST_SCALE
-                * SpatialConfig.energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_ENERGY_COST_MULTIPLIER);
+                * SpatialConfig
+                        .energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_ENERGY_COST_MULTIPLIER);
     }
 
     @Override
@@ -131,8 +133,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             Level level,
             Entity entity,
             int slotId,
-            boolean isSelected
-    ) {
+            boolean isSelected) {
         powerManager.clamp(stack);
     }
 
@@ -159,8 +160,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
 
         stack.getOrCreateTag().put(
                 TAG_TARGET_BLOCK,
-                singleTargetItem(target).save(new CompoundTag())
-        );
+                singleTargetItem(target).save(new CompoundTag()));
     }
 
     public static List<BlockPos> getRoute(ItemStack stack) {
@@ -297,8 +297,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             ItemStack stack,
             Player player,
             @Nullable BlockPos clickedPos,
-            @Nullable Direction clickedFace
-    ) {
+            @Nullable Direction clickedFace) {
         if (StructureToolStackState.isBlockInFrontSelectionMode(stack)) {
             return StructureToolStackState.getBlockInFrontSelectionPos(player).immutable();
         }
@@ -319,8 +318,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     private static BlockPos placementPos(
             Level level,
             BlockPos hitPos,
-            @Nullable Direction face
-    ) {
+            @Nullable Direction face) {
         if (face == null || level.getBlockState(hitPos).canBeReplaced()) {
             return hitPos.immutable();
         }
@@ -344,8 +342,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 end,
                 ClipContext.Block.OUTLINE,
                 ClipContext.Fluid.NONE,
-                player
-        ));
+                player));
 
         return hit.getType() == HitResult.Type.BLOCK ? hit : null;
     }
@@ -354,8 +351,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     public InteractionResultHolder<ItemStack> use(
             Level level,
             Player player,
-            InteractionHand hand
-    ) {
+            InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
         if (level.isClientSide()) {
@@ -443,8 +439,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 stack,
                 player,
                 clicked,
-                context.getClickedFace()
-        );
+                context.getClickedFace());
 
         if (routePos == null) {
             return InteractionResult.SUCCESS;
@@ -458,16 +453,14 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             ServerPlayer player,
             ItemStack toolStack,
-            BlockPos pos
-    ) {
+            BlockPos pos) {
         ItemStack picked = pickTargetItem(level, pos);
 
         if (picked.isEmpty()) {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey())));
             return;
         }
 
@@ -479,8 +472,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 cyan(Component.translatable(LangDefs.PIPER_TARGET_LABEL.getTranslationKey())
                         .append(" ")
                         .append(picked.getHoverName())),
-                cyan(Component.translatable(LangDefs.PIPER_ROUTE_HINT.getTranslationKey()))
-        );
+                cyan(Component.translatable(LangDefs.PIPER_ROUTE_HINT.getTranslationKey())));
     }
 
     private static ItemStack pickTargetItem(ServerLevel level, BlockPos pos) {
@@ -503,15 +495,13 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             ServerPlayer player,
             ItemStack toolStack,
-            BlockPos pos
-    ) {
+            BlockPos pos) {
         if (getTargetBlock(toolStack).isEmpty()) {
             sendHud(
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey())),
-                    red(Component.translatable(LangDefs.PIPER_SELECT_TARGET_HINT.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PIPER_SELECT_TARGET_HINT.getTranslationKey())));
             return;
         }
 
@@ -522,15 +512,13 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             setRoute(toolStack, route);
             toolStack.getOrCreateTag().putString(
                     TAG_ROUTE_DIMENSION,
-                    level.dimension().location().toString()
-            );
+                    level.dimension().location().toString());
 
             sendHud(
                     player,
                     HUD_DURATION,
                     cyan(Component.translatable(LangDefs.PIPER_ROUTE_STARTED.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.PIPER_CONFIRM_HINT.getTranslationKey()))
-            );
+                    cyan(Component.translatable(LangDefs.PIPER_CONFIRM_HINT.getTranslationKey())));
             return;
         }
 
@@ -540,9 +528,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     HUD_DURATION,
                     red(Component.translatable(
                             LangDefs.PIPER_FILL_TOO_MANY_POINTS.getTranslationKey(),
-                            MAX_FILL_POINTS
-                    ))
-            );
+                            MAX_FILL_POINTS)));
             return;
         }
 
@@ -559,8 +545,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.PIPER_ROUTE_POINT_SAME.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PIPER_ROUTE_POINT_SAME.getTranslationKey())));
             return;
         }
 
@@ -572,9 +557,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     HUD_DURATION,
                     red(Component.translatable(
                             LangDefs.PIPER_ROUTE_TOO_LONG.getTranslationKey(),
-                            maxBlocks
-                    ))
-            );
+                            maxBlocks)));
             return;
         }
 
@@ -586,25 +569,21 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 cyan(Component.translatable(
                         LangDefs.PIPER_ROUTE_POINT_ADDED.getTranslationKey(),
                         route.size(),
-                        sizeAfter
-                )),
-                cyan(Component.translatable(LangDefs.PIPER_CONFIRM_HINT.getTranslationKey()))
-        );
+                        sizeAfter)),
+                cyan(Component.translatable(LangDefs.PIPER_CONFIRM_HINT.getTranslationKey())));
     }
 
     private void performBuild(
             ServerLevel level,
             ServerPlayer player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         ItemStack target = getTargetBlock(toolStack);
 
         if (target.isEmpty()) {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey())));
             return;
         }
 
@@ -614,8 +593,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.PREVIEW_EMPTY_NO_SELECTION.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PREVIEW_EMPTY_NO_SELECTION.getTranslationKey())));
             return;
         }
 
@@ -625,8 +603,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.PIPER_UNPLACEABLE_TARGET.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PIPER_UNPLACEABLE_TARGET.getTranslationKey())));
             return;
         }
 
@@ -646,8 +623,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.PIPER_NOTHING_TO_BUILD.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PIPER_NOTHING_TO_BUILD.getTranslationKey())));
             return;
         }
 
@@ -659,15 +635,13 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                         level,
                         player,
                         toolStack,
-                        cost
-                );
+                        cost);
 
                 if (available < (long) buildable.size() * cost.getCount()) {
                     sendHud(
                             player,
                             HUD_DURATION,
-                            red(Component.translatable(LangDefs.REPLACER_NOT_ENOUGH_ITEMS.getTranslationKey()))
-                    );
+                            red(Component.translatable(LangDefs.REPLACER_NOT_ENOUGH_ITEMS.getTranslationKey())));
                     return;
                 }
             }
@@ -710,16 +684,14 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             undoBlocks.add(new ClonerUndoHandler.ClonerUndoPlacedBlock(
                     pos,
                     targetBlockId,
-                    List.of()
-            ));
+                    List.of()));
         }
 
         if (placedPositions.isEmpty()) {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.PIPER_NOTHING_TO_BUILD.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PIPER_NOTHING_TO_BUILD.getTranslationKey())));
             return;
         }
 
@@ -730,8 +702,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                         player,
                         toolStack,
                         cost,
-                        placedPositions.size() * cost.getCount()
-                );
+                        placedPositions.size() * cost.getCount());
             }
         }
 
@@ -778,22 +749,18 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 cyan(Component.translatable(
                         LangDefs.STRUCTURE_GADGET_PLACED_SKIPPED.getTranslationKey(),
                         placedPositions.size(),
-                        skipped
-                )),
-                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey()))
-        );
+                        skipped)),
+                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey())));
     }
 
     private void cancelRoute(
             ServerPlayer player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         if (getRoute(toolStack).isEmpty()) {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.PREVIEW_EMPTY_NO_SELECTION.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.PREVIEW_EMPTY_NO_SELECTION.getTranslationKey())));
             return;
         }
 
@@ -802,15 +769,13 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
         sendHud(
                 player,
                 HUD_DURATION,
-                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_CLEARED.getTranslationKey()))
-        );
+                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_CLEARED.getTranslationKey())));
     }
 
     private void undoLastAction(
             ServerLevel level,
             ServerPlayer player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         ensureRouteDimension(level, player, toolStack);
 
         List<BlockPos> route = new ArrayList<>(getRoute(toolStack));
@@ -825,9 +790,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     cyan(Component.translatable(LangDefs.PIPER_ROUTE_POINT_REMOVED.getTranslationKey())),
                     cyan(Component.translatable(
                             LangDefs.PIPER_ROUTE_LABEL.getTranslationKey(),
-                            route.size()
-                    ))
-            );
+                            route.size())));
             return;
         }
 
@@ -837,8 +800,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     private void undoLastBuild(
             ServerLevel level,
             ServerPlayer player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         CompoundTag stackTag = toolStack.getTag();
 
         if (stackTag == null || !stackTag.contains(ClonerUndoHandler.UNDO_ID_KEY, Tag.TAG_STRING)) {
@@ -846,8 +808,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey())));
             return;
         }
 
@@ -860,8 +821,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey())));
             return;
         }
 
@@ -870,13 +830,11 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey())));
             return;
         }
 
-        List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoBlocks =
-                ClonerUndoHandler.readBlocks(undoTag);
+        List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoBlocks = ClonerUndoHandler.readBlocks(undoTag);
 
         if (undoBlocks.isEmpty()) {
             ClonerUndoHandler.clear(level, toolStack);
@@ -885,8 +843,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey())));
             return;
         }
 
@@ -895,8 +852,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey())));
             return;
         }
 
@@ -909,8 +865,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey())));
             return;
         }
 
@@ -931,16 +886,14 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
 
         ClonerUndoHandler.removeBlocks(level, undoBlocks);
 
-        ClonerInventoryAccess.ClonerRefundResult refundResult =
-                ClonerInventoryAccess.ClonerRefundResult.success(false);
+        ClonerInventoryAccess.ClonerRefundResult refundResult = ClonerInventoryAccess.ClonerRefundResult.success(false);
 
         if (shouldRefund) {
             refundResult = ClonerInventoryAccess.refundStacksToAeThenInventory(
                     level,
                     player,
                     toolStack,
-                    refunds
-            );
+                    refunds);
         }
 
         ClonerUndoHandler.clear(level, toolStack);
@@ -952,19 +905,16 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_COPY_PASTE_UNDONE.getTranslationKey())),
                 shouldRefund
                         ? cyan(Component.translatable(
-                        refundResult.insertedIntoMe()
-                                ? LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED_TO_ME.getTranslationKey()
-                                : LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED.getTranslationKey()
-                ))
-                        : null
-        );
+                                refundResult.insertedIntoMe()
+                                        ? LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED_TO_ME.getTranslationKey()
+                                        : LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED.getTranslationKey()))
+                        : null);
     }
 
     private void ensureRouteDimension(
             ServerLevel level,
             ServerPlayer player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         CompoundTag tag = toolStack.getTag();
 
         if (tag == null || !tag.contains(TAG_ROUTE_DIMENSION, Tag.TAG_STRING)) {
@@ -981,24 +931,21 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
                 player,
                 HUD_DURATION,
                 red(Component.translatable(LangDefs.STRUCTURE_GADGET_DIMENSION_CHANGED.getTranslationKey())),
-                red(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_CLEARED.getTranslationKey()))
-        );
+                red(Component.translatable(LangDefs.STRUCTURE_GADGET_SELECTION_CLEARED.getTranslationKey())));
     }
 
     private double getBuildPowerCost(Collection<BlockPos> positions, BlockPos origin) {
         return SpatialPowerCost.cost(
                 positions,
                 origin,
-                getPowerPerBlockPaste() * getEnergyCostMultiplier()
-        );
+                getPowerPerBlockPaste() * getEnergyCostMultiplier());
     }
 
     private static PiperExtension.PathAction resolvePathAction(
             ServerLevel level,
             BlockPos pos,
             ItemStack target,
-            Block targetBlock
-    ) {
+            Block targetBlock) {
         BlockState state = level.getBlockState(pos);
 
         for (PiperExtension ext : PiperExtensions.get()) {
@@ -1064,8 +1011,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             public @Nullable AbstractContainerMenu createMenu(
                     int id,
                     Inventory inventory,
-                    Player p
-            ) {
+                    Player p) {
                 return new PortableSpatialPiperMenu(id, inventory);
             }
         });
@@ -1076,8 +1022,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             ItemStack stack,
             @Nullable Level level,
             List<Component> tooltip,
-            TooltipFlag flag
-    ) {
+            TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
 
         if (Screen.hasShiftDown()) {
@@ -1093,17 +1038,15 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
             List<BlockPos> route = getRoute(stack);
 
             tooltip.add(Component.translatable(
-                            LangDefs.PIPER_ROUTE_LABEL.getTranslationKey(),
-                            route.size()
-                    )
+                    LangDefs.PIPER_ROUTE_LABEL.getTranslationKey(),
+                    route.size())
                     .withStyle(ChatFormatting.GRAY));
 
             tooltip.add(Component.translatable(
-                            LangDefs.STRUCTURE_SIZE.getTranslationKey(),
-                            getFillMode(stack) == FillMode.FILL
-                                    ? PiperRoute.regionSize(route)
-                                    : PiperRoute.length(route)
-                    )
+                    LangDefs.STRUCTURE_SIZE.getTranslationKey(),
+                    getFillMode(stack) == FillMode.FILL
+                            ? PiperRoute.regionSize(route)
+                            : PiperRoute.length(route))
                     .withStyle(ChatFormatting.GRAY));
 
             if (IsModLoaded.AE2) {
@@ -1112,19 +1055,17 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
 
                     if (ae2Pos != null) {
                         tooltip.add(Component.translatable(
-                                        LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2.getTranslationKey(),
-                                        ae2Pos.pos().getX()
-                                                + " "
-                                                + ae2Pos.pos().getY()
-                                                + " "
-                                                + ae2Pos.pos().getZ()
-                                )
+                                LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2.getTranslationKey(),
+                                ae2Pos.pos().getX()
+                                        + " "
+                                        + ae2Pos.pos().getY()
+                                        + " "
+                                        + ae2Pos.pos().getZ())
                                 .withStyle(ChatFormatting.AQUA));
 
                         tooltip.add(Component.translatable(
-                                        LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
-                                        ae2Pos.dimension().location().toString()
-                                )
+                                LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
+                                ae2Pos.dimension().location().toString())
                                 .withStyle(ChatFormatting.GRAY));
                     }
                 } catch (Throwable ignored) {
@@ -1151,8 +1092,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
     private static void sendHud(
             ServerPlayer player,
             int duration,
-            ShowHudMessagePacket.Line... lines
-    ) {
+            ShowHudMessagePacket.Line... lines) {
         List<ShowHudMessagePacket.Line> filtered = new ArrayList<>();
 
         for (ShowHudMessagePacket.Line line : lines) {
@@ -1163,7 +1103,6 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
 
         NetworkHandler.sendToPlayer(
                 player,
-                new ShowHudMessagePacket(duration, filtered)
-        );
+                new ShowHudMessagePacket(duration, filtered));
     }
 }

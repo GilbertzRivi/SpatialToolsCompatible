@@ -1,15 +1,16 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
+
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
 import net.oktawia.spatialtoolscmp.compat.ae2.CraftingBufferMenu;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class CraftingBufferScreen extends AbstractContainerScreen<CraftingBufferMenu> {
 
@@ -66,8 +67,7 @@ public class CraftingBufferScreen extends AbstractContainerScreen<CraftingBuffer
                         e.stack(),
                         e.requestedAmount(),
                         e.bufferedAmount(),
-                        false
-                ))
+                        false))
                 .collect(Collectors.toList());
 
         itemList.setEntries(materialEntries);
@@ -95,11 +95,9 @@ public class CraftingBufferScreen extends AbstractContainerScreen<CraftingBuffer
 
         if (menu.isHasError()) {
             Component errorLine1 = Component.translatable(
-                    LangDefs.CRAFTING_BUFFER_ERROR_NO_CPUS_LINE_1.getTranslationKey()
-            );
+                    LangDefs.CRAFTING_BUFFER_ERROR_NO_CPUS_LINE_1.getTranslationKey());
             Component errorLine2 = Component.translatable(
-                    LangDefs.CRAFTING_BUFFER_ERROR_NO_CPUS_LINE_2.getTranslationKey()
-            );
+                    LangDefs.CRAFTING_BUFFER_ERROR_NO_CPUS_LINE_2.getTranslationKey());
 
             graphics.drawString(font, errorLine1, leftPos + 8, topPos + 30, TEXT_ERROR_COLOR, false);
             graphics.drawString(font, errorLine2, leftPos + 8, topPos + 42, TEXT_ERROR_COLOR, false);
@@ -108,8 +106,7 @@ public class CraftingBufferScreen extends AbstractContainerScreen<CraftingBuffer
 
         if (menu.getEntries().isEmpty()) {
             Component idleText = Component.translatable(
-                    LangDefs.CRAFTING_BUFFER_IDLE.getTranslationKey()
-            );
+                    LangDefs.CRAFTING_BUFFER_IDLE.getTranslationKey());
 
             int textWidth = font.width(idleText);
             int x = leftPos + (imageWidth - textWidth) / 2;

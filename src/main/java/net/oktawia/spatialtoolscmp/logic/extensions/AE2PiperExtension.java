@@ -1,14 +1,17 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import appeng.api.parts.IPartHost;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
+
+import appeng.api.parts.IPartHost;
+
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
-import org.jetbrains.annotations.Nullable;
 
 public final class AE2PiperExtension implements PiperExtension {
 
@@ -17,8 +20,7 @@ public final class AE2PiperExtension implements PiperExtension {
             ServerLevel level,
             BlockPos pos,
             BlockState state,
-            ItemStack target
-    ) {
+            ItemStack target) {
         return pathAction(level, pos, target);
     }
 

@@ -1,6 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
-import lombok.Setter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -8,12 +11,11 @@ import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
+
+import lombok.Setter;
+
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 public class ClonerMaterialListWidget extends AbstractWidget {
 
@@ -51,11 +53,11 @@ public class ClonerMaterialListWidget extends AbstractWidget {
     private static final int BUTTON_HOVER_PADDING = 2;
     private static final int ICON_SIZE = 16;
 
-    private static final Comparator<MaterialEntry> ENTRY_SORTER =
-            Comparator.<MaterialEntry>comparingInt(entry -> entry.complete() ? 0 : 1)
-                    .thenComparing(Comparator.comparingLong(MaterialEntry::clampedAvailable).reversed())
-                    .thenComparing(Comparator.comparingLong(MaterialEntry::required).reversed())
-                    .thenComparing(MaterialEntry::sortName, String.CASE_INSENSITIVE_ORDER);
+    private static final Comparator<MaterialEntry> ENTRY_SORTER = Comparator
+            .<MaterialEntry>comparingInt(entry -> entry.complete() ? 0 : 1)
+            .thenComparing(Comparator.comparingLong(MaterialEntry::clampedAvailable).reversed())
+            .thenComparing(Comparator.comparingLong(MaterialEntry::required).reversed())
+            .thenComparing(MaterialEntry::sortName, String.CASE_INSENSITIVE_ORDER);
 
     private List<MaterialEntry> entries = List.of();
     private final List<IconButtonWidget> craftButtons = new ArrayList<>();
@@ -65,14 +67,16 @@ public class ClonerMaterialListWidget extends AbstractWidget {
     @Setter
     private boolean craftButtonsEnabled = false;
 
-    private CraftRequestHandler craftRequestHandler = entry -> {};
+    private CraftRequestHandler craftRequestHandler = entry -> {
+    };
 
     public ClonerMaterialListWidget(int x, int y, int width, int height) {
         super(x, y, width, height, Component.empty());
     }
 
     public void setCraftRequestHandler(CraftRequestHandler craftRequestHandler) {
-        this.craftRequestHandler = craftRequestHandler == null ? entry -> {} : craftRequestHandler;
+        this.craftRequestHandler = craftRequestHandler == null ? entry -> {
+        } : craftRequestHandler;
         rebuildButtons();
     }
 
@@ -152,8 +156,7 @@ public class ClonerMaterialListWidget extends AbstractWidget {
         this.scrollOffset = Mth.clamp(
                 this.scrollOffset - (int) Math.signum(delta) * ROW_HEIGHT,
                 0,
-                getMaxScroll()
-        );
+                getMaxScroll());
 
         return true;
     }
@@ -259,8 +262,7 @@ public class ClonerMaterialListWidget extends AbstractWidget {
                     textX,
                     textY,
                     textColor,
-                    false
-            );
+                    false);
 
             IconButtonWidget craftButton = this.craftButtons.get(index);
             boolean showCraftButton = this.craftButtonsEnabled && entry.canRequestCraft();

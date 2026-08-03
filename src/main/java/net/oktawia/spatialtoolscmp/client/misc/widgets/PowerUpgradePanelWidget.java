@@ -4,6 +4,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.resources.ResourceLocation;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 public class PowerUpgradePanelWidget {
@@ -23,12 +24,10 @@ public class PowerUpgradePanelWidget {
     public static final int SLOT_STEP = SLOT_TOTAL_SIZE;
 
     private static final ResourceLocation STORAGE_TEXTURE = SpatialToolsCMP.makeId(
-            "textures/gui/upgrades_storage.png"
-    );
+            "textures/gui/upgrades_storage.png");
 
     private static final ResourceLocation CLONER_TEXTURE = SpatialToolsCMP.makeId(
-            "textures/gui/upgrades_cloner.png"
-    );
+            "textures/gui/upgrades_cloner.png");
 
     private int leftPos;
     private int topPos;
@@ -67,8 +66,7 @@ public class PowerUpgradePanelWidget {
                 PANEL_WIDTH,
                 height,
                 PANEL_WIDTH,
-                height
-        );
+                height);
 
         renderDisabledSlots(graphics);
     }
@@ -93,8 +91,7 @@ public class PowerUpgradePanelWidget {
                     slotY,
                     slotX + SLOT_SIZE,
                     slotY + SLOT_SIZE,
-                    0x99000000
-            );
+                    0x99000000);
         }
     }
 
@@ -155,8 +152,7 @@ public class PowerUpgradePanelWidget {
                 screen.getGuiLeft() + PANEL_LEFT,
                 screen.getGuiTop() + PANEL_TOP,
                 PANEL_WIDTH,
-                getPanelHeight(slots)
-        );
+                getPanelHeight(slots));
     }
 
     public boolean isMouseOver(double mouseX, double mouseY) {

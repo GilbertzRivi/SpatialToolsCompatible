@@ -1,15 +1,17 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.SendLongStringToClientPacket;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 public final class StructureToolPreviewDispatcher {
 
@@ -36,8 +38,7 @@ public final class StructureToolPreviewDispatcher {
 
                     NetworkHandler.sendToPlayer(
                             player,
-                            new SendLongStringToClientPacket(new String(part, StandardCharsets.UTF_8))
-                    );
+                            new SendLongStringToClientPacket(new String(part, StandardCharsets.UTF_8)));
                 }
             } catch (Exception ignored) {
             }
@@ -70,8 +71,7 @@ public final class StructureToolPreviewDispatcher {
             CompoundTag tag = ClonerStructureLibraryStore.loadSelectedOrMigrateLegacy(
                     player.server,
                     player.getUUID(),
-                    stack
-            );
+                    stack);
 
             if (tag != null) {
                 TemplateUtil.copyPreviewTransformState(tag, stack.getOrCreateTag());

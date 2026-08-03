@@ -1,6 +1,14 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
-import lombok.Getter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+import java.util.Objects;
+import java.util.function.IntSupplier;
+
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
@@ -8,6 +16,9 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
+
+import lombok.Getter;
+
 import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureFileTransferClient;
 import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureLibraryClientCache;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
@@ -19,14 +30,6 @@ import net.oktawia.spatialtoolscmp.network.packets.DeleteClonerStructurePacket;
 import net.oktawia.spatialtoolscmp.network.packets.MoveClonerStructureToFolderPacket;
 import net.oktawia.spatialtoolscmp.network.packets.RenameClonerStructurePacket;
 import net.oktawia.spatialtoolscmp.network.packets.SelectClonerStructurePacket;
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
-import java.util.function.IntSupplier;
 
 public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
@@ -41,7 +44,9 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
     private static final int DROPDOWN_HEIGHT = 172;
     private static final int ADD_FOLDER_BTN = 14;
 
-    private enum RowKind { EMPTY, BACK, CANCEL_MOVE, FOLDER, STRUCTURE }
+    private enum RowKind {
+        EMPTY, BACK, CANCEL_MOVE, FOLDER, STRUCTURE
+    }
 
     private final EditBox searchBox;
     private final EditBox renameBox;
@@ -67,8 +72,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
             int y,
             int width,
             int height,
-            IntSupplier containerIdSupplier
-    ) {
+            IntSupplier containerIdSupplier) {
         super(x, y, width, height, Component.empty());
 
         this.containerIdSupplier = containerIdSupplier == null ? () -> -1 : containerIdSupplier;
@@ -79,8 +83,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 y + PADDING,
                 Math.max(20, width - PADDING * 2 - ADD_FOLDER_BTN - 2),
                 SEARCH_HEIGHT,
-                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_SEARCH.getTranslationKey())
-        );
+                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_SEARCH.getTranslationKey()));
         this.searchBox.setMaxLength(ClonerStructureLibraryStore.MAX_NAME_LENGTH);
         this.searchBox.setHint(Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_SEARCH.getTranslationKey()));
         this.searchBox.setResponder(ignored -> this.scrollOffset = 0);
@@ -91,8 +94,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 y,
                 Math.max(20, getDropdownWidth() - PADDING * 2),
                 RENAME_HEIGHT,
-                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_NAME.getTranslationKey())
-        );
+                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_NAME.getTranslationKey()));
         this.renameBox.setMaxLength(ClonerStructureLibraryStore.MAX_NAME_LENGTH);
         this.renameBox.setHint(Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_NAME.getTranslationKey()));
     }
@@ -184,7 +186,8 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
             this.creatingFolder = true;
             this.movingStructureId = null;
             this.renameBox.setValue("");
-            this.renameBox.setHint(Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_ADD_FOLDER.getTranslationKey()));
+            this.renameBox
+                    .setHint(Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_ADD_FOLDER.getTranslationKey()));
             this.renameBox.setFocused(true);
             this.searchBox.setFocused(false);
             return true;
@@ -245,8 +248,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         this.scrollOffset = Mth.clamp(
                 this.scrollOffset - (int) Math.signum(delta) * ROW_HEIGHT,
                 0,
-                getMaxScroll()
-        );
+                getMaxScroll());
 
         return true;
     }
@@ -406,8 +408,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 left + 2,
                 top + 3,
                 0xFF55FFFF,
-                false
-        );
+                false);
     }
 
     private void renderDropdown(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
@@ -447,8 +448,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
             int listLeft,
             int listTop,
             int listRight,
-            int listBottom
-    ) {
+            int listBottom) {
         Minecraft minecraft = Minecraft.getInstance();
 
         guiGraphics.enableScissor(listLeft, listTop, listRight, listBottom);
@@ -485,7 +485,8 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 case BACK, CANCEL_MOVE -> hovered ? 0xFF253535 : 0xFF1A2020;
                 case STRUCTURE -> isMovingRow
                         ? (hovered ? 0xFF6A5000 : 0xFF4A3800)
-                        : highlighted ? 0xFF2F8A8A : hovered ? 0xFF1F6F6F : ((rowIndex & 1) == 0 ? 0xFF222222 : 0xFF2E2E2E);
+                        : highlighted ? 0xFF2F8A8A
+                                : hovered ? 0xFF1F6F6F : ((rowIndex & 1) == 0 ? 0xFF222222 : 0xFF2E2E2E);
                 default -> hovered ? 0xFF1F6F6F : 0xFF222222;
             };
 
@@ -520,8 +521,10 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
                 int deleteTop = rowTop + 3;
                 int deleteBottom = deleteTop + DELETE_BUTTON_SIZE;
-                boolean deleteHovered = mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop && mouseY < deleteBottom;
-                guiGraphics.fill(deleteLeft, deleteTop, deleteRight, deleteBottom, deleteHovered ? 0xFFFF4040 : 0xFF552222);
+                boolean deleteHovered = mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop
+                        && mouseY < deleteBottom;
+                guiGraphics.fill(deleteLeft, deleteTop, deleteRight, deleteBottom,
+                        deleteHovered ? 0xFFFF4040 : 0xFF552222);
                 drawBorder(guiGraphics, deleteLeft, deleteTop, deleteRight, deleteBottom, 0xFFAA5555);
                 guiGraphics.drawString(minecraft.font, "x", deleteLeft + 3, deleteTop + 2, 0xFFFFFFFF, false);
             } else if (isFolder && canDelete) {
@@ -533,8 +536,10 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
                 int deleteTop = rowTop + 3;
                 int deleteBottom = deleteTop + DELETE_BUTTON_SIZE;
-                boolean deleteHovered = mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop && mouseY < deleteBottom;
-                guiGraphics.fill(deleteLeft, deleteTop, deleteRight, deleteBottom, deleteHovered ? 0xFFFF4040 : 0xFF552222);
+                boolean deleteHovered = mouseX >= deleteLeft && mouseX < deleteRight && mouseY >= deleteTop
+                        && mouseY < deleteBottom;
+                guiGraphics.fill(deleteLeft, deleteTop, deleteRight, deleteBottom,
+                        deleteHovered ? 0xFFFF4040 : 0xFF552222);
                 drawBorder(guiGraphics, deleteLeft, deleteTop, deleteRight, deleteBottom, 0xFFAA5555);
                 guiGraphics.drawString(minecraft.font, "x", deleteLeft + 3, deleteTop + 2, 0xFFFFFFFF, false);
             } else {
@@ -612,8 +617,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
             int right,
             int bottom,
             String text,
-            int textColor
-    ) {
+            int textColor) {
         Minecraft minecraft = Minecraft.getInstance();
         boolean hovered = mouseX >= left && mouseX < right && mouseY >= top && mouseY < bottom;
 
@@ -628,8 +632,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                 left + 3,
                 top + 4,
                 textColor,
-                false
-        );
+                false);
     }
 
     private boolean handleDropdownClick(double mouseX, double mouseY) {
@@ -729,7 +732,8 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
                     return true;
                 }
 
-                if (isFolderEmpty(folderName) && clickedDeleteButtonForRow(rowIndex, mouseX, mouseY, listTop, listRight)) {
+                if (isFolderEmpty(folderName)
+                        && clickedDeleteButtonForRow(rowIndex, mouseX, mouseY, listTop, listRight)) {
                     NetworkHandler.sendToServer(new DeleteClonerFolderPacket(
                             this.containerIdSupplier.getAsInt(), folderName));
                     return true;
@@ -779,8 +783,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
         NetworkHandler.sendToServer(new SelectClonerStructurePacket(
                 this.containerIdSupplier.getAsInt(),
-                id
-        ));
+                id));
 
         this.lastSelectedId = null;
         this.open = false;
@@ -802,8 +805,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         NetworkHandler.sendToServer(new RenameClonerStructurePacket(
                 this.containerIdSupplier.getAsInt(),
                 this.highlightedId,
-                name
-        ));
+                name));
     }
 
     private void confirmCreateFolder() {
@@ -832,8 +834,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
         NetworkHandler.sendToServer(new DeleteClonerStructurePacket(
                 this.containerIdSupplier.getAsInt(),
-                id
-        ));
+                id));
 
         if (id.equals(this.highlightedId)) {
             this.highlightedId = "";
@@ -851,8 +852,7 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         ClonerStructureFileTransferClient.beginExport(
                 this.containerIdSupplier.getAsInt(),
                 this.highlightedId,
-                getHighlightedName()
-        );
+                getHighlightedName());
     }
 
     private void importStructure() {
@@ -939,8 +939,10 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
 
     private RowKind getRowKind(int rowIndex) {
         if (this.movingStructureId != null) {
-            if (rowIndex == 0) return RowKind.CANCEL_MOVE;
-            if (rowIndex == 1) return RowKind.STRUCTURE;
+            if (rowIndex == 0)
+                return RowKind.CANCEL_MOVE;
+            if (rowIndex == 1)
+                return RowKind.STRUCTURE;
             return RowKind.FOLDER;
         }
 
@@ -1013,9 +1015,11 @@ public class SearchableClonerStructureDropdownWidget extends AbstractWidget {
         RowKind kind = getRowKind(rowIndex);
 
         return switch (kind) {
-            case EMPTY -> Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_EMPTY.getTranslationKey()).getString();
+            case EMPTY ->
+                Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_EMPTY.getTranslationKey()).getString();
             case BACK -> "◄ " + this.currentFolder;
-            case CANCEL_MOVE -> "◄ " + Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_CANCEL.getTranslationKey()).getString();
+            case CANCEL_MOVE ->
+                "◄ " + Component.translatable(LangDefs.STRUCTURE_GADGET_CLONER_CANCEL.getTranslationKey()).getString();
             case FOLDER -> "▶ " + getRowFolderName(rowIndex);
             case STRUCTURE -> {
                 if (this.movingStructureId != null) {

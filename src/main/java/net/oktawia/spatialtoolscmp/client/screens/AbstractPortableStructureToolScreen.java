@@ -1,9 +1,16 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.*;
+
 import com.lowdragmc.lowdraglib.gui.widget.SceneWidget;
 import com.lowdragmc.lowdraglib.gui.widget.WidgetGroup;
 import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
 import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL11;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -14,23 +21,19 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.PortableSpatialStorageDummyWorld;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.PortableSpatialStorageSceneWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.SpatialOffsetControlsWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.SpatialTransformationsWidget;
-import net.oktawia.spatialtoolscmp.client.misc.widgets.PortableSpatialStorageDummyWorld;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialStoragePreviewSync;
-import net.oktawia.spatialtoolscmp.client.misc.widgets.PortableSpatialStorageSceneWidget;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewStructure;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.AbstractPortableStructureToolMenu;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.joml.Vector3f;
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
-
-import java.util.*;
 
 public abstract class AbstractPortableStructureToolScreen<M extends AbstractPortableStructureToolMenu>
         extends AbstractSpatialToolScreen<M> {
@@ -83,8 +86,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
     protected AbstractPortableStructureToolScreen(
             M menu,
             Inventory playerInventory,
-            Component title
-    ) {
+            Component title) {
         super(menu, playerInventory, title);
     }
 
@@ -102,8 +104,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 () -> getMenu().flipVertical(),
                 () -> getMenu().flipVerticalAroundOrigin(),
                 () -> getMenu().rotateClockwise(1),
-                () -> getMenu().rotateClockwiseAroundOrigin(1)
-        );
+                () -> getMenu().rotateClockwiseAroundOrigin(1));
 
         this.transformationsWidget.setScreenPosition(this.leftPos, this.topPos);
 
@@ -113,8 +114,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 () -> getMenu().offsetUp(),
                 () -> getMenu().offsetDown(),
                 () -> getMenu().offsetFront(),
-                () -> getMenu().offsetBack()
-        );
+                () -> getMenu().offsetBack());
 
         this.offsetControls.setScreenPosition(this.leftPos, this.topPos);
         this.offsetControls.setOffset(readCurrentOffset());
@@ -143,8 +143,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
             GuiGraphics graphics,
             int mouseX,
             int mouseY,
-            float partialTick
-    ) {
+            float partialTick) {
         if (!hasPreviewStructureForCompass()) {
             clearDirectionCompassScene();
             return;
@@ -183,7 +182,6 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
             this.offsetControls.setScreenPosition(this.leftPos, this.topPos);
         }
     }
-
 
     protected boolean isShiftPhysicallyDown() {
         long window = Minecraft.getInstance().getWindow().getWindow();
@@ -468,8 +466,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 StructureToolStackState.getPreviewSideMap(stack),
                 this.renderedCore,
                 originMarkerPos,
-                floorAnchorPos
-        );
+                floorAnchorPos);
 
         CompoundTag syncedTag = PortableSpatialStoragePreviewSync.cacheGetRawTag(structureId);
         onPreviewTagLoaded(syncedTag);
@@ -478,8 +475,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         BlockPos center = new BlockPos(
                 (int) (this.min.getX() + size.getX() * 0.5D),
                 (int) (this.min.getY() + size.getY() * 0.5D),
-                (int) (this.min.getZ() + size.getZ() * 0.5D)
-        );
+                (int) (this.min.getZ() + size.getZ() * 0.5D));
 
         this.scene.setCenter(center.getCenter().toVector3f());
 
@@ -600,8 +596,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 preview.x() + preview.width() - DIRECTION_COMPASS_SIZE - 4,
                 preview.y() + 4,
                 DIRECTION_COMPASS_SIZE,
-                DIRECTION_COMPASS_SIZE
-        );
+                DIRECTION_COMPASS_SIZE);
     }
 
     protected void ensureDirectionCompassScene() {
@@ -610,15 +605,15 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         }
 
         this.directionCompassWorld = new TrackedDummyWorld();
-        this.directionCompassCore = PortableSpatialStorageSceneWidget.buildDirectionCompassStructure(this.directionCompassWorld);
+        this.directionCompassCore = PortableSpatialStorageSceneWidget
+                .buildDirectionCompassStructure(this.directionCompassWorld);
 
         this.directionCompassScene = new SceneWidget(
                 0,
                 0,
                 DIRECTION_COMPASS_SIZE,
                 DIRECTION_COMPASS_SIZE,
-                this.directionCompassWorld
-        );
+                this.directionCompassWorld);
 
         this.directionCompassScene
                 .useOrtho(true)
@@ -707,8 +702,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 rect.y(),
                 rect.x() + rect.width(),
                 rect.y() + rect.height(),
-                0x66000000
-        );
+                0x66000000);
 
         int titleHeight = getWrappedTextHeight(title, textWidth, 10);
         int hintHeight = getWrappedTextHeight(hint, textWidth, 9);
@@ -723,8 +717,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 y,
                 textWidth,
                 0xFFE0E0E0,
-                10
-        );
+                10);
 
         y += 6;
 
@@ -735,8 +728,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
                 y,
                 textWidth,
                 0xFF9A9A9A,
-                9
-        );
+                9);
     }
 
     private int getWrappedTextHeight(Component text, int width, int lineHeight) {
@@ -750,16 +742,14 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
             int y,
             int width,
             int color,
-            int lineHeight
-    ) {
+            int lineHeight) {
         for (var line : this.font.split(text, width)) {
             graphics.drawCenteredString(
                     this.font,
                     line,
                     centerX,
                     y,
-                    color
-            );
+                    color);
 
             y += lineHeight;
         }

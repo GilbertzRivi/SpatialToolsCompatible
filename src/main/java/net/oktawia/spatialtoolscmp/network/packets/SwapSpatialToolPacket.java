@@ -1,15 +1,16 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
 import net.oktawia.spatialtoolscmp.menus.AbstractPortableStructureToolMenu;
-
-import java.util.function.Supplier;
 
 public class SwapSpatialToolPacket {
 
@@ -33,8 +34,7 @@ public class SwapSpatialToolPacket {
 
     public static void handle(
             SwapSpatialToolPacket packet,
-            Supplier<NetworkEvent.Context> contextSupplier
-    ) {
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {

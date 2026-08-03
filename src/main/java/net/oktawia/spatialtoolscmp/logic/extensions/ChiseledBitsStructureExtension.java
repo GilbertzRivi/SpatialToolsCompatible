@@ -1,9 +1,14 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import mod.chiselsandbits.api.block.entity.IMultiStateBlockEntity;
-import mod.chiselsandbits.api.blockinformation.IBlockInformation;
-import mod.chiselsandbits.api.multistate.StateEntrySize;
-import mod.chiselsandbits.api.multistate.statistics.IMultiStateObjectStatistics;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.CopyOnWriteArrayList;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -22,6 +27,12 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import mod.chiselsandbits.api.block.entity.IMultiStateBlockEntity;
+import mod.chiselsandbits.api.blockinformation.IBlockInformation;
+import mod.chiselsandbits.api.multistate.StateEntrySize;
+import mod.chiselsandbits.api.multistate.statistics.IMultiStateObjectStatistics;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
@@ -29,14 +40,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructurePasteExtension;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 public final class ChiseledBitsStructureExtension implements StructureCloneExtension, StructurePasteExtension {
 
@@ -67,8 +70,7 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isChiseled(be, rawBeTag)) {
             return false;
         }
@@ -113,8 +115,7 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isChiseled(null, rawBeTag)) {
             return Optional.empty();
         }
@@ -158,8 +159,7 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         applyChiseledData(level, pos, be, getChiseledMetadata(blockMetadata));
     }
 
@@ -189,15 +189,13 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
             BlockPos localPos = new BlockPos(
                     posTag.getInt("x"),
                     posTag.getInt("y"),
-                    posTag.getInt("z")
-            );
+                    posTag.getInt("z"));
 
             queueTransform(
                     level,
                     placementOrigin.offset(localPos).immutable(),
                     blockEntry.getCompound(StructureToolKeys.CLONE_KEY_CHISELED),
-                    templateStates.get(localPos)
-            );
+                    templateStates.get(localPos));
         }
     }
 
@@ -205,8 +203,7 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
             ServerLevel level,
             BlockPos pos,
             CompoundTag chiseledData,
-            @Nullable BlockState templateState
-    ) {
+            @Nullable BlockState templateState) {
         if (!chiseledData.contains(CLONE_KEY_BE, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -218,16 +215,14 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
                 chiseledData.getIntArray(StructureToolKeys.CHISELED_KEY_OPS),
                 chiseledData.getCompound(CLONE_KEY_BE).copy(),
                 templateState,
-                level.getGameTime()
-        ));
+                level.getGameTime()));
     }
 
     private static void applyChiseledData(
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            CompoundTag chiseledData
-    ) {
+            CompoundTag chiseledData) {
         if (!(be instanceof IMultiStateBlockEntity multiState)) {
             return;
         }
@@ -249,7 +244,8 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
     private static CompoundTag extractEngineTag(@Nullable CompoundTag rawBeTag, BlockEntity be) {
         CompoundTag source = rawBeTag;
 
-        if ((source == null || !source.contains(NBT_DATA, Tag.TAG_COMPOUND)) && be instanceof IMultiStateBlockEntity multiState) {
+        if ((source == null || !source.contains(NBT_DATA, Tag.TAG_COMPOUND))
+                && be instanceof IMultiStateBlockEntity multiState) {
             try {
                 source = multiState.serializeNBT();
             } catch (Throwable ignored) {
@@ -451,7 +447,6 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
             int[] ops,
             @Nullable CompoundTag engineTag,
             @Nullable BlockState templateState,
-            long placedGameTime
-    ) {
+            long placedGameTime) {
     }
 }

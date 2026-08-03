@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -7,10 +12,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.Set;
 
 public interface ReplacerExtension {
 
@@ -20,8 +21,7 @@ public interface ReplacerExtension {
             ServerLevel level,
             BlockPos startPos,
             BlockState sourceState,
-            ReplacerContext ctx
-    );
+            ReplacerContext ctx);
 
     @Nullable
     default CompoundTag capturePreReplacementState(ServerLevel level, BlockPos pos) {
@@ -31,8 +31,7 @@ public interface ReplacerExtension {
     default void onBlockReplaced(
             ServerLevel level,
             BlockPos pos,
-            @Nullable CompoundTag savedState
-    ) {
+            @Nullable CompoundTag savedState) {
     }
 
     default boolean canHandleTarget(ServerLevel level, Block targetBlock) {
@@ -71,8 +70,7 @@ public interface ReplacerExtension {
             ServerLevel level,
             BlockPos pos,
             ItemStack target,
-            @Nullable ServerPlayer player
-    ) {
+            @Nullable ServerPlayer player) {
         return false;
     }
 

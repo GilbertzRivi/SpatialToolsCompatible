@@ -1,10 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import appeng.api.upgrades.IUpgradeInventory;
-import appeng.api.upgrades.IUpgradeableObject;
-import appeng.blockentity.AEBaseBlockEntity;
-import appeng.blockentity.networking.CableBusBlockEntity;
-import appeng.util.SettingsFrom;
+import java.util.*;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -16,6 +15,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
+import appeng.api.upgrades.IUpgradeInventory;
+import appeng.api.upgrades.IUpgradeableObject;
+import appeng.blockentity.AEBaseBlockEntity;
+import appeng.blockentity.networking.CableBusBlockEntity;
+import appeng.util.SettingsFrom;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.helpers.ClonerBlockPlacer;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
@@ -24,9 +30,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
 
 public final class AE2ClonerExtension implements StructureCloneExtension {
 
@@ -39,8 +42,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         boolean hasAnyData = false;
 
         if (isAe2CableBusTag(rawBeTag)) {
@@ -142,8 +144,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (isAe2CableBusTag(rawBeTag)) {
             if (rawBeTag == null) {
                 return Optional.of(PlacementPlan.none());
@@ -154,8 +155,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                     state,
                     rawBeTag,
                     blockMetadata,
-                    ctx
-            ));
+                    ctx));
         }
 
         if (blockMetadata == null) {
@@ -172,8 +172,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 player,
                 state,
                 blockMetadata,
-                ctx
-        ));
+                ctx));
     }
 
     @Override
@@ -181,8 +180,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (blockMetadata == null || be == null) {
             return;
         }
@@ -200,8 +198,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             BlockState stateToPlace,
             CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         CompoundTag filtered = createMinimalAeCableBusBaseTag(rawBeTag);
         List<ItemStack> costs = new ArrayList<>();
         Map<Item, Integer> reserved = new HashMap<>();
@@ -247,8 +244,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                     player,
                     ctx,
                     trialReserved,
-                    sectionCosts
-            )) {
+                    sectionCosts)) {
                 continue;
             }
 
@@ -297,8 +293,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             Player player,
             BlockState stateToPlace,
             CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         List<ItemStack> costs = new ArrayList<>();
         Map<Item, Integer> reserved = new HashMap<>();
 
@@ -320,8 +315,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                     player,
                     ctx,
                     reserved,
-                    costs
-            )) {
+                    costs)) {
                 return PlacementPlan.none();
             }
         }
@@ -335,8 +329,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             Player player,
             ClonerPasteContext ctx,
             Map<Item, Integer> reserved,
-            List<ItemStack> costs
-    ) {
+            List<ItemStack> costs) {
         if (blockMetadata == null) {
             return true;
         }
@@ -362,8 +355,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 player,
                 ctx,
                 reserved,
-                costs
-        );
+                costs);
     }
 
     private static boolean addNestedSavedStackCosts(
@@ -371,8 +363,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             Player player,
             ClonerPasteContext ctx,
             Map<Item, Integer> reserved,
-            List<ItemStack> costs
-    ) {
+            List<ItemStack> costs) {
         if (tag == null) {
             return true;
         }
@@ -404,8 +395,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             ServerLevel level,
             BlockPos worldPos,
             BlockEntity be,
-            CompoundTag blockMetadata
-    ) {
+            CompoundTag blockMetadata) {
         boolean changed = false;
 
         if (be instanceof AEBaseBlockEntity abbe
@@ -414,8 +404,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 abbe.importSettings(
                         SettingsFrom.MEMORY_CARD,
                         blockMetadata.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS),
-                        null
-                );
+                        null);
                 changed = true;
             } catch (Throwable ignored) {
             }
@@ -444,8 +433,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             ServerLevel level,
             BlockPos worldPos,
             CableBusBlockEntity cableBus,
-            CompoundTag blockMetadata
-    ) {
+            CompoundTag blockMetadata) {
         if (!blockMetadata.contains(StructureToolKeys.CLONE_KEY_PARTS, Tag.TAG_COMPOUND)) {
             cableBus.setChanged();
 
@@ -475,8 +463,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                     part.importSettings(
                             SettingsFrom.MEMORY_CARD,
                             partEntry.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS),
-                            null
-                    );
+                            null);
                 } catch (Throwable ignored) {
                 }
             }
@@ -498,8 +485,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
 
     private static void collectCableBusRequirements(
             @Nullable CompoundTag rawBeTag,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         if (rawBeTag == null) {
             return;
         }
@@ -523,8 +509,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
 
     private static void collectNestedSavedItemStacks(
             @Nullable Tag tag,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         if (tag == null) {
             return;
         }
@@ -643,8 +628,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag currentTag = saveCurrentTag(be);
 
         if (be instanceof CableBusBlockEntity || isAe2CableBusTag(currentTag)) {
@@ -692,8 +676,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
 
     private static void collectCableBusUndoRefunds(
             @Nullable CompoundTag rawBeTag,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         if (rawBeTag == null) {
             return;
         }
@@ -717,8 +700,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
 
     private static void collectNestedSavedItemStacks(
             @Nullable Tag tag,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         if (tag == null) {
             return;
         }

@@ -1,10 +1,12 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
-import appeng.menu.locator.MenuLocator;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.Nullable;
+
+import appeng.menu.locator.MenuLocator;
 
 public record AE2ClonerCraftingLocator(int inventorySlot) implements MenuLocator {
 
@@ -23,8 +25,7 @@ public record AE2ClonerCraftingLocator(int inventorySlot) implements MenuLocator
         AE2ClonerCraftingHost host = AE2ClonerCraftingHost.create(
                 player,
                 this.inventorySlot,
-                stack
-        );
+                stack);
 
         if (!hostInterface.isInstance(host)) {
             return null;

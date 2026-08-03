@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
@@ -10,6 +15,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.PowerUpgradePanelWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
@@ -17,11 +23,6 @@ import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.menus.AbstractPortableStructureToolMenu;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStructureToolMenu>
         extends AbstractContainerScreen<M> {
@@ -47,8 +48,7 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
         this.toolModeDropdown.setToolStack(getMenu().getItemStack());
         this.toolModeDropdown.setPosition(
                 this.leftPos,
-                this.topPos - ToolModeDropdownWidget.ROW_HEIGHT - TOOL_MODE_DROPDOWN_GAP
-        );
+                this.topPos - ToolModeDropdownWidget.ROW_HEIGHT - TOOL_MODE_DROPDOWN_GAP);
     }
 
     protected boolean toolModeDropdownClicked(double mouseX, double mouseY, int button) {
@@ -83,13 +83,11 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
         this.powerUpgradePanel.setScreenPosition(this.leftPos, this.topPos);
         this.powerUpgradePanel.setSlots(
                 getMenu().getPowerUpgradeSlotCount(),
-                getMenu().getMaxUpgradesCount()
-        );
+                getMenu().getMaxUpgradesCount());
         this.powerUpgradePanel.renderBackground(graphics);
         this.powerUpgradePanel.renderCraftingSlotBadge(
                 graphics,
-                getMenu().hasCraftingUpgradeInstalled()
-        );
+                getMenu().hasCraftingUpgradeInstalled());
     }
 
     protected void renderPowerUpgradeTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -100,8 +98,7 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
         this.powerUpgradePanel.setScreenPosition(this.leftPos, this.topPos);
         this.powerUpgradePanel.setSlots(
                 getMenu().getPowerUpgradeSlotCount(),
-                getMenu().getMaxUpgradesCount()
-        );
+                getMenu().getMaxUpgradesCount());
 
         boolean overPanel = this.powerUpgradePanel.isMouseOver(mouseX, mouseY);
         boolean overPowerSlot = getMenu().isPowerUpgradeSlot(this.hoveredSlot);
@@ -131,16 +128,14 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
                 this.font,
                 lines,
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     static List<Component> buildCompatibleUpgradesTooltip() {
         List<Component> lines = new ArrayList<>();
 
         lines.add(Component.translatable(
-                LangDefs.VALID_UPGRADES.getTranslationKey()
-        ).withStyle(ChatFormatting.WHITE));
+                LangDefs.VALID_UPGRADES.getTranslationKey()).withStyle(ChatFormatting.WHITE));
 
         Map<String, List<ItemStack>> stacksByMod = new LinkedHashMap<>();
 
@@ -181,24 +176,20 @@ public abstract class AbstractSpatialToolScreen<M extends AbstractPortableStruct
         List<Component> lines = new ArrayList<>();
 
         lines.add(Component.translatable(
-                LangDefs.CRAFTING_UPGRADE_SLOT_HINT.getTranslationKey()
-        ).withStyle(ChatFormatting.YELLOW));
+                LangDefs.CRAFTING_UPGRADE_SLOT_HINT.getTranslationKey()).withStyle(ChatFormatting.YELLOW));
 
         lines.add(Component.translatable(
-                LangDefs.VALID_UPGRADES.getTranslationKey()
-        ).withStyle(ChatFormatting.WHITE));
+                LangDefs.VALID_UPGRADES.getTranslationKey()).withStyle(ChatFormatting.WHITE));
 
         if (IsModLoaded.AE2) {
             lines.add(AE2Compat.modDisplayName().copy());
             lines.add(AE2Compat.craftingUpgradeDisplayName().copy().withStyle(ChatFormatting.GRAY));
         } else {
             lines.add(Component.translatable(
-                    LangDefs.AE2_NOT_INSTALLED.getTranslationKey()
-            ).withStyle(ChatFormatting.RED));
+                    LangDefs.AE2_NOT_INSTALLED.getTranslationKey()).withStyle(ChatFormatting.RED));
 
             lines.add(Component.translatable(
-                    LangDefs.NOT_AVAILABLE.getTranslationKey()
-            ).withStyle(ChatFormatting.GRAY));
+                    LangDefs.NOT_AVAILABLE.getTranslationKey()).withStyle(ChatFormatting.GRAY));
         }
 
         return lines;

@@ -1,8 +1,20 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.client.model.GTModelProperties;
 import com.mojang.blaze3d.vertex.PoseStack;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -16,6 +28,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
@@ -24,16 +37,6 @@ import net.oktawia.spatialtoolscmp.logic.PiperExtension;
 import net.oktawia.spatialtoolscmp.logic.PiperRoute;
 import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
 import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuPiperExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 
 public class PortableSpatialPiperPreviewRenderer {
 
@@ -139,10 +142,8 @@ public class PortableSpatialPiperPreviewRenderer {
                             bufferSource,
                             renderType,
                             modelData,
-                            seed
-                    ),
-                    this.targetResolver.previewRenderTypes(targetState)
-            );
+                            seed),
+                    this.targetResolver.previewRenderTypes(targetState));
 
             if (PreviewGhostRenderer.isTripwireStage(event.getStage())) {
                 this.ghostRenderer.renderLineBoxes(
@@ -152,8 +153,7 @@ public class PortableSpatialPiperPreviewRenderer {
                         0.20F,
                         1.00F,
                         0.35F,
-                        1.00F
-                );
+                        1.00F);
 
                 this.ghostRenderer.renderLineBoxes(
                         mc,
@@ -162,8 +162,7 @@ public class PortableSpatialPiperPreviewRenderer {
                         1.00F,
                         0.65F,
                         0.10F,
-                        1.00F
-                );
+                        1.00F);
 
                 this.ghostRenderer.renderLineBoxes(
                         mc,
@@ -172,16 +171,14 @@ public class PortableSpatialPiperPreviewRenderer {
                         1.00F,
                         0.15F,
                         0.15F,
-                        1.00F
-                );
+                        1.00F);
 
                 if (targetState.getBlock() instanceof PipeBlock<?, ?, ?>) {
                     this.ghostRenderer.renderPipeConnectionLines(
                             mc,
                             poseStack,
                             buildPositions,
-                            pos -> buildModelData(targetState, pos, buildPositions)
-                    );
+                            pos -> buildModelData(targetState, pos, buildPositions));
                 }
             }
         } finally {
@@ -189,16 +186,14 @@ public class PortableSpatialPiperPreviewRenderer {
 
             PreviewGhostRenderer.resetPreviewRenderState(
                     mc,
-                    PreviewGhostRenderer.isTripwireStage(event.getStage())
-            );
+                    PreviewGhostRenderer.isTripwireStage(event.getStage()));
         }
     }
 
     private ModelData buildModelData(
             BlockState targetState,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         Integer pathMask = this.cachedPathMasks.get(pos);
 
         if (pathMask != null && targetState.getBlock() instanceof PipeBlock<?, ?, ?>) {
@@ -206,8 +201,7 @@ public class PortableSpatialPiperPreviewRenderer {
                     .with(GTModelProperties.PIPE_CONNECTION_MASK, pathMask)
                     .with(
                             GTModelProperties.PIPE_BLOCKED_MASK,
-                            this.cachedPipeBlockedMasks.getOrDefault(pos, 0)
-                    )
+                            this.cachedPipeBlockedMasks.getOrDefault(pos, 0))
                     .build();
         }
 
@@ -223,8 +217,7 @@ public class PortableSpatialPiperPreviewRenderer {
             MultiBufferSource bufferSource,
             RenderType renderType,
             ModelData modelData,
-            long seed
-    ) {
+            long seed) {
         for (ClientPiperExtension ext : ClientPiperExtensions.get()) {
             if (ext.renderRouteBlock(
                     targetState,
@@ -235,8 +228,7 @@ public class PortableSpatialPiperPreviewRenderer {
                     bufferSource,
                     renderType,
                     modelData,
-                    seed
-            )) {
+                    seed)) {
                 return true;
             }
         }
@@ -248,8 +240,7 @@ public class PortableSpatialPiperPreviewRenderer {
             Minecraft mc,
             ItemStack stack,
             BlockState targetState,
-            boolean heldInMainHand
-    ) {
+            boolean heldInMainHand) {
         ClientLevel level = mc.level;
 
         if (level == null) {
@@ -292,8 +283,7 @@ public class PortableSpatialPiperPreviewRenderer {
             ItemStack stack,
             List<BlockPos> route,
             @Nullable BlockPos lookPos,
-            BlockState targetState
-    ) {
+            BlockState targetState) {
         this.cachedBuildPositions = Collections.emptySet();
         this.cachedRouteBoxes = List.of();
         this.cachedPathMasks = Map.of();
@@ -379,8 +369,7 @@ public class PortableSpatialPiperPreviewRenderer {
     private static Map<BlockPos, Integer> pipeBlockedMasks(
             ItemStack stack,
             ItemStack target,
-            Set<BlockPos> orderedPath
-    ) {
+            Set<BlockPos> orderedPath) {
         PortableSpatialPiper.PipeDirectionMode mode = PortableSpatialPiper.getPipeDirectionMode(stack);
 
         if (mode == PortableSpatialPiper.PipeDirectionMode.OFF
@@ -393,8 +382,7 @@ public class PortableSpatialPiperPreviewRenderer {
         Map<BlockPos, Integer> masks = new HashMap<>();
 
         PiperRoute.pathStepDirections(orderedPath).forEach(
-                (pos, step) -> masks.put(pos, GTCEuPiperExtension.blockedMask(step, mode))
-        );
+                (pos, step) -> masks.put(pos, GTCEuPiperExtension.blockedMask(step, mode)));
 
         return masks;
     }
@@ -403,8 +391,7 @@ public class PortableSpatialPiperPreviewRenderer {
             ClientLevel level,
             BlockPos pos,
             ItemStack target,
-            BlockState targetState
-    ) {
+            BlockState targetState) {
         BlockState state = level.getBlockState(pos);
 
         for (ClientPiperExtension ext : ClientPiperExtensions.get()) {
@@ -433,8 +420,7 @@ public class PortableSpatialPiperPreviewRenderer {
                 stack,
                 mc.player,
                 hit == null ? null : hit.getBlockPos(),
-                hit == null ? null : hit.getDirection()
-        );
+                hit == null ? null : hit.getDirection());
     }
 
     private void clearCache() {

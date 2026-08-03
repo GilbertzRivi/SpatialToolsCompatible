@@ -1,5 +1,8 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.UUID;
+import java.util.function.Supplier;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -11,6 +14,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
@@ -23,9 +27,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStructureStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-
-import java.util.UUID;
-import java.util.function.Supplier;
 
 public class StructureToolContextActionPacket {
 
@@ -88,14 +89,12 @@ public class StructureToolContextActionPacket {
     public static StructureToolContextActionPacket decode(FriendlyByteBuf buf) {
         return new StructureToolContextActionPacket(
                 buf.readVarInt(),
-                buf.readBoolean()
-        );
+                buf.readBoolean());
     }
 
     public static void handle(
             StructureToolContextActionPacket packet,
-            Supplier<NetworkEvent.Context> contextSupplier
-    ) {
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {
@@ -127,13 +126,13 @@ public class StructureToolContextActionPacket {
                 if (stack.getItem() instanceof PortableSpatialReplacer) {
                     switch (packet.action) {
                         case REPLACER_RADIUS_UP ->
-                                PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) + 1);
+                            PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) + 1);
                         case REPLACER_RADIUS_DOWN ->
-                                PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) - 1);
+                            PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) - 1);
                         case REPLACER_TOGGLE_CONNECTIVITY ->
-                                PortableSpatialReplacer.cycleConnectivityMode(stack);
+                            PortableSpatialReplacer.cycleConnectivityMode(stack);
                         case REPLACER_TOGGLE_BLOCKSTATE ->
-                                PortableSpatialReplacer.toggleSameBlockstate(stack);
+                            PortableSpatialReplacer.toggleSameBlockstate(stack);
                     }
                     syncStack(player);
                 }
@@ -229,16 +228,14 @@ public class StructureToolContextActionPacket {
         if (anchorPos == null) {
             player.displayClientMessage(
                     Component.translatable(LangDefs.NO_BLOCK_IN_RANGE.getTranslationKey()),
-                    true
-            );
+                    true);
             return;
         }
 
         StructureToolStackState.setAnchor(
                 stack,
                 player.level().dimension(),
-                anchorPos
-        );
+                anchorPos);
 
         syncStack(player);
     }
@@ -294,8 +291,7 @@ public class StructureToolContextActionPacket {
             ServerPlayer player,
             ItemStack stack,
             int action,
-            boolean aroundOrigin
-    ) {
+            boolean aroundOrigin) {
         String id = StructureToolStackState.getStructureId(stack);
 
         if (id == null || id.isBlank()) {
@@ -367,8 +363,7 @@ public class StructureToolContextActionPacket {
                 return ClonerStructureLibraryStore.loadSelectedOrMigrateLegacy(
                         player.server,
                         player.getUUID(),
-                        stack
-                );
+                        stack);
             }
 
             if (stack.getItem() instanceof PortableSpatialStorage) {
@@ -390,14 +385,12 @@ public class StructureToolContextActionPacket {
                             player.server,
                             player.getUUID(),
                             stack,
-                            tag
-                    );
+                            tag);
 
                     StructureToolStackState.setSelectedClonerLibraryEntry(
                             stack,
                             player.getUUID(),
-                            entry.id()
-                    );
+                            entry.id());
 
                     return entry.id();
                 }
@@ -406,14 +399,12 @@ public class StructureToolContextActionPacket {
                         player.server,
                         player.getUUID(),
                         currentId,
-                        tag
-                );
+                        tag);
 
                 StructureToolStackState.setSelectedClonerLibraryEntry(
                         stack,
                         player.getUUID(),
-                        currentId
-                );
+                        currentId);
 
                 return currentId;
             }

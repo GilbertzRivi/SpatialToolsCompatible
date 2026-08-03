@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.List;
+
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -11,6 +15,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
@@ -19,15 +24,11 @@ import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.logic.PiperRoute;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialPiperMenu;
-import org.lwjgl.glfw.GLFW;
-
-import java.util.List;
 
 public class PortableSpatialPiperScreen
         extends AbstractSpatialToolScreen<PortableSpatialPiperMenu> {
 
-    private static final ResourceLocation BACKGROUND =
-            SpatialToolsCMP.makeId("textures/gui/background.png");
+    private static final ResourceLocation BACKGROUND = SpatialToolsCMP.makeId("textures/gui/background.png");
 
     private static final int PANEL_W = 256;
     private static final int PANEL_H = 256;
@@ -58,8 +59,7 @@ public class PortableSpatialPiperScreen
     public PortableSpatialPiperScreen(
             PortableSpatialPiperMenu menu,
             Inventory playerInventory,
-            Component title
-    ) {
+            Component title) {
         super(menu, playerInventory, title);
 
         this.imageWidth = PANEL_W;
@@ -78,14 +78,13 @@ public class PortableSpatialPiperScreen
 
         this.clearTargetButton = Button.builder(
                 Component.translatable(LangDefs.CONTEXT_MENU_CANCEL_SELECTION.getTranslationKey()),
-                button -> this.menu.clearTarget()
-        ).pos(
-                this.leftPos + CLEAR_BUTTON_X,
-                this.topPos + CLEAR_BUTTON_Y
-        ).size(
-                CLEAR_BUTTON_W,
-                CLEAR_BUTTON_H
-        ).build();
+                button -> this.menu.clearTarget()).pos(
+                        this.leftPos + CLEAR_BUTTON_X,
+                        this.topPos + CLEAR_BUTTON_Y)
+                .size(
+                        CLEAR_BUTTON_W,
+                        CLEAR_BUTTON_H)
+                .build();
 
         this.addRenderableWidget(this.clearTargetButton);
     }
@@ -104,8 +103,7 @@ public class PortableSpatialPiperScreen
             GuiGraphics graphics,
             float partialTick,
             int mouseX,
-            int mouseY
-    ) {
+            int mouseY) {
         graphics.blit(
                 BACKGROUND,
                 this.leftPos,
@@ -115,8 +113,7 @@ public class PortableSpatialPiperScreen
                 this.imageWidth,
                 this.imageHeight,
                 256,
-                256
-        );
+                256);
 
         renderPowerUpgradePanel(graphics);
         renderPanels(graphics);
@@ -136,32 +133,28 @@ public class PortableSpatialPiperScreen
                 leftY,
                 leftX + TARGET_PANEL_W,
                 leftY + TARGET_PANEL_H,
-                0x22FFFFFF
-        );
+                0x22FFFFFF);
 
         graphics.renderOutline(
                 leftX,
                 leftY,
                 TARGET_PANEL_W,
                 TARGET_PANEL_H,
-                0xFF606060
-        );
+                0xFF606060);
 
         graphics.fill(
                 infoX,
                 infoY,
                 infoX + INFO_PANEL_W,
                 infoY + INFO_PANEL_H,
-                0x99000000
-        );
+                0x99000000);
 
         graphics.renderOutline(
                 infoX,
                 infoY,
                 INFO_PANEL_W,
                 INFO_PANEL_H,
-                0xFF606060
-        );
+                0xFF606060);
     }
 
     private void renderTargetSection(GuiGraphics graphics) {
@@ -174,8 +167,7 @@ public class PortableSpatialPiperScreen
                 panelX + 6,
                 panelY + 8,
                 0xFF111111,
-                false
-        );
+                false);
 
         int slotX = this.leftPos + TARGET_SLOT_X;
         int slotY = this.topPos + TARGET_SLOT_Y;
@@ -191,8 +183,7 @@ public class PortableSpatialPiperScreen
                     Component.literal("?").withStyle(ChatFormatting.RED),
                     slotX + 8,
                     slotY + 4,
-                    0xFFFF5555
-            );
+                    0xFFFF5555);
         } else {
             graphics.renderItem(target, slotX, slotY);
             graphics.renderItemDecorations(this.font, target, slotX, slotY);
@@ -205,23 +196,19 @@ public class PortableSpatialPiperScreen
                 graphics,
                 Component.translatable(
                         LangDefs.PIPER_ROUTE_LABEL.getTranslationKey(),
-                        route.size()
-                ),
+                        route.size()),
                 centerX,
                 this.topPos + ROUTE_LABEL_Y,
-                0xFF111111
-        );
+                0xFF111111);
 
         drawCenteredStringPlain(
                 graphics,
                 Component.translatable(
                         LangDefs.STRUCTURE_SIZE.getTranslationKey(),
-                        routeBlocks(route)
-                ),
+                        routeBlocks(route)),
                 centerX,
                 this.topPos + BLOCKS_LABEL_Y,
-                0xFF111111
-        );
+                0xFF111111);
     }
 
     private long routeBlocks(List<BlockPos> route) {
@@ -250,8 +237,7 @@ public class PortableSpatialPiperScreen
                             .withStyle(ChatFormatting.RED),
                     cx,
                     y,
-                    0xFFFF7777
-            ) + 6;
+                    0xFFFF7777) + 6;
 
             y = drawCenteredWrapped(
                     graphics,
@@ -259,16 +245,14 @@ public class PortableSpatialPiperScreen
                             .withStyle(ChatFormatting.WHITE),
                     cx,
                     y,
-                    0xFFFFFFFF
-            ) + 6;
+                    0xFFFFFFFF) + 6;
         } else {
             y = drawCenteredWrapped(
                     graphics,
                     target.getHoverName().copy().withStyle(ChatFormatting.AQUA),
                     cx,
                     y,
-                    0xFF55FFFF
-            ) + 6;
+                    0xFF55FFFF) + 6;
 
             y = drawCenteredWrapped(
                     graphics,
@@ -276,8 +260,7 @@ public class PortableSpatialPiperScreen
                             .withStyle(ChatFormatting.WHITE),
                     cx,
                     y,
-                    0xFFFFFFFF
-            ) + 4;
+                    0xFFFFFFFF) + 4;
 
             y = drawCenteredWrapped(
                     graphics,
@@ -285,20 +268,17 @@ public class PortableSpatialPiperScreen
                             .withStyle(ChatFormatting.WHITE),
                     cx,
                     y,
-                    0xFFFFFFFF
-            ) + 6;
+                    0xFFFFFFFF) + 6;
         }
 
         y = drawCenteredWrapped(
                 graphics,
                 Component.translatable(
                         LangDefs.REPLACER_CAP_INFO.getTranslationKey(),
-                        SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_MAX_BLOCKS.get()
-                ),
+                        SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_MAX_BLOCKS.get()),
                 cx,
                 y,
-                0xFFEDEDED
-        ) + 4;
+                0xFFEDEDED) + 4;
 
         if (IsModLoaded.AE2) {
             renderAe2Status(graphics, tool, cx, y);
@@ -324,22 +304,19 @@ public class PortableSpatialPiperScreen
                         graphics,
                         Component.translatable(
                                 LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2.getTranslationKey(),
-                                coords
-                        ).withStyle(ChatFormatting.AQUA),
+                                coords).withStyle(ChatFormatting.AQUA),
                         cx,
                         y,
-                        0xFF55FFFF
-                );
+                        0xFF55FFFF);
             } else {
                 drawCenteredWrapped(
                         graphics,
                         Component.translatable(
-                                LangDefs.REPLACER_NOT_LINKED_TO_AE2.getTranslationKey()
-                        ).withStyle(ChatFormatting.WHITE),
+                                LangDefs.REPLACER_NOT_LINKED_TO_AE2.getTranslationKey())
+                                .withStyle(ChatFormatting.WHITE),
                         cx,
                         y,
-                        0xFFEDEDED
-                );
+                        0xFFEDEDED);
             }
         } catch (Throwable ignored) {
         }
@@ -350,8 +327,7 @@ public class PortableSpatialPiperScreen
             GuiGraphics graphics,
             int mouseX,
             int mouseY,
-            float partialTick
-    ) {
+            float partialTick) {
         this.renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
 
@@ -365,16 +341,14 @@ public class PortableSpatialPiperScreen
     protected void renderLabels(
             GuiGraphics graphics,
             int mouseX,
-            int mouseY
-    ) {
+            int mouseY) {
         graphics.drawString(
                 this.font,
                 this.title,
                 this.titleLabelX,
                 this.titleLabelY,
                 0xFF111111,
-                false
-        );
+                false);
 
         graphics.drawString(
                 this.font,
@@ -382,8 +356,7 @@ public class PortableSpatialPiperScreen
                 this.inventoryLabelX,
                 this.inventoryLabelY,
                 0xFF111111,
-                false
-        );
+                false);
     }
 
     private void renderTargetTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -400,11 +373,9 @@ public class PortableSpatialPiperScreen
             graphics.renderComponentTooltip(
                     this.font,
                     List.of(Component.translatable(
-                            LangDefs.PIPER_SELECT_TARGET_HINT.getTranslationKey()
-                    ).withStyle(ChatFormatting.WHITE)),
+                            LangDefs.PIPER_SELECT_TARGET_HINT.getTranslationKey()).withStyle(ChatFormatting.WHITE)),
                     mouseX,
-                    mouseY
-            );
+                    mouseY);
             return;
         }
 
@@ -412,12 +383,10 @@ public class PortableSpatialPiperScreen
                 this.font,
                 target.getTooltipLines(
                         Minecraft.getInstance().player,
-                        TooltipFlag.Default.NORMAL
-                ),
+                        TooltipFlag.Default.NORMAL),
                 target.getTooltipImage(),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     private int drawCenteredWrapped(
@@ -425,8 +394,7 @@ public class PortableSpatialPiperScreen
             Component component,
             int centerX,
             int y,
-            int color
-    ) {
+            int color) {
         int yy = y;
 
         for (var line : this.font.split(component, INFO_PANEL_W - 16)) {
@@ -442,16 +410,14 @@ public class PortableSpatialPiperScreen
             Component component,
             int centerX,
             int y,
-            int color
-    ) {
+            int color) {
         graphics.drawString(
                 this.font,
                 component,
                 centerX - this.font.width(component) / 2,
                 y,
                 color,
-                false
-        );
+                false);
     }
 
     private boolean isMouseInside(
@@ -460,8 +426,7 @@ public class PortableSpatialPiperScreen
             int x,
             int y,
             int width,
-            int height
-    ) {
+            int height) {
         return mouseX >= x
                 && mouseY >= y
                 && mouseX < x + width

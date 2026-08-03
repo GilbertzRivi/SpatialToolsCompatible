@@ -1,9 +1,14 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.common.block.FluidPipeBlock;
 import com.gregtechceu.gtceu.common.block.ItemPipeBlock;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -13,13 +18,10 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
 import net.oktawia.spatialtoolscmp.logic.PiperRoute;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public final class GTCEuPiperExtension implements PiperExtension {
 
@@ -29,19 +31,16 @@ public final class GTCEuPiperExtension implements PiperExtension {
             List<BlockPos> orderedPath,
             Set<BlockPos> placed,
             ItemStack target,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         Map<BlockPos, Integer> masks = PiperRoute.pathConnectionMasks(orderedPath);
 
-        PortableSpatialPiper.PipeDirectionMode directionMode =
-                supportsPipeDirection(target)
-                        ? PortableSpatialPiper.getPipeDirectionMode(toolStack)
-                        : PortableSpatialPiper.PipeDirectionMode.OFF;
+        PortableSpatialPiper.PipeDirectionMode directionMode = supportsPipeDirection(target)
+                ? PortableSpatialPiper.getPipeDirectionMode(toolStack)
+                : PortableSpatialPiper.PipeDirectionMode.OFF;
 
-        Map<BlockPos, Direction> steps =
-                directionMode == PortableSpatialPiper.PipeDirectionMode.OFF
-                        ? Map.of()
-                        : PiperRoute.pathStepDirections(orderedPath);
+        Map<BlockPos, Direction> steps = directionMode == PortableSpatialPiper.PipeDirectionMode.OFF
+                ? Map.of()
+                : PiperRoute.pathStepDirections(orderedPath);
 
         boolean handled = false;
 
@@ -71,8 +70,7 @@ public final class GTCEuPiperExtension implements PiperExtension {
 
     public static int blockedMask(
             Direction step,
-            PortableSpatialPiper.PipeDirectionMode directionMode
-    ) {
+            PortableSpatialPiper.PipeDirectionMode directionMode) {
         Direction blocked = blockedFace(step, directionMode);
 
         return blocked == null ? 0 : 1 << blocked.ordinal();
@@ -80,8 +78,7 @@ public final class GTCEuPiperExtension implements PiperExtension {
 
     private static Direction blockedFace(
             Direction step,
-            PortableSpatialPiper.PipeDirectionMode directionMode
-    ) {
+            PortableSpatialPiper.PipeDirectionMode directionMode) {
         if (step == null) {
             return null;
         }
@@ -97,8 +94,7 @@ public final class GTCEuPiperExtension implements PiperExtension {
             ServerLevel level,
             BlockPos pos,
             Direction step,
-            PortableSpatialPiper.PipeDirectionMode directionMode
-    ) {
+            PortableSpatialPiper.PipeDirectionMode directionMode) {
         Direction blocked = blockedFace(step, directionMode);
 
         if (blocked == null) {

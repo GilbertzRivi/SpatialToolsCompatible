@@ -6,6 +6,7 @@ import net.minecraftforge.common.data.ExistingFileHelper;
 import net.minecraftforge.data.event.GatherDataEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, bus = Mod.EventBusSubscriber.Bus.MOD)

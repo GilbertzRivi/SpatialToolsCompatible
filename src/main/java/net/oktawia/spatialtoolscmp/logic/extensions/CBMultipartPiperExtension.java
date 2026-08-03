@@ -1,13 +1,15 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
+
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
-import org.jetbrains.annotations.Nullable;
 
 public final class CBMultipartPiperExtension implements PiperExtension {
 
@@ -17,8 +19,7 @@ public final class CBMultipartPiperExtension implements PiperExtension {
             ServerLevel level,
             BlockPos pos,
             BlockState state,
-            ItemStack target
-    ) {
+            ItemStack target) {
         return pathAction(level, pos, target);
     }
 

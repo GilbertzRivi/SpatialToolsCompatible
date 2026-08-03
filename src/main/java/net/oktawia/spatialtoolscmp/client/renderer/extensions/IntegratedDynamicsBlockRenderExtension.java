@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
+import org.cyclops.cyclopscore.datastructure.EnumFacingMap;
+import org.cyclops.integrateddynamics.core.blockentity.BlockEntityMultipartTicking;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -8,13 +12,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
-import org.cyclops.cyclopscore.datastructure.EnumFacingMap;
-import org.cyclops.integrateddynamics.core.blockentity.BlockEntityMultipartTicking;
-import org.jetbrains.annotations.Nullable;
 
 public final class IntegratedDynamicsBlockRenderExtension implements BlockRenderExtension {
 
@@ -30,8 +32,7 @@ public final class IntegratedDynamicsBlockRenderExtension implements BlockRender
             PreviewBlockAndTintGetter localLevel,
             BakedModel model,
             BlockState state,
-            @Nullable BlockEntity blockEntity
-    ) {
+            @Nullable BlockEntity blockEntity) {
         if (!(blockEntity instanceof BlockEntityMultipartTicking cable)) {
             return null;
         }

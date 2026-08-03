@@ -1,14 +1,15 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
-import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
+
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.network.NetworkEvent;
+
+import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
 
 public record SyncClonerRequirementStatusPacket(int containerId, List<Entry> entries) {
 
@@ -49,7 +50,8 @@ public record SyncClonerRequirementStatusPacket(int containerId, List<Entry> ent
         return new SyncClonerRequirementStatusPacket(containerId, entries);
     }
 
-    public static void handle(SyncClonerRequirementStatusPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
+    public static void handle(SyncClonerRequirementStatusPacket packet,
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
         context.enqueueWork(() -> {
             List<ClonerMaterialListWidget.MaterialEntry> syncedEntries = packet.entries.stream()
@@ -57,8 +59,7 @@ public record SyncClonerRequirementStatusPacket(int containerId, List<Entry> ent
                             entry.stack().copy(),
                             entry.available(),
                             entry.required(),
-                            entry.craftable()
-                    ))
+                            entry.craftable()))
                     .toList();
 
             PortableSpatialClonerRequirementSync.setEntries(packet.containerId, syncedEntries);

@@ -1,5 +1,13 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -15,18 +23,12 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public final class CBMultipartStructureExtension implements StructureCloneExtension {
 
@@ -62,8 +64,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isCbMultipart(level.getBlockState(pos), rawBeTag)) {
             return false;
         }
@@ -100,8 +101,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isCbMultipart(state, rawBeTag) && !hasMetadata(blockMetadata)) {
             return Optional.empty();
         }
@@ -160,8 +160,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
                 true,
                 state,
                 placementTag,
-                costs
-        ));
+                costs));
     }
 
     @Override
@@ -169,8 +168,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (be == null || !hasMetadata(blockMetadata)) {
             return;
         }
@@ -207,8 +205,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag currentTag = saveCurrentTag(be);
 
         if (!isCbMultipart(state, currentTag)) {
@@ -256,8 +253,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
 
     private static ListTag getStoredParts(
             @Nullable CompoundTag rawBeTag,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (hasMetadata(blockMetadata)) {
             CompoundTag metadata = blockMetadata.getCompound(META_KEY);
 
@@ -389,8 +385,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
     private static void refreshMultipartConnections(
             ServerLevel level,
             BlockPos pos,
-            BlockState state
-    ) {
+            BlockState state) {
         Block block = state.getBlock();
 
         level.updateNeighborsAt(pos, block);
@@ -408,8 +403,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
                     neighborPos,
                     block,
                     pos,
-                    false
-            );
+                    false);
         }
     }
 

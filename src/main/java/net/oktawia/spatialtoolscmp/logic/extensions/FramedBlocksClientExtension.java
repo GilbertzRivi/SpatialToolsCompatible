@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderType;
@@ -10,12 +14,10 @@ import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Set;
 
 public final class FramedBlocksClientExtension
         implements ClientReplacerExtension, ClientPiperExtension {
@@ -35,8 +37,7 @@ public final class FramedBlocksClientExtension
             ClientLevel level,
             BlockPos pos,
             BlockState state,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         return null;
     }
 
@@ -67,8 +68,7 @@ public final class FramedBlocksClientExtension
             BlockState targetState,
             ItemStack target,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         if (!FramedBlocksReplacerExtension.isFramedTarget(target)) {
             return null;
         }
@@ -94,8 +94,7 @@ public final class FramedBlocksClientExtension
     private static ModelData buildCamoModelData(
             BlockState targetState,
             CompoundTag camo,
-            BlockPos pos
-    ) {
+            BlockPos pos) {
         if (!(targetState.getBlock() instanceof EntityBlock entityBlock)) {
             return null;
         }

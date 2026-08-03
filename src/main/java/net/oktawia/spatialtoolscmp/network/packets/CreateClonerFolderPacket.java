@@ -1,14 +1,15 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
-
-import java.util.function.Supplier;
 
 public class CreateClonerFolderPacket {
 
@@ -28,8 +29,7 @@ public class CreateClonerFolderPacket {
     public static CreateClonerFolderPacket decode(FriendlyByteBuf buffer) {
         return new CreateClonerFolderPacket(
                 buffer.readVarInt(),
-                buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH)
-        );
+                buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH));
     }
 
     public static void handle(CreateClonerFolderPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -55,9 +55,7 @@ public class CreateClonerFolderPacket {
                         SyncClonerLibraryPacket.fromPlayer(
                                 player.server,
                                 player.getUUID(),
-                                StructureToolStackState.getStructureId(menu.getItemStack())
-                        )
-                );
+                                StructureToolStackState.getStructureId(menu.getItemStack())));
             } catch (Exception ignored) {
             }
         });

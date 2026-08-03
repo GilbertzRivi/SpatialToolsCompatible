@@ -1,5 +1,7 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -11,8 +13,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
 
 public final class StructureToolUtil {
 
@@ -83,8 +85,7 @@ public final class StructureToolUtil {
                 end,
                 ClipContext.Block.OUTLINE,
                 ClipContext.Fluid.NONE,
-                player
-        );
+                player);
 
         HitResult result = level.clip(context);
         if (result instanceof BlockHitResult blockHit && result.getType() == HitResult.Type.BLOCK) {
@@ -98,8 +99,7 @@ public final class StructureToolUtil {
             CompoundTag templateTag,
             BlockPos localOrigin,
             double baseCostPerBlock,
-            double energyCostMultiplier
-    ) {
+            double energyCostMultiplier) {
         if (templateTag == null || baseCostPerBlock <= 0.0D || energyCostMultiplier <= 0.0D) {
             return 0.0D;
         }

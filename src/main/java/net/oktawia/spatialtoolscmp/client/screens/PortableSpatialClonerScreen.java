@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -9,6 +14,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.client.misc.CraftingBufferStatusClientCache;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
@@ -23,10 +29,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.RequestClonerLibraryPacket;
-import org.lwjgl.glfw.GLFW;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class PortableSpatialClonerScreen
         extends AbstractPortableStructureToolScreen<PortableSpatialClonerMenu> {
@@ -66,8 +68,7 @@ public class PortableSpatialClonerScreen
     public PortableSpatialClonerScreen(
             PortableSpatialClonerMenu menu,
             Inventory playerInventory,
-            Component title
-    ) {
+            Component title) {
         super(menu, playerInventory, title);
 
         this.imageWidth = 256;
@@ -90,8 +91,7 @@ public class PortableSpatialClonerScreen
                 this.leftPos + MATERIAL_LIST_LEFT,
                 this.topPos + MATERIAL_LIST_TOP,
                 MATERIAL_LIST_WIDTH,
-                MATERIAL_LIST_HEIGHT
-        );
+                MATERIAL_LIST_HEIGHT);
 
         this.materialList.setCraftRequestHandler(entry -> {
             ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(entry.stack().getItem());
@@ -116,8 +116,7 @@ public class PortableSpatialClonerScreen
                 this.topPos + STRUCTURE_SELECTOR_TOP,
                 STRUCTURE_SELECTOR_WIDTH,
                 STRUCTURE_SELECTOR_HEIGHT,
-                () -> getMenu().containerId
-        );
+                () -> getMenu().containerId);
 
         this.addRenderableWidget(this.structureSelector);
 
@@ -127,8 +126,7 @@ public class PortableSpatialClonerScreen
                 NESTED_MODE_BUTTON_SIZE,
                 NESTED_MODE_BUTTON_SIZE,
                 iconForNestedInventoryMode(getNestedInventoryMode()),
-                button -> getMenu().cycleNestedInventoryMode()
-        );
+                button -> getMenu().cycleNestedInventoryMode());
 
         this.addRenderableWidget(this.nestedInventoryModeButton);
 
@@ -138,8 +136,7 @@ public class PortableSpatialClonerScreen
                 CRAFT_ALL_BUTTON_SIZE,
                 CRAFT_ALL_BUTTON_SIZE,
                 Icon.CRAFT_HAMMER,
-                button -> getMenu().craftAll()
-        );
+                button -> getMenu().craftAll());
         this.craftAllButton.visible = false;
         this.addRenderableWidget(this.craftAllButton);
 
@@ -160,41 +157,34 @@ public class PortableSpatialClonerScreen
         if (this.structureSelector != null) {
             this.structureSelector.move(
                     left + STRUCTURE_SELECTOR_LEFT,
-                    top + STRUCTURE_SELECTOR_TOP
-            );
+                    top + STRUCTURE_SELECTOR_TOP);
             this.structureSelector.resize(
                     STRUCTURE_SELECTOR_WIDTH,
-                    STRUCTURE_SELECTOR_HEIGHT
-            );
+                    STRUCTURE_SELECTOR_HEIGHT);
         }
 
         if (this.materialList != null) {
             this.materialList.move(
                     left + MATERIAL_LIST_LEFT,
-                    top + MATERIAL_LIST_TOP
-            );
+                    top + MATERIAL_LIST_TOP);
             this.materialList.resize(
                     MATERIAL_LIST_WIDTH,
-                    MATERIAL_LIST_HEIGHT
-            );
+                    MATERIAL_LIST_HEIGHT);
         }
 
         if (this.nestedInventoryModeButton != null) {
             this.nestedInventoryModeButton.setPosition(
                     left + NESTED_MODE_BUTTON_LEFT,
-                    top + NESTED_MODE_BUTTON_TOP
-            );
+                    top + NESTED_MODE_BUTTON_TOP);
             this.nestedInventoryModeButton.resize(
                     NESTED_MODE_BUTTON_SIZE,
-                    NESTED_MODE_BUTTON_SIZE
-            );
+                    NESTED_MODE_BUTTON_SIZE);
         }
 
         if (this.craftAllButton != null) {
             this.craftAllButton.setPosition(
                     left + CRAFT_ALL_BUTTON_LEFT,
-                    top + CRAFT_ALL_BUTTON_TOP
-            );
+                    top + CRAFT_ALL_BUTTON_TOP);
             this.craftAllButton.resize(CRAFT_ALL_BUTTON_SIZE, CRAFT_ALL_BUTTON_SIZE);
         }
     }
@@ -204,8 +194,7 @@ public class PortableSpatialClonerScreen
             GuiGraphics graphics,
             float partialTick,
             int mouseX,
-            int mouseY
-    ) {
+            int mouseY) {
         super.renderBg(graphics, partialTick, mouseX, mouseY);
 
         graphics.blit(
@@ -217,8 +206,7 @@ public class PortableSpatialClonerScreen
                 this.imageWidth,
                 this.imageHeight,
                 256,
-                256
-        );
+                256);
 
         if (renderEmptyPreviewBehindWidgets()) {
             renderEmptyPreviewMessage(graphics);
@@ -236,8 +224,7 @@ public class PortableSpatialClonerScreen
                 this.leftPos + PREVIEW_LEFT,
                 this.topPos + PREVIEW_TOP,
                 PREVIEW_WIDTH,
-                PREVIEW_HEIGHT
-        );
+                PREVIEW_HEIGHT);
     }
 
     @Override
@@ -293,7 +280,8 @@ public class PortableSpatialClonerScreen
             return true;
         }
 
-        if (this.nestedInventoryModeButton != null && this.nestedInventoryModeButton.mouseClicked(mouseX, mouseY, button)) {
+        if (this.nestedInventoryModeButton != null
+                && this.nestedInventoryModeButton.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.nestedInventoryModeButton);
             return true;
         }
@@ -301,7 +289,8 @@ public class PortableSpatialClonerScreen
         boolean dropdownConsumesClick = this.structureSelector != null
                 && this.structureSelector.isExpandedMouseOver(mouseX, mouseY);
 
-        if (!dropdownConsumesClick && this.materialList != null && this.materialList.mouseClicked(mouseX, mouseY, button)) {
+        if (!dropdownConsumesClick && this.materialList != null
+                && this.materialList.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.materialList);
             return true;
         }
@@ -355,8 +344,7 @@ public class PortableSpatialClonerScreen
             GuiGraphics graphics,
             int mouseX,
             int mouseY,
-            float partialTick
-    ) {
+            float partialTick) {
         if (this.structureSelector == null || !this.structureSelector.isExpandedMouseOver(mouseX, mouseY)) {
             renderMaterialTooltip(graphics, mouseX, mouseY);
         }
@@ -375,8 +363,7 @@ public class PortableSpatialClonerScreen
                         Minecraft.getInstance().font,
                         tooltip,
                         mouseX,
-                        mouseY
-                );
+                        mouseY);
             }
         }
     }
@@ -388,8 +375,7 @@ public class PortableSpatialClonerScreen
 
         this.materialList.setCraftButtonsEnabled(hasCraftingUpgrade());
         this.materialList.setEntries(
-                PortableSpatialClonerRequirementSync.getEntries(getMenu().containerId)
-        );
+                PortableSpatialClonerRequirementSync.getEntries(getMenu().containerId));
     }
 
     protected boolean hasCraftingUpgrade() {
@@ -416,17 +402,13 @@ public class PortableSpatialClonerScreen
 
         Component mainTooltip = switch (mode) {
             case NONE -> Component.translatable(
-                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_NONE_TOOLTIP.getTranslationKey()
-            );
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_NONE_TOOLTIP.getTranslationKey());
             case PLAYER -> Component.translatable(
-                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_PLAYER_TOOLTIP.getTranslationKey()
-            );
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_PLAYER_TOOLTIP.getTranslationKey());
             case CONNECTED -> Component.translatable(
-                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_CONNECTED_TOOLTIP.getTranslationKey()
-            );
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_CONNECTED_TOOLTIP.getTranslationKey());
             case BOTH -> Component.translatable(
-                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_BOTH_TOOLTIP.getTranslationKey()
-            );
+                    LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_BOTH_TOOLTIP.getTranslationKey());
         };
 
         addWrappedTooltipLines(lines, mainTooltip);
@@ -435,9 +417,8 @@ public class PortableSpatialClonerScreen
             addWrappedTooltipLines(
                     lines,
                     Component.translatable(
-                            LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_AE2_IGNORED_TOOLTIP.getTranslationKey()
-                    ).withStyle(ChatFormatting.DARK_GRAY)
-            );
+                            LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_AE2_IGNORED_TOOLTIP.getTranslationKey())
+                            .withStyle(ChatFormatting.DARK_GRAY));
         }
 
         return lines;
@@ -470,8 +451,7 @@ public class PortableSpatialClonerScreen
                 Minecraft.getInstance().font,
                 tooltipForNestedInventoryMode(getNestedInventoryMode()),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     private void renderMaterialTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -490,32 +470,27 @@ public class PortableSpatialClonerScreen
         }
 
         List<Component> lines = new ArrayList<>(
-                hovered.stack().getTooltipLines(Minecraft.getInstance().player, TooltipFlag.Default.NORMAL)
-        );
+                hovered.stack().getTooltipLines(Minecraft.getInstance().player, TooltipFlag.Default.NORMAL));
 
         lines.add(Component.translatable(
                 LangDefs.AVAILABLE_COUNT.getTranslationKey(),
-                String.format("%,d", hovered.available())
-        ));
+                String.format("%,d", hovered.available())));
 
         lines.add(Component.translatable(
                 LangDefs.REQUIRED_COUNT.getTranslationKey(),
-                String.format("%,d", hovered.required())
-        ));
+                String.format("%,d", hovered.required())));
 
         lines.add(Component.translatable(
                 hovered.complete()
                         ? LangDefs.STATUS_OK.getTranslationKey()
-                        : LangDefs.STATUS_MISSING.getTranslationKey()
-        ));
+                        : LangDefs.STATUS_MISSING.getTranslationKey()));
 
         graphics.renderTooltip(
                 Minecraft.getInstance().font,
                 lines,
                 hovered.stack().getTooltipImage(),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     @Override
@@ -537,7 +512,8 @@ public class PortableSpatialClonerScreen
     }
 
     private void updateCraftAllButton() {
-        if (this.craftAllButton == null) return;
+        if (this.craftAllButton == null)
+            return;
 
         int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
         boolean noBuffer = status == CraftingBufferStatusClientCache.NO_BUFFER;
@@ -558,12 +534,12 @@ public class PortableSpatialClonerScreen
         this.craftAllButton.setIcon(
                 status == CraftingBufferStatusClientCache.CRAFTING_SCHEDULED
                         ? Icon.CRAFT_HAMMER_DARK
-                        : Icon.CRAFT_HAMMER
-        );
+                        : Icon.CRAFT_HAMMER);
     }
 
     private void renderCraftAllHighlight(GuiGraphics graphics) {
-        if (this.craftAllButton == null || !this.craftAllButton.visible) return;
+        if (this.craftAllButton == null || !this.craftAllButton.visible)
+            return;
 
         int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
 
@@ -588,9 +564,12 @@ public class PortableSpatialClonerScreen
     }
 
     private void renderCraftAllTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (this.craftAllButton == null || !this.craftAllButton.visible) return;
+        if (this.craftAllButton == null || !this.craftAllButton.visible)
+            return;
         if (mouseX < this.craftAllButton.getX() || mouseX >= this.craftAllButton.getX() + this.craftAllButton.getWidth()
-                || mouseY < this.craftAllButton.getY() || mouseY >= this.craftAllButton.getY() + this.craftAllButton.getHeight()) return;
+                || mouseY < this.craftAllButton.getY()
+                || mouseY >= this.craftAllButton.getY() + this.craftAllButton.getHeight())
+            return;
 
         int status = CraftingBufferStatusClientCache.get(getMenu().containerId);
         List<Component> lines = new ArrayList<>();
@@ -599,13 +578,11 @@ public class PortableSpatialClonerScreen
             addWrappedTooltipLines(
                     lines,
                     Component.translatable(LangDefs.CRAFT_ALL_NEEDS_BUFFER_TITLE.getTranslationKey())
-                            .withStyle(ChatFormatting.YELLOW)
-            );
+                            .withStyle(ChatFormatting.YELLOW));
             addWrappedTooltipLines(
                     lines,
                     Component.translatable(LangDefs.CRAFT_ALL_NEEDS_BUFFER_HINT.getTranslationKey())
-                            .withStyle(ChatFormatting.GRAY)
-            );
+                            .withStyle(ChatFormatting.GRAY));
 
             graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mouseX, mouseY);
             return;

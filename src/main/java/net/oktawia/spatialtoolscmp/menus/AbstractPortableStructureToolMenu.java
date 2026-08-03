@@ -1,6 +1,10 @@
 package net.oktawia.spatialtoolscmp.menus;
 
-import lombok.Getter;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -18,15 +22,14 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.SlotItemHandler;
+
+import lombok.Getter;
+
 import net.oktawia.spatialtoolscmp.client.misc.widgets.PowerUpgradePanelWidget;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.SendLongStringToClientPacket;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 
 public abstract class AbstractPortableStructureToolMenu extends AbstractContainerMenu {
 
@@ -68,8 +71,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
             MenuType<?> menuType,
             int id,
             Inventory playerInventory,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         super(menuType, id);
 
         this.playerInventory = playerInventory;
@@ -150,10 +152,8 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
                 if (!moveItemStackTo(stack, energyUpgradeStart, energyUpgradeEnd, false)) {
                     return ItemStack.EMPTY;
                 }
-            } else if (
-                    craftingUpgradeIndex >= 0
-                            && AbstractStructureCaptureToolItem.isValidCraftingUpgradeItem(stack)
-            ) {
+            } else if (craftingUpgradeIndex >= 0
+                    && AbstractStructureCaptureToolItem.isValidCraftingUpgradeItem(stack)) {
                 if (!moveItemStackTo(stack, craftingUpgradeIndex, craftingUpgradeIndex + 1, false)) {
                     return ItemStack.EMPTY;
                 }
@@ -239,8 +239,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
                         inventory,
                         index,
                         inventoryLeft + col * 18,
-                        inventoryTop + row * 18
-                ));
+                        inventoryTop + row * 18));
             }
         }
 
@@ -252,8 +251,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
                     inventory,
                     col,
                     hotbarLeft + col * 18,
-                    hotbarTop
-            ));
+                    hotbarTop));
         }
     }
 
@@ -347,8 +345,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 TemplateUtil::applyFlipVToTag,
-                buildVerticalFlipSideMap()
-        );
+                buildVerticalFlipSideMap());
     }
 
     public void rotateClockwise(Integer times) {
@@ -371,8 +368,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 tag -> TemplateUtil.applyRotateCWToTag(tag, turns),
-                buildRotationSideMap(normalized)
-        );
+                buildRotationSideMap(normalized));
     }
 
     public void flipVerticalAroundOrigin() {
@@ -391,8 +387,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 TemplateUtil::applyFlipVAroundOriginToTag,
-                buildVerticalFlipSideMap()
-        );
+                buildVerticalFlipSideMap());
     }
 
     public void rotateClockwiseAroundOrigin(Integer times) {
@@ -415,8 +410,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 tag -> TemplateUtil.applyRotateCWAroundOriginToTag(tag, turns),
-                buildRotationSideMap(normalized)
-        );
+                buildRotationSideMap(normalized));
     }
 
     public void flipEastWest() {
@@ -435,8 +429,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 TemplateUtil::applyFlipEastWestToTag,
-                buildEastWestFlipSideMap()
-        );
+                buildEastWestFlipSideMap());
     }
 
     public void flipNorthSouth() {
@@ -455,8 +448,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 TemplateUtil::applyFlipNorthSouthToTag,
-                buildNorthSouthFlipSideMap()
-        );
+                buildNorthSouthFlipSideMap());
     }
 
     public void flipEastWestAroundOrigin() {
@@ -475,8 +467,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 TemplateUtil::applyFlipEastWestAroundOriginToTag,
-                buildEastWestFlipSideMap()
-        );
+                buildEastWestFlipSideMap());
     }
 
     public void flipNorthSouthAroundOrigin() {
@@ -495,8 +486,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
         applyTransformAndResend(
                 TemplateUtil::applyFlipNorthSouthAroundOriginToTag,
-                buildNorthSouthFlipSideMap()
-        );
+                buildNorthSouthFlipSideMap());
     }
 
     public void offsetLeft() {
@@ -668,8 +658,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
 
                 NetworkHandler.sendToPlayer(
                         serverPlayer,
-                        new SendLongStringToClientPacket(new String(part, StandardCharsets.UTF_8))
-                );
+                        new SendLongStringToClientPacket(new String(part, StandardCharsets.UTF_8)));
             }
         }
 
@@ -828,8 +817,7 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
                         slot,
                         POWER_UPGRADE_SLOT_X,
                         POWER_UPGRADE_SLOT_Y + slot * POWER_UPGRADE_SLOT_STEP,
-                        toolItem.isCraftingUpgradeSlot(slot)
-                ));
+                        toolItem.isCraftingUpgradeSlot(slot)));
             }
         });
     }

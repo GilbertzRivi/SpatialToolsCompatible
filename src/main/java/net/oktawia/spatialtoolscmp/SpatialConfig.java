@@ -1,10 +1,11 @@
 package net.oktawia.spatialtoolscmp;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraftforge.common.ForgeConfigSpec;
+import java.util.List;
+
 import org.apache.commons.lang3.tuple.Pair;
 
-import java.util.List;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.common.ForgeConfigSpec;
 
 public final class SpatialConfig {
 
@@ -57,21 +58,18 @@ public final class SpatialConfig {
         public Common(ForgeConfigSpec.Builder builder) {
             builder.comment(
                     "Spatial Tools Compatible - Configuration.",
-                    "For every config entry that defines a limit, -1 means no limit."
-            ).push("features");
+                    "For every config entry that defines a limit, -1 means no limit.").push("features");
 
             USE_POWER = builder
                     .comment(
                             "Whether portable spatial tools consume energy at all.",
-                            "Set to false and every tool works for free, ignoring its own cost settings."
-                    )
+                            "Set to false and every tool works for free, ignoring its own cost settings.")
                     .define("usePower", true);
 
             PREVIEW_MAX_BLOCKS = nonNegativeInt(builder,
                     "previewMaxBlocks", 512,
                     "How many ghost blocks the replacer and piper previews may draw at once.",
-                    "Only limits rendering, the tools still act on every block within their own cap."
-            );
+                    "Only limits rendering, the tools still act on every block within their own cap.");
 
             builder.comment(
                     "Energy upgrade items accepted by portable spatial tools.",
@@ -79,16 +77,14 @@ public final class SpatialConfig {
                     "- ae2:energy_card",
                     "- minecraft:stick",
                     "Every valid item in this list can be inserted into energy upgrade slots.",
-                    "Crafting upgrade slot is not affected by this list."
-            ).push("energyUpgrades");
+                    "Crafting upgrade slot is not affected by this list.").push("energyUpgrades");
 
             ENERGY_UPGRADE_ITEMS = builder
                     .comment("List of item registry names accepted as energy upgrades.")
                     .defineList(
                             "items",
                             List.of("ae2:energy_card"),
-                            Common::isValidItemIdString
-                    );
+                            Common::isValidItemIdString);
 
             builder.pop();
 
@@ -96,34 +92,29 @@ public final class SpatialConfig {
                     "Portable spatial storage feature.",
                     "Portable spatial storage can cut structures from the world,",
                     "rotate or flip them, and then paste them back,",
-                    "while preserving block NBT and other metadata."
-            ).push("portableSpatialStorage");
+                    "while preserving block NBT and other metadata.").push("portableSpatialStorage");
 
             PORTABLE_SPATIAL_STORAGE_COST = nonNegativeInt(builder,
                     "cost", 1,
                     "Base AE cost factor for cutting or pasting one block.",
-                    "The final cost is: base cost * block distance * energy cost multiplier."
-            );
+                    "The final cost is: base cost * block distance * energy cost multiplier.");
 
             PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER = nonNegativeDouble(builder,
                     "energyCostMultiplier", 1.0D,
                     "Multiplier applied to the distance-based AE cost.",
                     "Final cost is: base cost * block distance * this multiplier.",
-                    "Set to 0 to disable energy cost for this gadget."
-            );
+                    "Set to 0 to disable energy cost for this gadget.");
 
             PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY = nonNegativeInt(builder,
                     "baseInternalPowerCapacity", 200000,
                     "Base internal power capacity for portable spatial storage.",
                     "Each energy upgrade adds this amount once more to the item's",
-                    "internal energy storage."
-            );
+                    "internal energy storage.");
 
             PORTABLE_SPATIAL_STORAGE_MAX_STRUCTURE_SIZE = unlimitedInt(builder,
                     "maxStructureSize", -1,
                     "Maximum allowed structure size for portable spatial storage.",
-                    "-1 means no limit."
-            );
+                    "-1 means no limit.");
 
             builder.pop();
 
@@ -131,66 +122,58 @@ public final class SpatialConfig {
                     "Portable spatial cloner feature.",
                     "Portable spatial cloner can copy structures from the world,",
                     "rotate or flip them, and then paste them back,",
-                    "while preserving machine settings. It works with AE2 cables and parts."
-            ).push("portableSpatialCloner");
+                    "while preserving machine settings. It works with AE2 cables and parts.")
+                    .push("portableSpatialCloner");
 
             PORTABLE_SPATIAL_CLONER_COST = nonNegativeInt(builder,
                     "cost", 1,
                     "Base AE cost factor for copying or pasting one block.",
-                    "The final cost is: base cost * block distance * energy cost multiplier."
-            );
+                    "The final cost is: base cost * block distance * energy cost multiplier.");
 
             PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER = nonNegativeDouble(builder,
                     "energyCostMultiplier", 1.0D,
                     "Multiplier applied to the distance-based AE cost.",
                     "Final cost is: base cost * block distance * this multiplier.",
-                    "Set to 0 to disable energy cost for this gadget."
-            );
+                    "Set to 0 to disable energy cost for this gadget.");
 
             PORTABLE_SPATIAL_CLONER_BASE_INTERNAL_POWER_CAPACITY = nonNegativeInt(builder,
                     "baseInternalPowerCapacity", 200000,
                     "Base internal power capacity for portable spatial cloner.",
                     "Each energy upgrade adds this amount once more to the item's",
-                    "internal energy storage."
-            );
+                    "internal energy storage.");
 
             PORTABLE_SPATIAL_CLONER_MAX_STRUCTURE_SIZE = unlimitedInt(builder,
                     "maxStructureSize", -1,
                     "Maximum allowed structure size for portable spatial cloner.",
-                    "-1 means no limit."
-            );
+                    "-1 means no limit.");
 
             builder.pop();
 
             builder.comment(
                     "Portable spatial replacer feature.",
-                    "Replaces all connected same-type blocks within radius with the chosen target block."
-            ).push("portableSpatialReplacer");
+                    "Replaces all connected same-type blocks within radius with the chosen target block.")
+                    .push("portableSpatialReplacer");
 
             PORTABLE_SPATIAL_REPLACER_COST = nonNegativeInt(builder,
                     "cost", 1,
                     "Base AE cost factor for replacing one block.",
-                    "The final cost is: base cost * replaced blocks * energy cost multiplier."
-            );
+                    "The final cost is: base cost * replaced blocks * energy cost multiplier.");
 
             PORTABLE_SPATIAL_REPLACER_ENERGY_COST_MULTIPLIER = nonNegativeDouble(builder,
                     "energyCostMultiplier", 1.0D,
                     "Multiplier applied to the block-count based AE cost.",
-                    "Set to 0 to disable energy cost for this gadget."
-            );
+                    "Set to 0 to disable energy cost for this gadget.");
 
             PORTABLE_SPATIAL_REPLACER_BASE_INTERNAL_POWER_CAPACITY = nonNegativeInt(builder,
                     "baseInternalPowerCapacity", 200000,
                     "Base internal power capacity for portable spatial replacer.",
                     "Each energy upgrade adds this amount once more to the item's",
-                    "internal energy storage."
-            );
+                    "internal energy storage.");
 
             PORTABLE_SPATIAL_REPLACER_MAX_BLOCKS = nonNegativeInt(builder,
                     "maxBlocks", 1024,
                     "Hard cap on how many blocks the replacer can replace in one operation.",
-                    "Prevents accidental mass-replacement on large servers."
-            );
+                    "Prevents accidental mass-replacement on large servers.");
 
             PORTABLE_SPATIAL_REPLACER_BLACKLIST = builder
                     .comment(
@@ -201,51 +184,44 @@ public final class SpatialConfig {
                             "- glob: gtceu:*_casing",
                             "- operators: ! (not), & (and), | (or), ^ (xor), parentheses",
                             "Example: \"#forge:ores/* & !minecraft:coal_ore\"",
-                            "A block is blacklisted when any entry matches it."
-                    )
+                            "A block is blacklisted when any entry matches it.")
                     .defineList(
                             "blacklist",
                             List.of("#forge:ores", "#forge:raw_materials"),
-                            entry -> entry instanceof String
-                    );
+                            entry -> entry instanceof String);
 
             builder.pop();
 
             builder.comment(
                     "Portable spatial piper feature.",
-                    "Builds the chosen block along a route made of axis aligned segments."
-            ).push("portableSpatialPiper");
+                    "Builds the chosen block along a route made of axis aligned segments.")
+                    .push("portableSpatialPiper");
 
             PORTABLE_SPATIAL_PIPER_COST = nonNegativeInt(builder,
                     "cost", 1,
                     "Base AE cost factor for building one block.",
-                    "The final cost is: base cost * built blocks * energy cost multiplier."
-            );
+                    "The final cost is: base cost * built blocks * energy cost multiplier.");
 
             PORTABLE_SPATIAL_PIPER_ENERGY_COST_MULTIPLIER = nonNegativeDouble(builder,
                     "energyCostMultiplier", 1.0D,
                     "Multiplier applied to the block-count based AE cost.",
-                    "Set to 0 to disable energy cost for this gadget."
-            );
+                    "Set to 0 to disable energy cost for this gadget.");
 
             PORTABLE_SPATIAL_PIPER_BASE_INTERNAL_POWER_CAPACITY = nonNegativeInt(builder,
                     "baseInternalPowerCapacity", 200000,
                     "Base internal power capacity for portable spatial piper.",
                     "Each energy upgrade adds this amount once more to the item's",
-                    "internal energy storage."
-            );
+                    "internal energy storage.");
 
             PORTABLE_SPATIAL_PIPER_MAX_BLOCKS = nonNegativeInt(builder,
                     "maxBlocks", 1024,
                     "Hard cap on how many blocks a single piper route can contain.",
-                    "Route points that would exceed this cap are rejected."
-            );
+                    "Route points that would exceed this cap are rejected.");
 
             PORTABLE_SPATIAL_PIPER_SELECTION_RANGE = nonNegativeInt(builder,
                     "selectionRange", 32,
                     "How far the piper looks for a block when picking a route point.",
-                    "Used when the vanilla reach is not enough to hit the block you aim at."
-            );
+                    "Used when the vanilla reach is not enough to hit the block you aim at.");
 
             builder.pop();
 
@@ -253,8 +229,7 @@ public final class SpatialConfig {
                     "Portable spatial tool feature.",
                     "Portable spatial tool is all four gadgets in one item.",
                     "Its mode is picked in the context menu, and energy and",
-                    "energy upgrades are shared between all modes."
-            ).push("portableSpatialTool");
+                    "energy upgrades are shared between all modes.").push("portableSpatialTool");
 
             PORTABLE_SPATIAL_TOOL_BASE_INTERNAL_POWER_CAPACITY = nonNegativeInt(builder,
                     "baseInternalPowerCapacity", 200000,
@@ -262,21 +237,18 @@ public final class SpatialConfig {
                     "Each energy upgrade adds this amount once more to the item's",
                     "internal energy storage.",
                     "Capped at the largest baseInternalPowerCapacity of the four gadgets,",
-                    "so the capacity never depends on the selected mode."
-            );
+                    "so the capacity never depends on the selected mode.");
 
             builder.pop();
 
             builder.pop();
         }
 
-
         private static ForgeConfigSpec.IntValue nonNegativeInt(
                 ForgeConfigSpec.Builder builder,
                 String key,
                 int defaultValue,
-                String... comment
-        ) {
+                String... comment) {
             return builder.comment(comment).defineInRange(key, defaultValue, 0, Integer.MAX_VALUE);
         }
 
@@ -284,8 +256,7 @@ public final class SpatialConfig {
                 ForgeConfigSpec.Builder builder,
                 String key,
                 int defaultValue,
-                String... comment
-        ) {
+                String... comment) {
             return builder.comment(comment).defineInRange(key, defaultValue, -1, Integer.MAX_VALUE);
         }
 
@@ -293,8 +264,7 @@ public final class SpatialConfig {
                 ForgeConfigSpec.Builder builder,
                 String key,
                 double defaultValue,
-                String... comment
-        ) {
+                String... comment) {
             return builder.comment(comment).defineInRange(key, defaultValue, 0.0D, Double.MAX_VALUE);
         }
 

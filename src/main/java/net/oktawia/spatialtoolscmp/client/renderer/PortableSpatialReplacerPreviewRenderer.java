@@ -1,7 +1,12 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
+
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.mojang.blaze3d.vertex.PoseStack;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -12,18 +17,15 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtensions;
 import net.oktawia.spatialtoolscmp.logic.ReplacerBlacklist;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
-import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
-
-import java.util.Collections;
-import java.util.Objects;
-import java.util.Set;
+import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
 
 public class PortableSpatialReplacerPreviewRenderer {
 
@@ -113,8 +115,7 @@ public class PortableSpatialReplacerPreviewRenderer {
                     pass,
                     pos -> this.targetResolver.buildModelData(targetState, pos, positions),
                     null,
-                    this.targetResolver.previewRenderTypes(targetState)
-            );
+                    this.targetResolver.previewRenderTypes(targetState));
 
             if (PreviewGhostRenderer.isTripwireStage(event.getStage())) {
                 this.ghostRenderer.renderLineBoxes(
@@ -124,16 +125,14 @@ public class PortableSpatialReplacerPreviewRenderer {
                         1.00F,
                         0.30F,
                         0.00F,
-                        1.00F
-                );
+                        1.00F);
 
                 if (targetState.getBlock() instanceof PipeBlock<?, ?, ?>) {
                     this.ghostRenderer.renderPipeConnectionLines(
                             mc,
                             poseStack,
                             positions,
-                            pos -> this.targetResolver.buildModelData(targetState, pos, positions)
-                    );
+                            pos -> this.targetResolver.buildModelData(targetState, pos, positions));
                 }
             }
         } finally {
@@ -141,16 +140,14 @@ public class PortableSpatialReplacerPreviewRenderer {
 
             PreviewGhostRenderer.resetPreviewRenderState(
                     mc,
-                    PreviewGhostRenderer.isTripwireStage(event.getStage())
-            );
+                    PreviewGhostRenderer.isTripwireStage(event.getStage()));
         }
     }
 
     private void ensurePreviewCache(
             Minecraft mc,
             ItemStack stack,
-            BlockState targetState
-    ) {
+            BlockState targetState) {
         ClientLevel level = mc.level;
 
         if (level == null) {
@@ -217,8 +214,7 @@ public class PortableSpatialReplacerPreviewRenderer {
             Minecraft mc,
             ItemStack stack,
             BlockPos startPos,
-            BlockState targetState
-    ) {
+            BlockState targetState) {
         if (startPos == null) {
             return Collections.emptySet();
         }
@@ -254,8 +250,7 @@ public class PortableSpatialReplacerPreviewRenderer {
                 radius,
                 hardCap,
                 mode,
-                strict
-        );
+                strict);
 
         for (ClientReplacerExtension ext : ClientReplacerExtensions.get()) {
             if (ext.canHandleSource(level, startPos, sourceState)) {
@@ -263,8 +258,7 @@ public class PortableSpatialReplacerPreviewRenderer {
                         level,
                         startPos,
                         sourceState,
-                        ctx
-                );
+                        ctx);
 
                 if (result != null) {
                     return PortableSpatialReplacer.filterProtected(level, result);
@@ -278,8 +272,6 @@ public class PortableSpatialReplacerPreviewRenderer {
                         level,
                         startPos,
                         sourceState,
-                        ctx
-                )
-        );
+                        ctx));
     }
 }

@@ -1,5 +1,7 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.GlobalPos;
@@ -16,7 +18,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.items.IItemHandler;
-import org.jetbrains.annotations.Nullable;
 
 public final class ClonerItemHandlerLink {
 
@@ -25,9 +26,11 @@ public final class ClonerItemHandlerLink {
     private static final String ITEM_HANDLER_LINK_POS_KEY = "pos";
     private static final String ITEM_HANDLER_LINK_SIDE_KEY = "side";
 
-    private ClonerItemHandlerLink() {}
+    private ClonerItemHandlerLink() {
+    }
 
-    public record ItemHandlerLink(GlobalPos pos, @Nullable Direction side) {}
+    public record ItemHandlerLink(GlobalPos pos, @Nullable Direction side) {
+    }
 
     public static boolean hasItemHandlerLink(ItemStack stack) {
         CompoundTag tag = stack.getTag();
@@ -46,8 +49,7 @@ public final class ClonerItemHandlerLink {
             ItemStack stack,
             ServerLevel level,
             BlockPos pos,
-            @Nullable Direction side
-    ) {
+            @Nullable Direction side) {
         CompoundTag linkTag = new CompoundTag();
 
         linkTag.putString(ITEM_HANDLER_LINK_DIM_KEY, level.dimension().location().toString());
@@ -143,8 +145,7 @@ public final class ClonerItemHandlerLink {
     public static long countLinkedItemHandlerStorage(
             ServerLevel level,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         if (level == null || toolStack.isEmpty() || wanted.isEmpty()) {
             return 0L;
         }

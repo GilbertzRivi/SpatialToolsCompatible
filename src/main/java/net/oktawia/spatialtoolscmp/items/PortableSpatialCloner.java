@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.items;
 
+import java.io.IOException;
+import java.util.*;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -23,6 +28,7 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.HitResult;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
@@ -32,10 +38,6 @@ import net.oktawia.spatialtoolscmp.items.helpers.*;
 import net.oktawia.spatialtoolscmp.logic.*;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.*;
 
 public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
@@ -137,16 +139,14 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             Player player,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         return ClonerInventoryAccess.countNestedInventoryInPlayerInventory(level, player, toolStack, wanted);
     }
 
     public static long countNestedInventoryInLinkedItemHandlerStorage(
             ServerLevel level,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         return ClonerInventoryAccess.countNestedInventoryInLinkedItemHandlerStorage(level, toolStack, wanted);
     }
 
@@ -218,8 +218,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                             player,
                             context.getItemInHand(),
                             context.getClickedPos(),
-                            context.getClickedFace()
-                    );
+                            context.getClickedFace());
                 }
 
                 return InteractionResult.sidedSuccess(level.isClientSide());
@@ -256,7 +255,8 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
     }
 
     @Override
-    protected void onUseOnWithStoredStructure(ServerLevel level, Player player, ItemStack stack, BlockPos clickedFacePos) {
+    protected void onUseOnWithStoredStructure(ServerLevel level, Player player, ItemStack stack,
+            BlockPos clickedFacePos) {
         BlockPos anchoredOrigin = StructureToolStackState.getAnchorIfValid(stack, level.dimension());
         pasteBestEffort(level, player, stack, anchoredOrigin == null ? clickedFacePos : anchoredOrigin);
     }
@@ -274,8 +274,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             savedTag = ClonerStructureLibraryStore.loadSelectedOrMigrateLegacy(
                     level.getServer(),
                     player.getUUID(),
-                    toolStack
-            );
+                    toolStack);
         } catch (IOException exception) {
             showHud(player, Component.translatable(LangDefs.FAILED_TO_LOAD_STRUCTURE.getTranslationKey()));
             return;
@@ -294,8 +293,8 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_STORED_STRUCTURE_EMPTY.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_INVALID_STRUCTURE_CLEARED.getTranslationKey()))
-            );
+                    cyan(Component
+                            .translatable(LangDefs.STRUCTURE_GADGET_INVALID_STRUCTURE_CLEARED.getTranslationKey())));
 
             return;
         }
@@ -310,8 +309,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                 savedTag,
                 energyOrigin,
                 getPowerPerBlockPaste(),
-                getEnergyCostMultiplier()
-        );
+                getEnergyCostMultiplier());
 
         if (!tryUsePower(player, toolStack, requiredPower)) {
             showNotEnoughPower(player, toolStack, requiredPower);
@@ -358,8 +356,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                         stateToPlace,
                         rawBeTag,
                         blockMetadata,
-                        pasteContext
-                );
+                        pasteContext);
 
                 if (extensionPlan.isPresent()) {
                     selectedPlan = extensionPlan.get();
@@ -375,8 +372,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                         worldPos,
                         selectedPlan,
                         player,
-                        toolStack
-                );
+                        toolStack);
 
                 if (success) {
                     for (ItemStack cost : selectedPlan.consumedStacks()) {
@@ -391,8 +387,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                         worldPos,
                         stateToPlace,
                         player,
-                        toolStack
-                );
+                        toolStack);
 
                 if (success) {
                     ItemStack required = ClonerBlockPlacer.getRequiredBlockItem(stateToPlace);
@@ -408,14 +403,14 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                 BlockPos worldPosImmutable = worldPos.immutable();
 
                 for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
-                    extension.onBlockPlaced(level, worldPosImmutable, level.getBlockEntity(worldPosImmutable), blockMetadata);
+                    extension.onBlockPlaced(level, worldPosImmutable, level.getBlockEntity(worldPosImmutable),
+                            blockMetadata);
                 }
 
                 undoPlacedBlocks.add(new ClonerUndoHandler.ClonerUndoPlacedBlock(
                         worldPosImmutable,
                         finalState.toString(),
-                        List.copyOf(ClonerUndoHandler.aggregateRefundStacks(refundStacks))
-                ));
+                        List.copyOf(ClonerUndoHandler.aggregateRefundStacks(refundStacks))));
 
                 placed++;
             } else {
@@ -435,17 +430,17 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     HUD_TIME_MEDIUM,
                     cyan(Component.translatable(LangDefs.STRUCTURE_PASTED.getTranslationKey())),
                     skipped > 0
-                            ? red(Component.translatable(LangDefs.STRUCTURE_GADGET_PLACED_SKIPPED.getTranslationKey(), placed, skipped))
-                            : cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_PLACED_SKIPPED.getTranslationKey(), placed, skipped)),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey()))
-            );
+                            ? red(Component.translatable(LangDefs.STRUCTURE_GADGET_PLACED_SKIPPED.getTranslationKey(),
+                                    placed, skipped))
+                            : cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_PLACED_SKIPPED.getTranslationKey(),
+                                    placed, skipped)),
+                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey())));
         } else {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.FAILED_TO_PASTE_STRUCTURE.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_SKIPPED.getTranslationKey(), skipped))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_SKIPPED.getTranslationKey(), skipped)));
         }
     }
 
@@ -457,8 +452,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey())));
             return;
         }
 
@@ -471,8 +465,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey())));
             return;
         }
 
@@ -484,8 +477,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey())));
             return;
         }
 
@@ -498,8 +490,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey())));
             return;
         }
 
@@ -508,8 +499,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey())));
             return;
         }
 
@@ -521,8 +511,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey())));
             return;
         }
 
@@ -538,8 +527,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                         player,
                         HUD_TIME_MEDIUM,
                         red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                        red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey()))
-                );
+                        red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey())));
                 return;
             }
         }
@@ -555,16 +543,13 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     cyan(Component.translatable(
                             refundResult.insertedIntoMe()
                                     ? LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED_TO_ME.getTranslationKey()
-                                    : LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED.getTranslationKey()
-                    ))
-            );
+                                    : LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED.getTranslationKey())));
         } else {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
                     cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_COPY_PASTE_UNDONE.getTranslationKey()))
-            );
+                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_COPY_PASTE_UNDONE.getTranslationKey())));
         }
     }
 
@@ -573,8 +558,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             Player player,
             ItemStack toolStack,
             BlockPos pos,
-            @Nullable Direction side
-    ) {
+            @Nullable Direction side) {
         var blockEntity = level.getBlockEntity(pos);
 
         if (blockEntity == null || !ClonerItemHandlerLink.hasItemHandlerCapability(blockEntity, side)) {
@@ -584,9 +568,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     red(Component.translatable(LangDefs.PORTABLE_SPATIAL_CLONER_NO_ITEM_HANDLER.getTranslationKey())),
                     cyan(Component.translatable(
                             LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
-                            level.dimension().location().toString()
-                    ))
-            );
+                            level.dimension().location().toString())));
             return;
         }
 
@@ -604,13 +586,10 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                 HUD_TIME_MEDIUM,
                 cyan(Component.translatable(
                         LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO.getTranslationKey(),
-                        pos.getX() + " " + pos.getY() + " " + pos.getZ()
-                )),
+                        pos.getX() + " " + pos.getY() + " " + pos.getZ())),
                 cyan(Component.translatable(
                         LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
-                        level.dimension().location().toString()
-                ))
-        );
+                        level.dimension().location().toString())));
     }
 
     private void clearStoredStructure(Player player, ItemStack toolStack) {
@@ -662,20 +641,17 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             Player player,
             ItemStack stack,
-            CompoundTag savedTag
-    ) throws IOException {
+            CompoundTag savedTag) throws IOException {
         ClonerStructureLibraryStore.Entry entry = ClonerStructureLibraryStore.saveForCurrentSelection(
                 level.getServer(),
                 player.getUUID(),
                 stack,
-                savedTag
-        );
+                savedTag);
 
         StructureToolStackState.setSelectedClonerLibraryEntry(
                 stack,
                 player.getUUID(),
-                entry.id()
-        );
+                entry.id());
 
         return entry.id();
     }
@@ -685,21 +661,20 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             ItemStack stack,
             @Nullable Level level,
             List<Component> tooltip,
-            TooltipFlag flag
-    ) {
+            TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
 
         if (!Screen.hasShiftDown()) {
             tooltip.add(Component.translatable(
-                    LangDefs.PORTABLE_SPATIAL_CLONER_SHIFT_FOR_DETAILS.getTranslationKey()
-            ).withStyle(ChatFormatting.DARK_GRAY));
+                    LangDefs.PORTABLE_SPATIAL_CLONER_SHIFT_FOR_DETAILS.getTranslationKey())
+                    .withStyle(ChatFormatting.DARK_GRAY));
 
             return;
         }
 
         tooltip.add(Component.translatable(
-                LangDefs.PORTABLE_SPATIAL_CLONER_LINK_STORAGE_TOOLTIP.getTranslationKey()
-        ).withStyle(ChatFormatting.GRAY));
+                LangDefs.PORTABLE_SPATIAL_CLONER_LINK_STORAGE_TOOLTIP.getTranslationKey())
+                .withStyle(ChatFormatting.GRAY));
 
         ClonerItemHandlerLink.ItemHandlerLink itemHandlerLink = ClonerItemHandlerLink.getItemHandlerLink(stack);
 
@@ -708,13 +683,11 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
             tooltip.add(Component.translatable(
                     LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO.getTranslationKey(),
-                    linkPos.getX() + " " + linkPos.getY() + " " + linkPos.getZ()
-            ).withStyle(ChatFormatting.AQUA));
+                    linkPos.getX() + " " + linkPos.getY() + " " + linkPos.getZ()).withStyle(ChatFormatting.AQUA));
 
             tooltip.add(Component.translatable(
                     LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
-                    itemHandlerLink.pos().dimension().location().toString()
-            ).withStyle(ChatFormatting.GRAY));
+                    itemHandlerLink.pos().dimension().location().toString()).withStyle(ChatFormatting.GRAY));
 
             return;
         }
@@ -726,13 +699,12 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                 if (ae2Pos != null) {
                     tooltip.add(Component.translatable(
                             LangDefs.PORTABLE_SPATIAL_CLONER_LINKED_TO_AE2.getTranslationKey(),
-                            ae2Pos.pos().getX() + " " + ae2Pos.pos().getY() + " " + ae2Pos.pos().getZ()
-                    ).withStyle(ChatFormatting.AQUA));
+                            ae2Pos.pos().getX() + " " + ae2Pos.pos().getY() + " " + ae2Pos.pos().getZ())
+                            .withStyle(ChatFormatting.AQUA));
 
                     tooltip.add(Component.translatable(
                             LangDefs.PORTABLE_SPATIAL_CLONER_LINK_DIMENSION.getTranslationKey(),
-                            ae2Pos.dimension().location().toString()
-                    ).withStyle(ChatFormatting.GRAY));
+                            ae2Pos.dimension().location().toString()).withStyle(ChatFormatting.GRAY));
                 }
             } catch (Throwable ignored) {
             }
@@ -749,8 +721,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                 ServerLevel level,
                 Player player,
                 ItemStack toolStack,
-                List<ItemStack> consumedStacks
-        ) {
+                List<ItemStack> consumedStacks) {
             this.level = level;
             this.player = player;
             this.toolStack = toolStack;

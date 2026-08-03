@@ -1,10 +1,17 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import codechicken.multipart.api.ItemMultipart;
-import codechicken.multipart.api.part.MultiPart;
-import codechicken.multipart.block.TileMultipart;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
 import com.mojang.blaze3d.vertex.PoseStack;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
@@ -20,21 +27,18 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
+import codechicken.multipart.api.ItemMultipart;
+import codechicken.multipart.api.part.MultiPart;
+import codechicken.multipart.block.TileMultipart;
+
 import net.oktawia.spatialtoolscmp.client.renderer.extensions.CBMultipartBlockRenderExtension;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
-import net.oktawia.spatialtoolscmp.mixin.LevelClientSideAccessor;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import net.oktawia.spatialtoolscmp.mixin.LevelClientSideAccessor;
 
 public final class CBMultipartClientExtension
         implements ClientReplacerExtension, ClientPiperExtension {
@@ -50,8 +54,7 @@ public final class CBMultipartClientExtension
             ClientLevel level,
             BlockPos pos,
             BlockState state,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         Item sourceItem = CBMultipartReplacerExtension.partItem(level, pos);
 
         if (sourceItem == null) {
@@ -62,9 +65,8 @@ public final class CBMultipartClientExtension
                 level,
                 pos,
                 ctx,
-                (checkedLevel, checkedPos) ->
-                        CBMultipartReplacerExtension.partItem(checkedLevel, checkedPos) == sourceItem
-        );
+                (checkedLevel,
+                        checkedPos) -> CBMultipartReplacerExtension.partItem(checkedLevel, checkedPos) == sourceItem);
     }
 
     @Override
@@ -82,8 +84,7 @@ public final class CBMultipartClientExtension
             ClientLevel level,
             BlockPos pos,
             BlockState state,
-            ItemStack target
-    ) {
+            ItemStack target) {
         return CBMultipartPiperExtension.pathAction(level, pos, target);
     }
 
@@ -93,8 +94,7 @@ public final class CBMultipartClientExtension
             BlockState targetState,
             ItemStack target,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         return null;
     }
 
@@ -116,8 +116,7 @@ public final class CBMultipartClientExtension
             MultiBufferSource bufferSource,
             RenderType renderType,
             ModelData modelData,
-            long seed
-    ) {
+            long seed) {
         CompoundTag parts = CBMultipartReplacerExtension.stashedParts(target);
 
         if (parts == null) {
@@ -137,8 +136,7 @@ public final class CBMultipartClientExtension
                 poseStack,
                 bufferSource.getBuffer(RenderType.cutout()),
                 LightTexture.FULL_BRIGHT,
-                OverlayTexture.NO_OVERLAY
-        );
+                OverlayTexture.NO_OVERLAY);
 
         return true;
     }
@@ -158,8 +156,7 @@ public final class CBMultipartClientExtension
     private TileMultipart previewTile(
             CompoundTag parts,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         boolean samePositions = allPositions == this.cachedRequestedPositions
                 || allPositions.equals(this.cachedPositions);
 
@@ -179,8 +176,7 @@ public final class CBMultipartClientExtension
 
     private static Map<BlockPos, TileMultipart> buildConnectedTiles(
             CompoundTag parts,
-            Set<BlockPos> positions
-    ) {
+            Set<BlockPos> positions) {
         Block block = CBMultipartReplacerExtension.multipartBlock();
 
         if (block == null || Minecraft.getInstance().level == null) {
@@ -188,8 +184,7 @@ public final class CBMultipartClientExtension
         }
 
         try {
-            PreviewMultipartLevel previewLevel =
-                    new PreviewMultipartLevel(block.defaultBlockState());
+            PreviewMultipartLevel previewLevel = new PreviewMultipartLevel(block.defaultBlockState());
 
             Map<BlockPos, TileMultipart> tiles = new LinkedHashMap<>();
 
@@ -197,8 +192,7 @@ public final class CBMultipartClientExtension
                 TileMultipart tile = CBMultipartBlockRenderExtension.createPreviewTile(
                         parts,
                         pos,
-                        previewLevel
-                );
+                        previewLevel);
 
                 if (tile != null) {
                     tiles.put(pos.immutable(), tile);

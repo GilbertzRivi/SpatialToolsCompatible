@@ -1,14 +1,15 @@
 package net.oktawia.spatialtoolscmp.compat;
 
+import java.util.Map;
+import java.util.Optional;
+
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
 import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.type.capability.ICuriosItemHandler;
 import top.theillusivec4.curios.api.type.inventory.ICurioStacksHandler;
 import top.theillusivec4.curios.api.type.inventory.IDynamicStackHandler;
-
-import java.util.Map;
-import java.util.Optional;
 
 public final class CuriosOps {
 
@@ -33,8 +34,7 @@ public final class CuriosOps {
     public static long countNested(
             Player player,
             StackSkipper skipper,
-            NestedCounter counter
-    ) {
+            NestedCounter counter) {
         if (player == null || skipper == null || counter == null) {
             return 0L;
         }
@@ -71,8 +71,7 @@ public final class CuriosOps {
             StackSkipper skipper,
             NestedExtractor extractor,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (player == null || skipper == null || extractor == null || amount <= 0) {
             return 0L;
         }

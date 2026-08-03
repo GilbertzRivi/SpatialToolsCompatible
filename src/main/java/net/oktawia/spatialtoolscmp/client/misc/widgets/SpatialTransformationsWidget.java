@@ -1,13 +1,15 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
+import org.jetbrains.annotations.NotNull;
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
+
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
-import org.jetbrains.annotations.NotNull;
 
 public class SpatialTransformationsWidget extends AbstractWidget {
 
@@ -37,8 +39,7 @@ public class SpatialTransformationsWidget extends AbstractWidget {
             Runnable flipVertical,
             Runnable flipVerticalAroundOrigin,
             Runnable rotateClockwise,
-            Runnable rotateClockwiseAroundOrigin
-    ) {
+            Runnable rotateClockwiseAroundOrigin) {
         super(0, 0, WIDTH, HEIGHT, Component.empty());
 
         this.flipEastWestButton = new IconButtonWidget(Icon.ARROW_LEFT, () -> {
@@ -118,33 +119,25 @@ public class SpatialTransformationsWidget extends AbstractWidget {
                 Component.translatable(
                         aroundOrigin
                                 ? LangDefs.FLIP_EAST_WEST_AROUND_ORIGIN.getTranslationKey()
-                                : LangDefs.FLIP_EAST_WEST.getTranslationKey()
-                )
-        ));
+                                : LangDefs.FLIP_EAST_WEST.getTranslationKey())));
 
         this.flipNorthSouthButton.setTooltip(Tooltip.create(
                 Component.translatable(
                         aroundOrigin
                                 ? LangDefs.FLIP_NORTH_SOUTH_AROUND_ORIGIN.getTranslationKey()
-                                : LangDefs.FLIP_NORTH_SOUTH.getTranslationKey()
-                )
-        ));
+                                : LangDefs.FLIP_NORTH_SOUTH.getTranslationKey())));
 
         this.flipVerticalButton.setTooltip(Tooltip.create(
                 Component.translatable(
                         aroundOrigin
                                 ? LangDefs.FLIP_VERTICAL_AROUND_ORIGIN.getTranslationKey()
-                                : LangDefs.FLIP_VERTICAL.getTranslationKey()
-                )
-        ));
+                                : LangDefs.FLIP_VERTICAL.getTranslationKey())));
 
         this.rotateButton.setTooltip(Tooltip.create(
                 Component.translatable(
                         aroundOrigin
                                 ? LangDefs.ROTATE_CLOCKWISE_AROUND_ORIGIN.getTranslationKey()
-                                : LangDefs.ROTATE_CLOCKWISE.getTranslationKey()
-                )
-        ));
+                                : LangDefs.ROTATE_CLOCKWISE.getTranslationKey())));
     }
 
     @Override
@@ -152,8 +145,7 @@ public class SpatialTransformationsWidget extends AbstractWidget {
             @NotNull GuiGraphics graphics,
             int mouseX,
             int mouseY,
-            float partialTick
-    ) {
+            float partialTick) {
         if (!this.visible) {
             return;
         }
@@ -202,8 +194,7 @@ public class SpatialTransformationsWidget extends AbstractWidget {
             double mouseY,
             int button,
             double dragX,
-            double dragY
-    ) {
+            double dragY) {
         return this.flipEastWestButton.mouseDragged(mouseX, mouseY, button, dragX, dragY)
                 || this.flipNorthSouthButton.mouseDragged(mouseX, mouseY, button, dragX, dragY)
                 || this.flipVerticalButton.mouseDragged(mouseX, mouseY, button, dragX, dragY)

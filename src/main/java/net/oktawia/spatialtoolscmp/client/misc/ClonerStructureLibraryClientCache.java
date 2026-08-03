@@ -19,22 +19,19 @@ public final class ClonerStructureLibraryClientCache {
             long created,
             long updated,
             int blockCount,
-            String folder
-    ) {
+            String folder) {
     }
 
     public static void set(
             List<Entry> newEntries,
-            String newSelectedId
-    ) {
+            String newSelectedId) {
         set(newEntries, newSelectedId, List.of());
     }
 
     public static void set(
             List<Entry> newEntries,
             String newSelectedId,
-            List<String> newFolders
-    ) {
+            List<String> newFolders) {
         entries = List.copyOf(newEntries);
         selectedId = newSelectedId == null ? "" : newSelectedId;
         folders = List.copyOf(newFolders);

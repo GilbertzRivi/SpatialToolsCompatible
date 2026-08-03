@@ -1,13 +1,14 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.Set;
 
 public interface PiperExtension {
 
@@ -22,8 +23,7 @@ public interface PiperExtension {
             ServerLevel level,
             BlockPos pos,
             BlockState state,
-            ItemStack target
-    ) {
+            ItemStack target) {
         return null;
     }
 
@@ -35,8 +35,7 @@ public interface PiperExtension {
             List<BlockPos> orderedPath,
             Set<BlockPos> placed,
             ItemStack target,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         return false;
     }
 

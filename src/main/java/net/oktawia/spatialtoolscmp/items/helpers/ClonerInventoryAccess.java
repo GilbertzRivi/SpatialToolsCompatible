@@ -1,32 +1,29 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.items.IItemHandler;
-import net.minecraftforge.items.IItemHandlerModifiable;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.compat.CuriosOps;
 import net.oktawia.spatialtoolscmp.compat.SophisticatedStorageOps;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 public final class ClonerInventoryAccess {
 
-    private ClonerInventoryAccess() {}
+    private ClonerInventoryAccess() {
+    }
 
     public record ClonerRefundResult(boolean success, boolean insertedIntoMe) {
         public static ClonerRefundResult success(boolean insertedIntoMe) {
@@ -42,8 +39,7 @@ public final class ClonerInventoryAccess {
             ServerLevel level,
             Player player,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         if (wanted.isEmpty()) {
             return 0;
         }
@@ -52,8 +48,8 @@ public final class ClonerInventoryAccess {
 
         total += extractFromMe(level, player, toolStack, wanted, Integer.MAX_VALUE, true);
 
-        PortableSpatialCloner.NestedInventoryResourceMode nestedMode =
-                PortableSpatialCloner.getNestedInventoryResourceMode(toolStack);
+        PortableSpatialCloner.NestedInventoryResourceMode nestedMode = PortableSpatialCloner
+                .getNestedInventoryResourceMode(toolStack);
 
         if (nestedMode.usePlayerNested()) {
             total += countNestedInventoryInPlayerInventory(level, player, toolStack, wanted);
@@ -72,8 +68,7 @@ public final class ClonerInventoryAccess {
             ItemStack toolStack,
             Map<Item, Integer> reserved,
             ItemStack wanted,
-            int amount
-    ) {
+            int amount) {
         if (wanted.isEmpty() || amount <= 0) {
             return false;
         }
@@ -94,14 +89,13 @@ public final class ClonerInventoryAccess {
             Player player,
             ItemStack toolStack,
             ItemStack wanted,
-            int amount
-    ) {
+            int amount) {
         if (wanted.isEmpty() || amount <= 0) {
             return true;
         }
 
-        PortableSpatialCloner.NestedInventoryResourceMode nestedMode =
-                PortableSpatialCloner.getNestedInventoryResourceMode(toolStack);
+        PortableSpatialCloner.NestedInventoryResourceMode nestedMode = PortableSpatialCloner
+                .getNestedInventoryResourceMode(toolStack);
 
         int remaining = amount;
 
@@ -187,8 +181,7 @@ public final class ClonerInventoryAccess {
             ServerLevel level,
             Player player,
             ItemStack toolStack,
-            List<ItemStack> refundStacks
-    ) {
+            List<ItemStack> refundStacks) {
         List<ItemStack> inventoryRemainders = new ArrayList<>();
 
         for (ItemStack refundStack : ClonerUndoHandler.aggregateRefundStacks(refundStacks)) {
@@ -211,8 +204,7 @@ public final class ClonerInventoryAccess {
             ServerLevel level,
             Player player,
             ItemStack toolStack,
-            List<ItemStack> refundStacks
-    ) {
+            List<ItemStack> refundStacks) {
         boolean insertedIntoMe = false;
 
         for (ItemStack refundStack : ClonerUndoHandler.aggregateRefundStacks(refundStacks)) {
@@ -322,8 +314,7 @@ public final class ClonerInventoryAccess {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (wanted.isEmpty() || amount <= 0) {
             return 0;
         }
@@ -374,8 +365,7 @@ public final class ClonerInventoryAccess {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (wanted.isEmpty() || amount <= 0) {
             return 0;
         }
@@ -478,8 +468,7 @@ public final class ClonerInventoryAccess {
             ServerLevel level,
             Player player,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         if (level == null || player == null || wanted.isEmpty()) {
             return 0L;
         }
@@ -490,29 +479,25 @@ public final class ClonerInventoryAccess {
                 level,
                 player.getInventory().items,
                 toolStack,
-                wanted
-        );
+                wanted);
 
         total += countNestedInventoryInStacks(
                 level,
                 player.getInventory().armor,
                 toolStack,
-                wanted
-        );
+                wanted);
 
         total += countNestedInventoryInStacks(
                 level,
                 player.getInventory().offhand,
                 toolStack,
-                wanted
-        );
+                wanted);
 
         if (IsModLoaded.CURIOS) {
             total += CuriosOps.countNested(
                     player,
                     stack -> shouldSkipNestedContainerStack(stack, toolStack),
-                    stack -> countNestedInventoryInStack(level, stack, wanted)
-            );
+                    stack -> countNestedInventoryInStack(level, stack, wanted));
         }
 
         return total;
@@ -521,8 +506,7 @@ public final class ClonerInventoryAccess {
     public static long countNestedInventoryInLinkedItemHandlerStorage(
             ServerLevel level,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         if (level == null || toolStack.isEmpty() || wanted.isEmpty()) {
             return 0L;
         }
@@ -563,8 +547,7 @@ public final class ClonerInventoryAccess {
     private static long countNestedInventoryInStack(
             ServerLevel level,
             ItemStack containerStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         if (level == null || containerStack.isEmpty() || wanted.isEmpty()) {
             return 0L;
         }
@@ -633,8 +616,7 @@ public final class ClonerInventoryAccess {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (level == null || player == null || wanted.isEmpty() || amount <= 0) {
             return 0L;
         }
@@ -648,8 +630,7 @@ public final class ClonerInventoryAccess {
                 toolStack,
                 wanted,
                 remaining,
-                simulate
-        );
+                simulate);
 
         extracted += pulledFromMain;
         remaining -= pulledFromMain;
@@ -661,8 +642,7 @@ public final class ClonerInventoryAccess {
                     toolStack,
                     wanted,
                     remaining,
-                    simulate
-            );
+                    simulate);
 
             extracted += pulledFromArmor;
             remaining -= pulledFromArmor;
@@ -675,8 +655,7 @@ public final class ClonerInventoryAccess {
                     toolStack,
                     wanted,
                     remaining,
-                    simulate
-            );
+                    simulate);
 
             extracted += pulledFromOffhand;
             remaining -= pulledFromOffhand;
@@ -691,11 +670,9 @@ public final class ClonerInventoryAccess {
                             stack,
                             wanted,
                             requested,
-                            sim
-                    ),
+                            sim),
                     remaining,
-                    simulate
-            );
+                    simulate);
 
             extracted += pulledFromCurios;
             remaining -= pulledFromCurios;
@@ -712,8 +689,7 @@ public final class ClonerInventoryAccess {
             ServerLevel level,
             Iterable<ItemStack> stacks,
             ItemStack toolStack,
-            ItemStack wanted
-    ) {
+            ItemStack wanted) {
         long total = 0L;
 
         for (ItemStack containerStack : stacks) {
@@ -733,8 +709,7 @@ public final class ClonerInventoryAccess {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         long remaining = amount;
         long extracted = 0L;
 
@@ -752,8 +727,7 @@ public final class ClonerInventoryAccess {
                     containerStack,
                     wanted,
                     remaining,
-                    simulate
-            );
+                    simulate);
 
             if (pulled <= 0L) {
                 continue;
@@ -771,8 +745,7 @@ public final class ClonerInventoryAccess {
             ItemStack toolStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (!ClonerItemHandlerLink.hasItemHandlerLink(toolStack)) {
             return 0L;
         }
@@ -863,8 +836,7 @@ public final class ClonerInventoryAccess {
             ItemStack containerStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         if (level == null || containerStack.isEmpty() || wanted.isEmpty() || amount <= 0) {
             return 0L;
         }
@@ -877,8 +849,7 @@ public final class ClonerInventoryAccess {
                             containerStack,
                             wanted,
                             amount,
-                            simulate
-                    );
+                            simulate);
                 }
             } catch (Throwable ignored) {
             }
@@ -924,8 +895,7 @@ public final class ClonerInventoryAccess {
             ItemStack containerStack,
             ItemStack wanted,
             long amount,
-            boolean simulate
-    ) {
+            boolean simulate) {
         CompoundTag tag = containerStack.getTag();
 
         if (tag == null || !tag.contains("BlockEntityTag", Tag.TAG_COMPOUND)) {

@@ -1,21 +1,23 @@
 package net.oktawia.spatialtoolscmp.recipes;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.google.gson.JsonObject;
+
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.item.crafting.ShapelessRecipe;
-import net.minecraft.world.inventory.CraftingContainer;
+
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class SpatialToolMergeRecipe extends ShapelessRecipe {
 
@@ -25,8 +27,7 @@ public class SpatialToolMergeRecipe extends ShapelessRecipe {
                 "",
                 CraftingBookCategory.MISC,
                 new ItemStack(SpatialItemRegistrar.PORTABLE_SPATIAL_TOOL.get()),
-                ingredients()
-        );
+                ingredients());
     }
 
     private static NonNullList<Ingredient> ingredients() {

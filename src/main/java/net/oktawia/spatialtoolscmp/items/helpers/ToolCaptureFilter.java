@@ -1,5 +1,11 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -7,17 +13,14 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public final class ToolCaptureFilter {
 
-    private ToolCaptureFilter() {}
+    private ToolCaptureFilter() {
+    }
 
     public static boolean shouldSkipStructureToolBlock(Level level, BlockPos pos, BlockState state) {
         if (state.isAir()) {
@@ -48,8 +51,7 @@ public final class ToolCaptureFilter {
     public static CompoundTag filterUncapturableBlocksFromTemplate(
             Level level,
             BlockPos worldOrigin,
-            CompoundTag templateTag
-    ) {
+            CompoundTag templateTag) {
         CompoundTag filtered = templateTag.copy();
         List<TemplateUtil.BlockInfo> parsedBlocks = TemplateUtil.parseRawBlocksFromTag(filtered);
 
@@ -80,8 +82,7 @@ public final class ToolCaptureFilter {
 
     private static void removeTemplateBlockEntriesAt(
             CompoundTag templateTag,
-            Set<BlockPos> skippedLocalPositions
-    ) {
+            Set<BlockPos> skippedLocalPositions) {
         if (!templateTag.contains("blocks", Tag.TAG_LIST)) {
             return;
         }
@@ -103,8 +104,7 @@ public final class ToolCaptureFilter {
 
     private static void removeCloneMetadataEntriesAt(
             CompoundTag templateTag,
-            Set<BlockPos> skippedLocalPositions
-    ) {
+            Set<BlockPos> skippedLocalPositions) {
         if (!templateTag.contains(StructureToolKeys.CLONE_METADATA_KEY, Tag.TAG_COMPOUND)) {
             return;
         }

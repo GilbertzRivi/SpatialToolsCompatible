@@ -1,5 +1,18 @@
 package net.oktawia.spatialtoolscmp.items;
 
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.function.BiPredicate;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -32,6 +45,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
@@ -44,24 +58,12 @@ import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtensions;
-import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
+import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialReplacerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.ShowHudMessagePacket;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Queue;
-import java.util.Set;
-import java.util.function.BiPredicate;
 
 public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
@@ -83,8 +85,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_BASE_INTERNAL_POWER_CAPACITY::get,
                 4,
                 4,
-                properties
-        );
+                properties);
     }
 
     @Override
@@ -115,7 +116,8 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
     @Override
     protected double getEnergyCostMultiplier() {
         return POWER_COST_SCALE
-                * SpatialConfig.energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_ENERGY_COST_MULTIPLIER);
+                * SpatialConfig
+                        .energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_ENERGY_COST_MULTIPLIER);
     }
 
     @Override
@@ -124,8 +126,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             Level level,
             Entity entity,
             int slotId,
-            boolean isSelected
-    ) {
+            boolean isSelected) {
         powerManager.clamp(stack);
     }
 
@@ -155,8 +156,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
         stack.getOrCreateTag().put(
                 TAG_TARGET_BLOCK,
-                single.save(new CompoundTag())
-        );
+                single.save(new CompoundTag()));
     }
 
     public static int getRadius(ItemStack stack) {
@@ -168,15 +168,13 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
         return Math.max(
                 MIN_RADIUS,
-                Math.min(MAX_RADIUS, tag.getInt(TAG_RADIUS))
-        );
+                Math.min(MAX_RADIUS, tag.getInt(TAG_RADIUS)));
     }
 
     public static void setRadius(ItemStack stack, int radius) {
         stack.getOrCreateTag().putInt(
                 TAG_RADIUS,
-                Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, radius))
-        );
+                Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, radius)));
     }
 
     public static ConnectivityMode getConnectivityMode(ItemStack stack) {
@@ -204,8 +202,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 stack,
                 current == ConnectivityMode.DIRECT
                         ? ConnectivityMode.DIAGONAL
-                        : ConnectivityMode.DIRECT
-        );
+                        : ConnectivityMode.DIRECT);
     }
 
     public static boolean isSameBlockstate(ItemStack stack) {
@@ -226,8 +223,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
     public InteractionResultHolder<ItemStack> use(
             Level level,
             Player player,
-            InteractionHand hand
-    ) {
+            InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
         if (hand == InteractionHand.OFF_HAND) {
@@ -277,8 +273,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                             HUD_DURATION,
                             cyan(Component.translatable(LangDefs.REPLACER_TARGET_LABEL.getTranslationKey())
                                     .append(" ")
-                                    .append(picked.getHoverName()))
-                    );
+                                    .append(picked.getHoverName())));
                 }
             }
 
@@ -290,8 +285,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     (ServerLevel) level,
                     (ServerPlayer) player,
                     stack,
-                    pos
-            );
+                    pos);
         }
 
         return InteractionResult.sidedSuccess(level.isClientSide());
@@ -334,16 +328,14 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             ServerPlayer player,
             ItemStack toolStack,
-            BlockPos startPos
-    ) {
+            BlockPos startPos) {
         ItemStack target = getTargetBlock(toolStack);
 
         if (target.isEmpty()) {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey())));
             return;
         }
 
@@ -378,8 +370,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NO_TARGET.getTranslationKey())));
             return;
         }
 
@@ -393,8 +384,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_BLACKLISTED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_BLACKLISTED.getTranslationKey())));
             return;
         }
 
@@ -403,8 +393,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey())));
             return;
         }
 
@@ -417,8 +406,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 radius,
                 hardCap,
                 mode,
-                strict
-        );
+                strict);
 
         Set<BlockPos> positions = null;
         ReplacerExtension usedExtension = null;
@@ -429,8 +417,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         level,
                         startPos,
                         sourceState,
-                        ctx
-                );
+                        ctx);
 
                 usedExtension = ext;
                 break;
@@ -447,8 +434,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey())));
             return;
         }
 
@@ -461,8 +447,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     sendHud(
                             player,
                             HUD_DURATION,
-                            red(Component.translatable(LangDefs.REPLACER_NON_EMPTY_STORAGE.getTranslationKey()))
-                    );
+                            red(Component.translatable(LangDefs.REPLACER_NON_EMPTY_STORAGE.getTranslationKey())));
                     return;
                 }
             }
@@ -472,8 +457,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 level,
                 positions,
                 sourceState,
-                strict
-        );
+                strict);
 
         int replaceCount = matchingPositions.size();
 
@@ -481,8 +465,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey())));
             return;
         }
 
@@ -494,15 +477,13 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         level,
                         player,
                         toolStack,
-                        cost
-                );
+                        cost);
 
                 if (available < (long) replaceCount * cost.getCount()) {
                     sendHud(
                             player,
                             HUD_DURATION,
-                            red(Component.translatable(LangDefs.REPLACER_NOT_ENOUGH_ITEMS.getTranslationKey()))
-                    );
+                            red(Component.translatable(LangDefs.REPLACER_NOT_ENOUGH_ITEMS.getTranslationKey())));
                     return;
                 }
             }
@@ -560,8 +541,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 sendHud(
                         player,
                         HUD_DURATION,
-                        red(Component.translatable(LangDefs.REPLACER_NO_SPACE_FOR_SOURCE.getTranslationKey()))
-                );
+                        red(Component.translatable(LangDefs.REPLACER_NO_SPACE_FOR_SOURCE.getTranslationKey())));
                 return;
             }
         }
@@ -582,8 +562,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
             perPosStateTags.put(
                     immutablePos,
-                    NbtUtils.writeBlockState(state)
-            );
+                    NbtUtils.writeBlockState(state));
 
             BlockEntity be = level.getBlockEntity(pos);
 
@@ -591,8 +570,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 try {
                     perPosBeTags.put(
                             immutablePos,
-                            be.saveWithoutMetadata()
-                    );
+                            be.saveWithoutMetadata());
                 } catch (Throwable ignored) {
                 }
             }
@@ -662,8 +640,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     pos.immutable(),
                     ForgeRegistries.BLOCKS.getKey(targetBlock).toString(),
                     refunds,
-                    undoRefunds
-            ));
+                    undoRefunds));
         }
 
         if (!player.isCreative() && replaced > 0) {
@@ -673,8 +650,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         player,
                         toolStack,
                         cost,
-                        replaced * cost.getCount()
-                );
+                        replaced * cost.getCount());
             }
 
             if (!replacedSourceItems.isEmpty()) {
@@ -682,8 +658,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         level,
                         player,
                         toolStack,
-                        replacedSourceItems
-                );
+                        replacedSourceItems);
             }
         }
 
@@ -692,8 +667,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 usedExtension.onBlockReplaced(
                         level,
                         pos,
-                        savedStates.get(pos.immutable())
-                );
+                        savedStates.get(pos.immutable()));
             }
         } else {
             for (ReplacerExtension ext : ReplacerExtensions.get()) {
@@ -717,21 +691,18 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     undoBlocks,
                     originalStateNbt,
                     perPosStateTags,
-                    perPosBeTags
-            );
+                    perPosBeTags);
 
             sendHud(
                     player,
                     HUD_DURATION,
                     cyan(Component.translatable(LangDefs.REPLACER_REPLACED.getTranslationKey(), replaced)),
-                    cyan(Component.translatable(LangDefs.REPLACER_UNDO_HINT.getTranslationKey()))
-            );
+                    cyan(Component.translatable(LangDefs.REPLACER_UNDO_HINT.getTranslationKey())));
         } else {
             sendHud(
                     player,
                     HUD_DURATION,
-                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.REPLACER_NOTHING_TO_REPLACE.getTranslationKey())));
         }
     }
 
@@ -739,16 +710,14 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         return SpatialPowerCost.cost(
                 positions,
                 origin,
-                getPowerPerBlockPaste() * getEnergyCostMultiplier()
-        );
+                getPowerPerBlockPaste() * getEnergyCostMultiplier());
     }
 
     private Set<BlockPos> collectMatchingPositions(
             ServerLevel level,
             Set<BlockPos> positions,
             BlockState sourceState,
-            boolean strict
-    ) {
+            boolean strict) {
         Set<BlockPos> matching = new LinkedHashSet<>();
 
         for (BlockPos pos : positions) {
@@ -778,8 +747,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             BlockGetter level,
             BlockPos startPos,
             BlockState sourceState,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         boolean strict = ctx.strictBlockstate();
 
         return floodFill(level, startPos, ctx, (checkedLevel, pos) -> {
@@ -795,8 +763,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             BlockGetter level,
             BlockPos startPos,
             ReplacerContext ctx,
-            BiPredicate<BlockGetter, BlockPos> matcher
-    ) {
+            BiPredicate<BlockGetter, BlockPos> matcher) {
         int hardCap = ctx.hardCapMax();
         int radius = ctx.radius();
         boolean diagonal = ctx.connectivityMode() == ConnectivityMode.DIAGONAL;
@@ -825,8 +792,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     double dist = Math.sqrt(
                             Math.pow(neighbor.getX() - startPos.getX(), 2)
                                     + Math.pow(neighbor.getY() - startPos.getY(), 2)
-                                    + Math.pow(neighbor.getZ() - startPos.getZ(), 2)
-                    );
+                                    + Math.pow(neighbor.getZ() - startPos.getZ(), 2));
 
                     if (dist > radius) {
                         continue;
@@ -873,8 +839,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
     private void performUndo(
             ServerLevel level,
             ServerPlayer player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         CompoundTag stackTag = toolStack.getTag();
 
         if (stackTag == null || !stackTag.contains(ClonerUndoHandler.UNDO_ID_KEY, Tag.TAG_STRING)) {
@@ -882,8 +847,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey())));
             return;
         }
 
@@ -896,8 +860,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey())));
             return;
         }
 
@@ -908,13 +871,11 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey())));
             return;
         }
 
-        List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoBlocks =
-                ClonerUndoHandler.readBlocks(undoTag);
+        List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoBlocks = ClonerUndoHandler.readBlocks(undoTag);
 
         if (undoBlocks.isEmpty()) {
             ClonerUndoHandler.clear(level, toolStack);
@@ -923,8 +884,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey())));
             return;
         }
 
@@ -933,8 +893,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey())));
             return;
         }
 
@@ -947,23 +906,20 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         level,
                         player,
                         toolStack,
-                        needed
-                );
+                        needed);
 
                 if (available < needed.getCount()) {
                     sendHud(
                             player,
                             HUD_DURATION,
                             red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                            red(Component.translatable(LangDefs.REPLACER_UNDO_NEED_SOURCE_ITEMS.getTranslationKey()))
-                    );
+                            red(Component.translatable(LangDefs.REPLACER_UNDO_NEED_SOURCE_ITEMS.getTranslationKey())));
                     return;
                 }
             }
         }
 
-        List<ItemStack> targetRefunds =
-                ClonerUndoHandler.collectCurrentRefundStacks(level, undoBlocks);
+        List<ItemStack> targetRefunds = ClonerUndoHandler.collectCurrentRefundStacks(level, undoBlocks);
 
         boolean shouldRefundTarget = !player.isCreative() && !targetRefunds.isEmpty();
 
@@ -973,8 +929,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_DURATION,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NO_SPACE.getTranslationKey())));
             return;
         }
 
@@ -996,11 +951,9 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         CompoundTag originalStateNbt = ClonerUndoHandler.getOriginalStateNbt(undoTag);
 
         if (originalStateNbt != null) {
-            Map<BlockPos, CompoundTag> perPosStateTags =
-                    ClonerUndoHandler.getPerPosStateTags(undoTag);
+            Map<BlockPos, CompoundTag> perPosStateTags = ClonerUndoHandler.getPerPosStateTags(undoTag);
 
-            Map<BlockPos, CompoundTag> perPosBeTags =
-                    ClonerUndoHandler.getPerPosBeTags(undoTag);
+            Map<BlockPos, CompoundTag> perPosBeTags = ClonerUndoHandler.getPerPosBeTags(undoTag);
 
             if (!perPosStateTags.isEmpty() || !perPosBeTags.isEmpty()) {
                 ClonerUndoHandler.restoreBlocksWithPerPosStatesAndTags(
@@ -1008,8 +961,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         undoBlocks,
                         originalStateNbt,
                         perPosStateTags,
-                        perPosBeTags
-                );
+                        perPosBeTags);
 
                 for (ClonerUndoHandler.ClonerUndoPlacedBlock undoBlock : undoBlocks) {
                     BlockPos pos = undoBlock.pos();
@@ -1020,8 +972,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                                 level,
                                 pos,
                                 be,
-                                perPosBeTags.get(pos)
-                        );
+                                perPosBeTags.get(pos));
                     }
                 }
             } else {
@@ -1031,8 +982,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         level,
                         undoBlocks,
                         originalStateNbt,
-                        originalBeTag
-                );
+                        originalBeTag);
             }
         } else {
             ClonerUndoHandler.removeBlocks(level, undoBlocks);
@@ -1045,21 +995,18 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                         player,
                         toolStack,
                         needed,
-                        needed.getCount()
-                );
+                        needed.getCount());
             }
         }
 
-        ClonerInventoryAccess.ClonerRefundResult refundResult =
-                ClonerInventoryAccess.ClonerRefundResult.success(false);
+        ClonerInventoryAccess.ClonerRefundResult refundResult = ClonerInventoryAccess.ClonerRefundResult.success(false);
 
         if (shouldRefundTarget) {
             refundResult = ClonerInventoryAccess.refundStacksToAeThenInventory(
                     level,
                     player,
                     toolStack,
-                    targetRefunds
-            );
+                    targetRefunds);
         }
 
         ClonerUndoHandler.clear(level, toolStack);
@@ -1071,12 +1018,10 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_COPY_PASTE_UNDONE.getTranslationKey())),
                 shouldRefundTarget
                         ? cyan(Component.translatable(
-                        refundResult.insertedIntoMe()
-                        ? LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED_TO_ME.getTranslationKey()
-                        : LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED.getTranslationKey()
-                ))
-                        : null
-        );
+                                refundResult.insertedIntoMe()
+                                        ? LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED_TO_ME.getTranslationKey()
+                                        : LangDefs.STRUCTURE_GADGET_ITEMS_REFUNDED.getTranslationKey()))
+                        : null);
     }
 
     private void openReplacerGui(ServerPlayer player) {
@@ -1092,8 +1037,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             public @Nullable AbstractContainerMenu createMenu(
                     int id,
                     Inventory inventory,
-                    Player p
-            ) {
+                    Player p) {
                 return new PortableSpatialReplacerMenu(id, inventory);
             }
         });
@@ -1104,8 +1048,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             ItemStack stack,
             @Nullable Level level,
             List<Component> tooltip,
-            TooltipFlag flag
-    ) {
+            TooltipFlag flag) {
         super.appendHoverText(stack, level, tooltip, flag);
 
         if (Screen.hasShiftDown()) {
@@ -1119,18 +1062,16 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             }
 
             tooltip.add(Component.translatable(
-                            LangDefs.REPLACER_RADIUS_LABEL.getTranslationKey(),
-                            getRadius(stack)
-                    )
+                    LangDefs.REPLACER_RADIUS_LABEL.getTranslationKey(),
+                    getRadius(stack))
                     .withStyle(ChatFormatting.GRAY));
 
             ConnectivityMode mode = getConnectivityMode(stack);
 
             tooltip.add(Component.translatable(
-                            mode == ConnectivityMode.DIRECT
-                                    ? LangDefs.REPLACER_CONNECTIVITY_DIRECT.getTranslationKey()
-                                    : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL.getTranslationKey()
-                    )
+                    mode == ConnectivityMode.DIRECT
+                            ? LangDefs.REPLACER_CONNECTIVITY_DIRECT.getTranslationKey()
+                            : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL.getTranslationKey())
                     .withStyle(ChatFormatting.GRAY));
 
             if (IsModLoaded.AE2) {
@@ -1139,19 +1080,17 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
                     if (ae2Pos != null) {
                         tooltip.add(Component.translatable(
-                                        LangDefs.REPLACER_LINKED_TO_AE2.getTranslationKey(),
-                                        ae2Pos.pos().getX()
-                                                + " "
-                                                + ae2Pos.pos().getY()
-                                                + " "
-                                                + ae2Pos.pos().getZ()
-                                )
+                                LangDefs.REPLACER_LINKED_TO_AE2.getTranslationKey(),
+                                ae2Pos.pos().getX()
+                                        + " "
+                                        + ae2Pos.pos().getY()
+                                        + " "
+                                        + ae2Pos.pos().getZ())
                                 .withStyle(ChatFormatting.AQUA));
 
                         tooltip.add(Component.translatable(
-                                        LangDefs.REPLACER_LINK_DIMENSION.getTranslationKey(),
-                                        ae2Pos.dimension().location().toString()
-                                )
+                                LangDefs.REPLACER_LINK_DIMENSION.getTranslationKey(),
+                                ae2Pos.dimension().location().toString())
                                 .withStyle(ChatFormatting.GRAY));
                     }
                 } catch (Throwable ignored) {
@@ -1169,8 +1108,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
     private static void sendHud(
             ServerPlayer player,
             int duration,
-            ShowHudMessagePacket.Line... lines
-    ) {
+            ShowHudMessagePacket.Line... lines) {
         List<ShowHudMessagePacket.Line> filtered = new ArrayList<>();
 
         for (ShowHudMessagePacket.Line line : lines) {
@@ -1181,7 +1119,6 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
         NetworkHandler.sendToPlayer(
                 player,
-                new ShowHudMessagePacket(duration, filtered)
-        );
+                new ShowHudMessagePacket(duration, filtered));
     }
 }

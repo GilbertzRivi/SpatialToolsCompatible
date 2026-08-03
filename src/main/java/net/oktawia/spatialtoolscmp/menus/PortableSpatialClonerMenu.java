@@ -1,5 +1,8 @@
 package net.oktawia.spatialtoolscmp.menus;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -10,6 +13,7 @@ import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2CraftingBufferOps;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
@@ -18,17 +22,14 @@ import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.RequestClonerCraftingPacket;
 import net.oktawia.spatialtoolscmp.network.packets.RequestCraftAllPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SetClonerNestedInventoryModePacket;
-import net.oktawia.spatialtoolscmp.network.packets.RequestClonerCraftingPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerLibraryPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerRequirementStatusPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncCraftAllStatusPacket;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu {
 
@@ -39,8 +40,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                 SpatialMenuRegistrar.PORTABLE_SPATIAL_CLONER_MENU.get(),
                 id,
                 playerInventory,
-                findToolStack(playerInventory)
-        );
+                findToolStack(playerInventory));
 
         if (!isClientSide()) {
             syncRequirementsToClient();
@@ -87,8 +87,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             CompoundTag tag = ClonerStructureLibraryStore.loadSelectedOrMigrateLegacy(
                     serverPlayer.server,
                     serverPlayer.getUUID(),
-                    getItemStack()
-            );
+                    getItemStack());
 
             if (tag == null || tag.isEmpty()) {
                 return null;
@@ -119,14 +118,12 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                         serverPlayer.server,
                         serverPlayer.getUUID(),
                         getItemStack(),
-                        tag
-                );
+                        tag);
 
                 StructureToolStackState.setSelectedClonerLibraryEntry(
                         getItemStack(),
                         serverPlayer.getUUID(),
-                        entry.id()
-                );
+                        entry.id());
 
                 syncLibraryToClient();
                 syncRequirementsToClient();
@@ -137,14 +134,12 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                     serverPlayer.server,
                     serverPlayer.getUUID(),
                     currentId,
-                    tag
-            );
+                    tag);
 
             StructureToolStackState.setSelectedClonerLibraryEntry(
                     getItemStack(),
                     serverPlayer.getUUID(),
-                    currentId
-            );
+                    currentId);
 
             syncLibraryToClient();
             syncRequirementsToClient();
@@ -162,31 +157,26 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                     serverPlayer,
                     SyncClonerLibraryPacket.fromStoreEntries(
                             ClonerStructureLibraryStore.list(serverPlayer.server, serverPlayer.getUUID()),
-                            StructureToolStackState.getStructureId(getItemStack())
-                    )
-            );
+                            StructureToolStackState.getStructureId(getItemStack())));
         } catch (Exception ignored) {
             NetworkHandler.sendToPlayer(
                     serverPlayer,
                     SyncClonerLibraryPacket.fromStoreEntries(
                             List.of(),
-                            StructureToolStackState.getStructureId(getItemStack())
-                    )
-            );
+                            StructureToolStackState.getStructureId(getItemStack())));
         }
     }
 
     public void cycleNestedInventoryMode() {
-        PortableSpatialCloner.NestedInventoryResourceMode next =
-                PortableSpatialCloner.getNestedInventoryResourceMode(getItemStack()).next();
+        PortableSpatialCloner.NestedInventoryResourceMode next = PortableSpatialCloner
+                .getNestedInventoryResourceMode(getItemStack()).next();
 
         PortableSpatialCloner.setNestedInventoryResourceMode(getItemStack(), next);
 
         if (isClientSide()) {
             NetworkHandler.sendToServer(new SetClonerNestedInventoryModePacket(
                     this.containerId,
-                    next.id()
-            ));
+                    next.id()));
             return;
         }
 
@@ -214,8 +204,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             NetworkHandler.sendToServer(new RequestClonerCraftingPacket(
                     this.containerId,
                     itemId,
-                    amount
-            ));
+                    amount));
             return;
         }
 
@@ -280,12 +269,18 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
     }
 
     public void handleCraftAll() {
-        if (isClientSide()) return;
-        if (!(getPlayer() instanceof ServerPlayer serverPlayer)) return;
-        if (!(serverPlayer.level() instanceof ServerLevel serverLevel)) return;
-        if (!hasCraftingUpgradeInstalled()) return;
-        if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) return;
-        if (!IsModLoaded.AE2) return;
+        if (isClientSide())
+            return;
+        if (!(getPlayer() instanceof ServerPlayer serverPlayer))
+            return;
+        if (!(serverPlayer.level() instanceof ServerLevel serverLevel))
+            return;
+        if (!hasCraftingUpgradeInstalled())
+            return;
+        if (PortableSpatialCloner.hasItemHandlerLink(getItemStack()))
+            return;
+        if (!IsModLoaded.AE2)
+            return;
 
         try {
             int status = AE2CraftingBufferOps.requestCraftAll(serverLevel, getItemStack(), buildRequirementEntries());
@@ -303,9 +298,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                 serverPlayer,
                 new SyncClonerRequirementStatusPacket(
                         this.containerId,
-                        buildRequirementEntries()
-                )
-        );
+                        buildRequirementEntries()));
 
         if (IsModLoaded.AE2
                 && hasCraftingUpgradeInstalled()
@@ -350,13 +343,12 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
 
         ListTag requirements = metadata.getList(
                 StructureToolKeys.CLONE_REQUIREMENTS_KEY,
-                Tag.TAG_COMPOUND
-        );
+                Tag.TAG_COMPOUND);
 
         List<SyncClonerRequirementStatusPacket.Entry> out = new ArrayList<>();
 
-        PortableSpatialCloner.NestedInventoryResourceMode nestedMode =
-                PortableSpatialCloner.getNestedInventoryResourceMode(getItemStack());
+        PortableSpatialCloner.NestedInventoryResourceMode nestedMode = PortableSpatialCloner
+                .getNestedInventoryResourceMode(getItemStack());
 
         for (int i = 0; i < requirements.size(); i++) {
             CompoundTag row = requirements.getCompound(i);
@@ -384,41 +376,36 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                             serverLevel,
                             getPlayer(),
                             getItemStack(),
-                            stack
-                    );
+                            stack);
                 }
 
                 if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) {
                     available += PortableSpatialCloner.countLinkedItemHandlerStorage(
                             serverLevel,
                             getItemStack(),
-                            stack
-                    );
+                            stack);
 
                     if (nestedMode.useConnectedNested()) {
                         available += PortableSpatialCloner.countNestedInventoryInLinkedItemHandlerStorage(
                                 serverLevel,
                                 getItemStack(),
-                                stack
-                        );
+                                stack);
                     }
                 } else if (IsModLoaded.AE2) {
                     try {
                         available += AE2MEOps.getAmount(
                                 stack,
                                 getItemStack(),
-                                serverLevel
-                        );
+                                serverLevel);
                     } catch (Throwable ignored) {
                     }
 
                     try {
                         craftable = hasCraftingUpgradeInstalled()
                                 && AE2MEOps.isCraftable(
-                                stack,
-                                getItemStack(),
-                                serverLevel
-                        );
+                                        stack,
+                                        getItemStack(),
+                                        serverLevel);
                     } catch (Throwable ignored) {
                         craftable = false;
                     }
@@ -429,8 +416,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
                     stack,
                     available,
                     required,
-                    craftable
-            ));
+                    craftable));
         }
 
         return out;

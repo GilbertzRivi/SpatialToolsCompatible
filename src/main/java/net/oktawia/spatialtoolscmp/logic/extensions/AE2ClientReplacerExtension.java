@@ -1,10 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import appeng.api.implementations.parts.ICablePart;
-import appeng.api.util.AECableType;
-import appeng.client.render.cablebus.CableBusRenderState;
-import appeng.client.render.cablebus.CableCoreType;
-import appeng.core.definitions.AEBlocks;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -12,11 +11,15 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
+import appeng.api.implementations.parts.ICablePart;
+import appeng.api.util.AECableType;
+import appeng.client.render.cablebus.CableBusRenderState;
+import appeng.client.render.cablebus.CableCoreType;
+import appeng.core.definitions.AEBlocks;
+
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Set;
 
 public final class AE2ClientReplacerExtension implements ClientReplacerExtension {
 
@@ -30,8 +33,7 @@ public final class AE2ClientReplacerExtension implements ClientReplacerExtension
             ClientLevel level,
             BlockPos pos,
             BlockState state,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         return AE2ReplacerExtension.findSameCablePositions(level, pos, ctx);
     }
 
@@ -56,8 +58,7 @@ public final class AE2ClientReplacerExtension implements ClientReplacerExtension
             BlockState targetState,
             ItemStack target,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         ICablePart cablePart = AE2ReplacerExtension.createCablePart(target);
 
         if (cablePart == null) {

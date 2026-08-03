@@ -1,18 +1,19 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.util.BlockMatcher;
-
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 public final class ReplacerBlacklist {
 
@@ -75,7 +76,6 @@ public final class ReplacerBlacklist {
                 "Replacer blacklist: {} expressions, {} invalid, {} blocked blocks",
                 expressions.size(),
                 invalid,
-                blocked.size()
-        );
+                blocked.size());
     }
 }

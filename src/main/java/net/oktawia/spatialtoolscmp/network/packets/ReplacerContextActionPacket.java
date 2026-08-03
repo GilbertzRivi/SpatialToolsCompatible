@@ -1,12 +1,13 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 
 public class ReplacerContextActionPacket {
 
@@ -34,14 +35,18 @@ public class ReplacerContextActionPacket {
 
         context.enqueueWork(() -> {
             ServerPlayer player = context.getSender();
-            if (player == null) return;
+            if (player == null)
+                return;
 
             ItemStack stack = player.getMainHandItem();
-            if (stack.isEmpty() || !(stack.getItem() instanceof PortableSpatialReplacer)) return;
+            if (stack.isEmpty() || !(stack.getItem() instanceof PortableSpatialReplacer))
+                return;
 
             switch (packet.action) {
-                case RADIUS_UP -> PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) + 1);
-                case RADIUS_DOWN -> PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) - 1);
+                case RADIUS_UP ->
+                    PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) + 1);
+                case RADIUS_DOWN ->
+                    PortableSpatialReplacer.setRadius(stack, PortableSpatialReplacer.getRadius(stack) - 1);
                 case TOGGLE_CONNECTIVITY -> PortableSpatialReplacer.cycleConnectivityMode(stack);
                 case TOGGLE_BLOCKSTATE -> PortableSpatialReplacer.toggleSameBlockstate(stack);
             }

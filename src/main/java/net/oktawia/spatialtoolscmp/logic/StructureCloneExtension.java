@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.List;
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -8,12 +13,9 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
-import java.util.Optional;
 
 public interface StructureCloneExtension {
 
@@ -23,16 +25,14 @@ public interface StructureCloneExtension {
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    );
+            CompoundTag blockEntry);
 
     boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag);
 
     default void onBeforePaste(
             ServerLevel level,
             Player player,
-            List<TemplateUtil.BlockInfo> blocks
-    ) {
+            List<TemplateUtil.BlockInfo> blocks) {
     }
 
     Optional<PlacementPlan> buildPlacementPlan(
@@ -41,22 +41,19 @@ public interface StructureCloneExtension {
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    );
+            ClonerPasteContext ctx);
 
     void onBlockPlaced(
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    );
+            @Nullable CompoundTag blockMetadata);
 
     default void onBlockRestored(
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag savedBeTag
-    ) {
+            @Nullable CompoundTag savedBeTag) {
     }
 
     default boolean collectUndoRefunds(
@@ -64,8 +61,7 @@ public interface StructureCloneExtension {
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         return false;
     }
 
@@ -73,8 +69,7 @@ public interface StructureCloneExtension {
             ServerLevel level,
             BlockPos pos,
             BlockState state,
-            @Nullable BlockEntity be
-    ) {
+            @Nullable BlockEntity be) {
         if (be instanceof Container container) {
             return !container.isEmpty();
         }

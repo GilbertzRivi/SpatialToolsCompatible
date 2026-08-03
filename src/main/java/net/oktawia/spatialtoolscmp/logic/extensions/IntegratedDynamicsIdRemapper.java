@@ -1,16 +1,18 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
-import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.cyclops.integrateddynamics.IntegratedDynamics;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.cyclops.integrateddynamics.IntegratedDynamics;
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
+
+import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 final class IntegratedDynamicsIdRemapper {
 

@@ -1,16 +1,18 @@
 package net.oktawia.spatialtoolscmp.client.misc;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import org.lwjgl.util.tinyfd.TinyFileDialogs;
+
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.ExportClonerStructurePacket;
 import net.oktawia.spatialtoolscmp.network.packets.ImportClonerStructurePacket;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
-
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 @OnlyIn(Dist.CLIENT)
 public final class ClonerStructureFileTransferClient {
@@ -38,8 +40,7 @@ public final class ClonerStructureFileTransferClient {
                 "Export structure",
                 ensureExtension(safeName),
                 null,
-                "CrazyAE2 structure"
-        );
+                "CrazyAE2 structure");
 
         if (selected == null || selected.isBlank()) {
             return;
@@ -78,8 +79,7 @@ public final class ClonerStructureFileTransferClient {
                 "",
                 null,
                 "CrazyAE2 structure",
-                false
-        );
+                false);
 
         if (selected == null || selected.isBlank()) {
             return;
@@ -101,8 +101,7 @@ public final class ClonerStructureFileTransferClient {
             NetworkHandler.sendToServer(new ImportClonerStructurePacket(
                     containerId,
                     nameFromFile(path.getFileName().toString()),
-                    bytes
-            ));
+                    bytes));
         } catch (Throwable e) {
             SpatialToolsCMP.getLOGGER().debug("failed to import cloner structure", e);
         }

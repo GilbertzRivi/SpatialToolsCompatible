@@ -1,6 +1,7 @@
 package net.oktawia.spatialtoolscmp.client.misc;
 
 import net.minecraft.resources.ResourceLocation;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 public enum Icon {

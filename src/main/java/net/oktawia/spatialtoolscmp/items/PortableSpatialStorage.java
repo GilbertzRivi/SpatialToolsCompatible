@@ -1,5 +1,12 @@
 package net.oktawia.spatialtoolscmp.items;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
@@ -25,6 +32,7 @@ import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlac
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructureTemplate;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
@@ -34,12 +42,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStructureStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
 
 public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
@@ -70,8 +72,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     private static final String STORAGE_UNDO_POS_Z_KEY = "z";
     private static final String STORAGE_UNDO_STATE_KEY = "state";
 
-    private static final int STORAGE_UNDO_CLEAR_FLAGS =
-            Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_SUPPRESS_DROPS;
+    private static final int STORAGE_UNDO_CLEAR_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE
+            | Block.UPDATE_SUPPRESS_DROPS;
 
     public PortableSpatialStorage(Item.Properties properties) {
         super(SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY::get, 4, 4, properties);
@@ -152,15 +154,13 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             Player player,
             ItemStack stack,
-            CapturedStructureResult result
-    ) {
+            CapturedStructureResult result) {
         storeUndoCut(
                 stack,
                 level,
                 result.origin(),
                 result.min(),
-                result.max()
-        );
+                result.max());
     }
 
     @Override
@@ -187,8 +187,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             Player player,
             ItemStack stack,
-            BlockPos clickedFacePos
-    ) {
+            BlockPos clickedFacePos) {
         BlockPos anchoredOrigin = StructureToolStackState.getAnchorIfValid(stack, level.dimension());
         paste(level, player, stack, anchoredOrigin == null ? clickedFacePos : anchoredOrigin);
     }
@@ -201,8 +200,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 origin,
                 true,
                 true,
-                true
-        );
+                true);
     }
 
     private boolean pasteInternal(
@@ -212,8 +210,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             BlockPos origin,
             boolean clearAfterPaste,
             boolean recordUndoPaste,
-            boolean showSuccess
-    ) {
+            boolean showSuccess) {
         String id = StructureToolStackState.getStructureId(stack);
 
         if (id.isBlank()) {
@@ -242,8 +239,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_STORED_STRUCTURE_EMPTY.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_INVALID_STRUCTURE_CLEARED.getTranslationKey()))
-            );
+                    cyan(Component
+                            .translatable(LangDefs.STRUCTURE_GADGET_INVALID_STRUCTURE_CLEARED.getTranslationKey())));
 
             return false;
         }
@@ -280,8 +277,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             List<StorageUndoPlacedBlock> undoBlocks = collectUndoPlacedBlocksAfterPaste(
                     level,
                     savedTag,
-                    origin
-            );
+                    origin);
 
             if (!undoBlocks.isEmpty()) {
                 storeUndoPaste(
@@ -289,8 +285,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                         level,
                         origin,
                         savedTag,
-                        undoBlocks
-                );
+                        undoBlocks);
             }
         }
 
@@ -303,8 +298,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     cyan(Component.translatable(LangDefs.STRUCTURE_PASTED.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey()))
-            );
+                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_HINT.getTranslationKey())));
         }
 
         return true;
@@ -318,8 +312,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_NOTHING_TO_UNDO.getTranslationKey())));
             return;
         }
 
@@ -332,8 +325,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey())));
             return;
         }
 
@@ -345,8 +337,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_OTHER_DIMENSION.getTranslationKey())));
             return;
         }
 
@@ -368,8 +359,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 player,
                 HUD_TIME_MEDIUM,
                 red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
-        );
+                red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey())));
     }
 
     private void undoCut(ServerLevel level, Player player, ItemStack stack, CompoundTag undoTag) {
@@ -383,8 +373,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_CANNOT_UNDO_CUT.getTranslationKey())),
-                    cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_STORED_STRUCTURE_MISSING.getTranslationKey()))
-            );
+                    cyan(Component
+                            .translatable(LangDefs.STRUCTURE_GADGET_STORED_STRUCTURE_MISSING.getTranslationKey())));
 
             return;
         }
@@ -396,8 +386,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 origin,
                 true,
                 false,
-                false
-        );
+                false);
 
         if (!success) {
             return;
@@ -409,8 +398,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 player,
                 HUD_TIME_MEDIUM,
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_CUT_UNDONE.getTranslationKey()))
-        );
+                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_CUT_UNDONE.getTranslationKey())));
     }
 
     private void undoPaste(ServerLevel level, Player player, ItemStack stack, CompoundTag undoTag) {
@@ -423,8 +411,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_INVALID_CLEARED.getTranslationKey())));
             return;
         }
 
@@ -437,8 +424,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_NOTHING_PLACED.getTranslationKey())));
             return;
         }
 
@@ -447,8 +433,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     player,
                     HUD_TIME_MEDIUM,
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
-                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey()))
-            );
+                    red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey())));
             return;
         }
 
@@ -480,8 +465,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 HUD_TIME_MEDIUM,
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO.getTranslationKey())),
                 cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_PASTE_UNDONE.getTranslationKey())),
-                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_STRUCTURE_CUT_BACK.getTranslationKey()))
-        );
+                cyan(Component.translatable(LangDefs.STRUCTURE_GADGET_STRUCTURE_CUT_BACK.getTranslationKey())));
     }
 
     private static void restorePreviewTransformFromTemplate(ItemStack stack, CompoundTag templateTag) {
@@ -506,8 +490,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             BlockPos origin,
             BlockPos min,
-            BlockPos max
-    ) {
+            BlockPos max) {
         CompoundTag undoTag = new CompoundTag();
 
         undoTag.putString(STORAGE_UNDO_TYPE_KEY, STORAGE_UNDO_TYPE_CUT);
@@ -525,8 +508,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             ServerLevel level,
             BlockPos origin,
             CompoundTag templateTag,
-            List<StorageUndoPlacedBlock> placedBlocks
-    ) {
+            List<StorageUndoPlacedBlock> placedBlocks) {
         CompoundTag undoTag = new CompoundTag();
 
         undoTag.putString(STORAGE_UNDO_TYPE_KEY, STORAGE_UNDO_TYPE_PASTE);
@@ -564,8 +546,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     private void storeStorageUndoData(
             ItemStack stack,
             ServerLevel level,
-            CompoundTag undoTag
-    ) {
+            CompoundTag undoTag) {
         clearStorageUndo(level, stack);
 
         String undoId = UUID.randomUUID().toString();
@@ -668,8 +649,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         return new BlockPos(
                 tag.getInt(STORAGE_UNDO_ORIGIN_X_KEY),
                 tag.getInt(STORAGE_UNDO_ORIGIN_Y_KEY),
-                tag.getInt(STORAGE_UNDO_ORIGIN_Z_KEY)
-        );
+                tag.getInt(STORAGE_UNDO_ORIGIN_Z_KEY));
     }
 
     private @Nullable CompoundTag readUndoTemplate(CompoundTag undoTag) {
@@ -694,13 +674,11 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             BlockPos pos = new BlockPos(
                     blockTag.getInt(STORAGE_UNDO_POS_X_KEY),
                     blockTag.getInt(STORAGE_UNDO_POS_Y_KEY),
-                    blockTag.getInt(STORAGE_UNDO_POS_Z_KEY)
-            );
+                    blockTag.getInt(STORAGE_UNDO_POS_Z_KEY));
 
             out.add(new StorageUndoPlacedBlock(
                     pos,
-                    blockTag.getString(STORAGE_UNDO_STATE_KEY)
-            ));
+                    blockTag.getString(STORAGE_UNDO_STATE_KEY)));
         }
 
         return out;
@@ -708,8 +686,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     private boolean areUndoPlacedBlocksUnchanged(
             ServerLevel level,
-            List<StorageUndoPlacedBlock> undoBlocks
-    ) {
+            List<StorageUndoPlacedBlock> undoBlocks) {
         for (StorageUndoPlacedBlock undoBlock : undoBlocks) {
             BlockState currentState = level.getBlockState(undoBlock.pos());
 
@@ -723,8 +700,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     private void removeUndoPlacedBlocks(
             ServerLevel level,
-            List<StorageUndoPlacedBlock> undoBlocks
-    ) {
+            List<StorageUndoPlacedBlock> undoBlocks) {
         BlockState air = Blocks.AIR.defaultBlockState();
 
         for (StorageUndoPlacedBlock undoBlock : undoBlocks) {
@@ -747,16 +723,14 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                     undoBlock.pos(),
                     air,
                     STORAGE_UNDO_CLEAR_FLAGS,
-                    0
-            );
+                    0);
         }
     }
 
     private List<StorageUndoPlacedBlock> collectUndoPlacedBlocksAfterPaste(
             ServerLevel level,
             CompoundTag templateTag,
-            BlockPos origin
-    ) {
+            BlockPos origin) {
         List<StorageUndoPlacedBlock> out = new ArrayList<>();
 
         BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(templateTag);
@@ -773,12 +747,12 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
             out.add(new StorageUndoPlacedBlock(
                     worldPos.immutable(),
-                    currentState.toString()
-            ));
+                    currentState.toString()));
         }
 
         return out;
     }
+
     private @Nullable BlockBounds computeBounds(List<StorageUndoPlacedBlock> placedBlocks) {
         if (placedBlocks.isEmpty()) {
             return null;
@@ -806,16 +780,14 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
         return new BlockBounds(
                 new BlockPos(minX, minY, minZ),
-                new BlockPos(maxX, maxY, maxZ)
-        );
+                new BlockPos(maxX, maxY, maxZ));
     }
 
     private void clearStoredStructure(
             ServerLevel level,
             Player player,
             ItemStack stack,
-            String id
-    ) {
+            String id) {
         try {
             StructureToolStructureStore.delete(level.getServer(), id);
         } catch (IOException ignored) {
@@ -864,14 +836,12 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     private record StorageUndoPlacedBlock(
             BlockPos pos,
-            String stateSignature
-    ) {
+            String stateSignature) {
     }
 
     private record BlockBounds(
             BlockPos min,
-            BlockPos max
-    ) {
+            BlockPos max) {
     }
 
     @Override

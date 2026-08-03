@@ -1,15 +1,16 @@
 package net.oktawia.spatialtoolscmp.defs;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 public final class SpatialCreativeTabRegistrar {
 
@@ -32,5 +33,6 @@ public final class SpatialCreativeTabRegistrar {
         extraItems.forEach(s -> out.accept(new ItemStack(s.get())));
     }
 
-    private SpatialCreativeTabRegistrar() {}
+    private SpatialCreativeTabRegistrar() {
+    }
 }

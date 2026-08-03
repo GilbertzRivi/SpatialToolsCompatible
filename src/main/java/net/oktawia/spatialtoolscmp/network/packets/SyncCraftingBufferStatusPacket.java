@@ -1,23 +1,23 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Supplier;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.compat.ae2.CraftingBufferMenu;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.compat.ae2.CraftingBufferMenu;
 
 public record SyncCraftingBufferStatusPacket(
         int containerId,
         boolean hasError,
         List<ItemStack> stacks,
         List<Long> requestedAmounts,
-        List<Long> bufferedAmounts
-) {
+        List<Long> bufferedAmounts) {
 
     public static void encode(SyncCraftingBufferStatusPacket packet, FriendlyByteBuf buf) {
         buf.writeVarInt(packet.containerId);
@@ -51,8 +51,7 @@ public record SyncCraftingBufferStatusPacket(
                 hasError,
                 stacks,
                 requestedAmounts,
-                bufferedAmounts
-        );
+                bufferedAmounts);
     }
 
     public static void handle(SyncCraftingBufferStatusPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -68,8 +67,7 @@ public record SyncCraftingBufferStatusPacket(
                         packet.hasError,
                         packet.stacks,
                         packet.requestedAmounts,
-                        packet.bufferedAmounts
-                );
+                        packet.bufferedAmounts);
             }
         });
 

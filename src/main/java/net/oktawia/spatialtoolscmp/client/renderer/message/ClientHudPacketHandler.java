@@ -2,6 +2,7 @@ package net.oktawia.spatialtoolscmp.client.renderer.message;
 
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
+
 import net.oktawia.spatialtoolscmp.network.packets.ShowHudMessagePacket;
 
 @OnlyIn(Dist.CLIENT)

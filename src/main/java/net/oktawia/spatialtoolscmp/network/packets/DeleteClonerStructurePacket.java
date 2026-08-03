@@ -1,19 +1,20 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.List;
+import java.util.function.Supplier;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-
-import java.util.List;
-import java.util.function.Supplier;
 
 public class DeleteClonerStructurePacket {
 
@@ -33,8 +34,7 @@ public class DeleteClonerStructurePacket {
     public static DeleteClonerStructurePacket decode(FriendlyByteBuf buffer) {
         return new DeleteClonerStructurePacket(
                 buffer.readVarInt(),
-                buffer.readUtf(32767)
-        );
+                buffer.readUtf(32767));
     }
 
     public static void handle(DeleteClonerStructurePacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -72,14 +72,11 @@ public class DeleteClonerStructurePacket {
                         SyncClonerLibraryPacket.fromPlayer(
                                 player.server,
                                 player.getUUID(),
-                                StructureToolStackState.getStructureId(stack)
-                        )
-                );
+                                StructureToolStackState.getStructureId(stack)));
             } catch (Exception ignored) {
                 NetworkHandler.sendToPlayer(
                         player,
-                        SyncClonerLibraryPacket.fromStoreEntries(List.of(), "")
-                );
+                        SyncClonerLibraryPacket.fromStoreEntries(List.of(), ""));
             }
         });
 

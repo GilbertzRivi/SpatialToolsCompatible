@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
@@ -8,6 +13,7 @@ import net.minecraftforge.client.event.ClientPlayerNetworkEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureLibraryClientCache;
 import net.oktawia.spatialtoolscmp.client.screens.PortableSpatialClonerScreen;
@@ -19,10 +25,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.RequestStructureToolPreviewPacket;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
 
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class PortableSpatialStoragePreviewSync {
@@ -196,15 +198,13 @@ public final class PortableSpatialStoragePreviewSync {
         ItemStack stack = StructureToolUtil.findActive(
                 minecraft.player,
                 PortableSpatialStorage.class,
-                PortableSpatialCloner.class
-        );
+                PortableSpatialCloner.class);
 
         if (stack.isEmpty()) {
             stack = StructureToolUtil.findHeld(
                     minecraft.player,
                     PortableSpatialStorage.class,
-                    PortableSpatialCloner.class
-            );
+                    PortableSpatialCloner.class);
         }
 
         if (stack.isEmpty()) {
@@ -232,15 +232,13 @@ public final class PortableSpatialStoragePreviewSync {
         ItemStack stack = StructureToolUtil.findActive(
                 minecraft.player,
                 PortableSpatialStorage.class,
-                PortableSpatialCloner.class
-        );
+                PortableSpatialCloner.class);
 
         if (stack.isEmpty()) {
             stack = StructureToolUtil.findHeld(
                     minecraft.player,
                     PortableSpatialStorage.class,
-                    PortableSpatialCloner.class
-            );
+                    PortableSpatialCloner.class);
         }
 
         if (stack.isEmpty()) {

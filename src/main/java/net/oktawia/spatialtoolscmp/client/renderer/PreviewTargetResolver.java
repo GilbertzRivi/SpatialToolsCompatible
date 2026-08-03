@@ -1,8 +1,14 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.Set;
+
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.client.model.GTModelProperties;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
@@ -11,14 +17,11 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraft.client.renderer.RenderType;
+
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtensions;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtensions;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Set;
 
 public final class PreviewTargetResolver {
 
@@ -88,15 +91,13 @@ public final class PreviewTargetResolver {
     public ModelData buildModelData(
             BlockState targetState,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         for (ClientReplacerExtension ext : ClientReplacerExtensions.get()) {
             ModelData extensionData = ext.buildTargetModelData(
                     targetState,
                     this.targetItem,
                     pos,
-                    allPositions
-            );
+                    allPositions);
 
             if (extensionData != null) {
                 return extensionData;
@@ -108,8 +109,7 @@ public final class PreviewTargetResolver {
                     targetState,
                     this.targetItem,
                     pos,
-                    allPositions
-            );
+                    allPositions);
 
             if (extensionData != null) {
                 return extensionData;

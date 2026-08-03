@@ -1,14 +1,15 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
-
-import java.util.function.Supplier;
 
 public class MoveClonerStructureToFolderPacket {
 
@@ -32,11 +33,11 @@ public class MoveClonerStructureToFolderPacket {
         return new MoveClonerStructureToFolderPacket(
                 buffer.readVarInt(),
                 buffer.readUtf(32767),
-                buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH)
-        );
+                buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH));
     }
 
-    public static void handle(MoveClonerStructureToFolderPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
+    public static void handle(MoveClonerStructureToFolderPacket packet,
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {
@@ -56,17 +57,14 @@ public class MoveClonerStructureToFolderPacket {
                         player.server,
                         player.getUUID(),
                         packet.structureId,
-                        packet.folderName
-                );
+                        packet.folderName);
 
                 NetworkHandler.sendToPlayer(
                         player,
                         SyncClonerLibraryPacket.fromPlayer(
                                 player.server,
                                 player.getUUID(),
-                                StructureToolStackState.getStructureId(menu.getItemStack())
-                        )
-                );
+                                StructureToolStackState.getStructureId(menu.getItemStack())));
             } catch (Exception ignored) {
             }
         });

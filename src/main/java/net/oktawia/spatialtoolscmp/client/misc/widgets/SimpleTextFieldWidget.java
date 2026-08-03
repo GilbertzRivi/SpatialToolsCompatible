@@ -1,7 +1,12 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.Collections;
+import java.util.List;
+import java.util.Objects;
+
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,12 +15,9 @@ import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
 
 public class SimpleTextFieldWidget extends EditBox {
 
@@ -65,8 +67,7 @@ public class SimpleTextFieldWidget extends EditBox {
                 y + PADDING,
                 Math.max(1, width - 2 * PADDING - font.width("_")),
                 Math.max(1, height - 2 * PADDING),
-                message
-        );
+                message);
 
         this.fontPad = font.width("_");
 
@@ -148,8 +149,7 @@ public class SimpleTextFieldWidget extends EditBox {
                 bounds.left(),
                 bounds.top(),
                 bounds.right() - bounds.left(),
-                bounds.bottom() - bounds.top()
-        );
+                bounds.bottom() - bounds.top());
     }
 
     public boolean isTooltipAreaVisible() {
@@ -222,8 +222,7 @@ public class SimpleTextFieldWidget extends EditBox {
                     getX(),
                     getY(),
                     this.placeholderColor,
-                    false
-            );
+                    false);
         }
     }
 

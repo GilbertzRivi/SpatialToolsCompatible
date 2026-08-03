@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -10,10 +15,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.lighting.LevelLightEngine;
 import net.minecraft.world.level.material.FluidState;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public final class PreviewBlockAndTintGetter implements BlockAndTintGetter {
 
@@ -28,7 +29,8 @@ public final class PreviewBlockAndTintGetter implements BlockAndTintGetter {
             BlockPos worldPos = origin.offset(block.pos());
             states.put(worldPos, block.state());
             BlockEntity be = localBEs.get(block.pos());
-            if (be != null) blockEntities.put(worldPos, be);
+            if (be != null)
+                blockEntities.put(worldPos, be);
         }
     }
 

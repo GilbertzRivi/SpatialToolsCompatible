@@ -1,14 +1,15 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Set;
 
 public interface ClientReplacerExtension {
 
@@ -26,7 +27,6 @@ public interface ClientReplacerExtension {
         return null;
     }
 
-
     @Nullable
     default Iterable<RenderType> getPreviewRenderTypes(BlockState targetState, ItemStack target) {
         return null;
@@ -37,8 +37,7 @@ public interface ClientReplacerExtension {
             BlockState targetState,
             ItemStack target,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         return null;
     }
 }

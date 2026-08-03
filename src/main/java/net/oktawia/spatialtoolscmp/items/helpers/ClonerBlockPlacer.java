@@ -1,5 +1,7 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -10,20 +12,20 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
-import org.jetbrains.annotations.Nullable;
 
 public final class ClonerBlockPlacer {
 
-    private ClonerBlockPlacer() {}
+    private ClonerBlockPlacer() {
+    }
 
     public static boolean placeRegularBlockBestEffort(
             ServerLevel level,
             BlockPos worldPos,
             BlockState stateToPlace,
             Player player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         BlockState existing = level.getBlockState(worldPos);
 
         if (hasCollision(existing, stateToPlace)) {
@@ -59,8 +61,7 @@ public final class ClonerBlockPlacer {
             BlockPos worldPos,
             PlacementPlan plan,
             Player player,
-            ItemStack toolStack
-    ) {
+            ItemStack toolStack) {
         if (!plan.shouldPlace()) {
             return false;
         }
@@ -96,8 +97,7 @@ public final class ClonerBlockPlacer {
             ServerLevel level,
             BlockPos worldPos,
             BlockState stateToPlace,
-            @Nullable CompoundTag rawBeTag
-    ) {
+            @Nullable CompoundTag rawBeTag) {
         if (hasCollision(level.getBlockState(worldPos), stateToPlace)) {
             return false;
         }
@@ -109,8 +109,7 @@ public final class ClonerBlockPlacer {
             ServerLevel level,
             BlockPos worldPos,
             BlockState stateToPlace,
-            @Nullable CompoundTag rawBeTag
-    ) {
+            @Nullable CompoundTag rawBeTag) {
         BlockState oldState = level.getBlockState(worldPos);
 
         if (level.getBlockEntity(worldPos) != null) {

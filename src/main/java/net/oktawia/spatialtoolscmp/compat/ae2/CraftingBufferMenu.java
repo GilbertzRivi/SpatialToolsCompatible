@@ -1,21 +1,24 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.SyncCraftingBufferStatusPacket;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class CraftingBufferMenu extends AbstractContainerMenu {
 
-    public record ItemEntry(ItemStack stack, long requestedAmount, long bufferedAmount) {}
+    public record ItemEntry(ItemStack stack, long requestedAmount, long bufferedAmount) {
+    }
 
     @Nullable
     private final CraftingBufferBlockEntity be;
@@ -106,8 +109,7 @@ public class CraftingBufferMenu extends AbstractContainerMenu {
             boolean hasError,
             List<ItemStack> stacks,
             List<Long> requestedAmounts,
-            List<Long> bufferedAmounts
-    ) {
+            List<Long> bufferedAmounts) {
         this.hasError = hasError;
 
         List<ItemEntry> list = new ArrayList<>(stacks.size());
@@ -116,8 +118,7 @@ public class CraftingBufferMenu extends AbstractContainerMenu {
             list.add(new ItemEntry(
                     stacks.get(i),
                     requestedAmounts.get(i),
-                    bufferedAmounts.get(i)
-            ));
+                    bufferedAmounts.get(i)));
         }
 
         this.entries = List.copyOf(list);
@@ -139,8 +140,7 @@ public class CraftingBufferMenu extends AbstractContainerMenu {
             list.add(new ItemEntry(
                     entry.stack(),
                     entry.requestedAmount(),
-                    entry.bufferedAmount()
-            ));
+                    entry.bufferedAmount()));
         }
 
         return List.copyOf(list);
@@ -164,9 +164,7 @@ public class CraftingBufferMenu extends AbstractContainerMenu {
                         hasError,
                         stacks,
                         requestedAmounts,
-                        bufferedAmounts
-                )
-        );
+                        bufferedAmounts));
     }
 
     private static boolean entriesEqual(List<ItemEntry> a, List<ItemEntry> b) {

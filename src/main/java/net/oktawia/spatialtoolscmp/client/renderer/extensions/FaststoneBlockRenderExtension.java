@@ -2,6 +2,9 @@ package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
@@ -15,11 +18,11 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
 import net.oktawia.faststone.blocks.LogicCableBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
-import org.jetbrains.annotations.Nullable;
 
 public final class FaststoneBlockRenderExtension implements BlockRenderExtension {
 
@@ -42,8 +45,7 @@ public final class FaststoneBlockRenderExtension implements BlockRenderExtension
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         BlockState transformedState = transformCableState(state, sideMap);
         BakedModel transformedModel = dispatcher.getBlockModel(transformedState);
 
@@ -59,8 +61,7 @@ public final class FaststoneBlockRenderExtension implements BlockRenderExtension
                 seed,
                 OverlayTexture.NO_OVERLAY,
                 modelData,
-                renderType
-        );
+                renderType);
 
         return true;
     }
@@ -76,16 +77,14 @@ public final class FaststoneBlockRenderExtension implements BlockRenderExtension
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         BlockState transformedState = transformCableState(state, sideMap);
         BakedModel transformedModel = dispatcher.getBlockModel(transformedState);
 
         for (RenderType renderType : transformedModel.getRenderTypes(
                 transformedState,
                 RandomSource.create(seed),
-                ModelData.EMPTY
-        )) {
+                ModelData.EMPTY)) {
             dispatcher.getModelRenderer().tesselateBlock(
                     localLevel,
                     transformedModel,
@@ -98,8 +97,7 @@ public final class FaststoneBlockRenderExtension implements BlockRenderExtension
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     ModelData.EMPTY,
-                    renderType
-            );
+                    renderType);
         }
 
         return true;
@@ -116,16 +114,14 @@ public final class FaststoneBlockRenderExtension implements BlockRenderExtension
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         BlockState transformedState = transformCableState(state, sideMap);
         BakedModel transformedModel = dispatcher.getBlockModel(transformedState);
 
         return transformedModel.getRenderTypes(
                 transformedState,
                 RandomSource.create(seed),
-                modelData
-        );
+                modelData);
     }
 
     private static BlockState transformCableState(BlockState state, int[] sideMap) {
@@ -150,8 +146,7 @@ public final class FaststoneBlockRenderExtension implements BlockRenderExtension
 
             transformed = transformed.setValue(
                     LogicCableBlock.prop(mappedSide),
-                    true
-            );
+                    true);
         }
 
         return transformed;

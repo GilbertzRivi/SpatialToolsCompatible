@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.List;
+
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -10,6 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
@@ -18,15 +23,11 @@ import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialReplacerMenu;
-import org.lwjgl.glfw.GLFW;
-
-import java.util.List;
 
 public class PortableSpatialReplacerScreen
         extends AbstractSpatialToolScreen<PortableSpatialReplacerMenu> {
 
-    private static final ResourceLocation BACKGROUND =
-            SpatialToolsCMP.makeId("textures/gui/background.png");
+    private static final ResourceLocation BACKGROUND = SpatialToolsCMP.makeId("textures/gui/background.png");
 
     private static final int PANEL_W = 256;
     private static final int PANEL_H = 256;
@@ -75,8 +76,7 @@ public class PortableSpatialReplacerScreen
     public PortableSpatialReplacerScreen(
             PortableSpatialReplacerMenu menu,
             Inventory playerInventory,
-            Component title
-    ) {
+            Component title) {
         super(menu, playerInventory, title);
 
         this.imageWidth = PANEL_W;
@@ -95,27 +95,25 @@ public class PortableSpatialReplacerScreen
 
         this.radiusDownButton = Button.builder(
                 Component.literal("-"),
-                button -> this.menu.radiusDown()
-        ).pos(
-                this.leftPos + RADIUS_DOWN_X,
-                this.topPos + RADIUS_BUTTON_Y
-        ).size(
-                RADIUS_BUTTON_SIZE,
-                RADIUS_BUTTON_SIZE
-        ).build();
+                button -> this.menu.radiusDown()).pos(
+                        this.leftPos + RADIUS_DOWN_X,
+                        this.topPos + RADIUS_BUTTON_Y)
+                .size(
+                        RADIUS_BUTTON_SIZE,
+                        RADIUS_BUTTON_SIZE)
+                .build();
 
         this.addRenderableWidget(this.radiusDownButton);
 
         this.radiusUpButton = Button.builder(
                 Component.literal("+"),
-                button -> this.menu.radiusUp()
-        ).pos(
-                this.leftPos + RADIUS_UP_X,
-                this.topPos + RADIUS_BUTTON_Y
-        ).size(
-                RADIUS_BUTTON_SIZE,
-                RADIUS_BUTTON_SIZE
-        ).build();
+                button -> this.menu.radiusUp()).pos(
+                        this.leftPos + RADIUS_UP_X,
+                        this.topPos + RADIUS_BUTTON_Y)
+                .size(
+                        RADIUS_BUTTON_SIZE,
+                        RADIUS_BUTTON_SIZE)
+                .build();
 
         this.addRenderableWidget(this.radiusUpButton);
 
@@ -124,14 +122,13 @@ public class PortableSpatialReplacerScreen
                 button -> {
                     this.menu.toggleConnectivity();
                     button.setMessage(shortConnectivityLabel());
-                }
-        ).pos(
-                this.leftPos + CONNECTIVITY_X,
-                this.topPos + CONNECTIVITY_Y
-        ).size(
-                CONNECTIVITY_W,
-                CONNECTIVITY_H
-        ).build();
+                }).pos(
+                        this.leftPos + CONNECTIVITY_X,
+                        this.topPos + CONNECTIVITY_Y)
+                .size(
+                        CONNECTIVITY_W,
+                        CONNECTIVITY_H)
+                .build();
 
         this.addRenderableWidget(this.connectivityButton);
 
@@ -140,14 +137,13 @@ public class PortableSpatialReplacerScreen
                 button -> {
                     this.menu.toggleBlockstateMode();
                     button.setMessage(blockstateLabel());
-                }
-        ).pos(
-                this.leftPos + BLOCKSTATE_X,
-                this.topPos + BLOCKSTATE_Y
-        ).size(
-                BLOCKSTATE_W,
-                BLOCKSTATE_H
-        ).build();
+                }).pos(
+                        this.leftPos + BLOCKSTATE_X,
+                        this.topPos + BLOCKSTATE_Y)
+                .size(
+                        BLOCKSTATE_W,
+                        BLOCKSTATE_H)
+                .build();
 
         this.addRenderableWidget(this.blockstateButton);
     }
@@ -185,8 +181,7 @@ public class PortableSpatialReplacerScreen
             GuiGraphics graphics,
             float partialTick,
             int mouseX,
-            int mouseY
-    ) {
+            int mouseY) {
         graphics.blit(
                 BACKGROUND,
                 this.leftPos,
@@ -196,8 +191,7 @@ public class PortableSpatialReplacerScreen
                 this.imageWidth,
                 this.imageHeight,
                 256,
-                256
-        );
+                256);
 
         renderPowerUpgradePanel(graphics);
         renderReplacerPanels(graphics);
@@ -218,32 +212,28 @@ public class PortableSpatialReplacerScreen
                 leftY,
                 leftX + TARGET_PANEL_W,
                 leftY + TARGET_PANEL_H,
-                0x22FFFFFF
-        );
+                0x22FFFFFF);
 
         graphics.renderOutline(
                 leftX,
                 leftY,
                 TARGET_PANEL_W,
                 TARGET_PANEL_H,
-                0xFF606060
-        );
+                0xFF606060);
 
         graphics.fill(
                 infoX,
                 infoY,
                 infoX + INFO_PANEL_W,
                 infoY + INFO_PANEL_H,
-                0x99000000
-        );
+                0x99000000);
 
         graphics.renderOutline(
                 infoX,
                 infoY,
                 INFO_PANEL_W,
                 INFO_PANEL_H,
-                0xFF606060
-        );
+                0xFF606060);
     }
 
     private void renderTargetSection(GuiGraphics graphics) {
@@ -256,8 +246,7 @@ public class PortableSpatialReplacerScreen
                 panelX + 6,
                 panelY + 8,
                 0xFF111111,
-                false
-        );
+                false);
 
         int slotX = this.leftPos + TARGET_SLOT_X;
         int slotY = this.topPos + TARGET_SLOT_Y;
@@ -273,8 +262,7 @@ public class PortableSpatialReplacerScreen
                     Component.literal("?").withStyle(ChatFormatting.RED),
                     slotX + 8,
                     slotY + 4,
-                    0xFFFF5555
-            );
+                    0xFFFF5555);
             return;
         }
 
@@ -297,8 +285,7 @@ public class PortableSpatialReplacerScreen
                 Component.literal("Radius: " + radius),
                 labelCenterX,
                 labelY,
-                0xFFFFFFFF
-        );
+                0xFFFFFFFF);
 
         int boxX = this.leftPos + RADIUS_VALUE_X;
         int boxY = this.topPos + RADIUS_VALUE_Y;
@@ -308,16 +295,14 @@ public class PortableSpatialReplacerScreen
                 boxY,
                 RADIUS_VALUE_W,
                 RADIUS_VALUE_H,
-                0xFF606060
-        );
+                0xFF606060);
 
         drawCenteredStringShadow(
                 graphics,
                 Component.literal(String.valueOf(radius)),
                 boxX + RADIUS_VALUE_W / 2,
                 boxY + 5,
-                0xFFFFFFFF
-        );
+                0xFFFFFFFF);
     }
 
     private void renderInfoSection(GuiGraphics graphics) {
@@ -336,8 +321,7 @@ public class PortableSpatialReplacerScreen
                     cx,
                     panelY + 34,
                     INFO_PANEL_W - 18,
-                    0xFFFF7777
-            );
+                    0xFFFF7777);
 
             drawCenteredWrapped(
                     graphics,
@@ -346,8 +330,7 @@ public class PortableSpatialReplacerScreen
                     cx,
                     panelY + 62,
                     INFO_PANEL_W - 18,
-                    0xFFFFFFFF
-            );
+                    0xFFFFFFFF);
         } else {
             graphics.renderItem(target, cx - 8, panelY + 14);
             graphics.renderItemDecorations(this.font, target, cx - 8, panelY + 14);
@@ -358,8 +341,7 @@ public class PortableSpatialReplacerScreen
                     cx,
                     panelY + 38,
                     INFO_PANEL_W - 18,
-                    0xFF55FFFF
-            );
+                    0xFF55FFFF);
 
             drawCenteredWrapped(
                     graphics,
@@ -367,20 +349,17 @@ public class PortableSpatialReplacerScreen
                     cx,
                     panelY + 68,
                     INFO_PANEL_W - 18,
-                    0xFFFFFFFF
-            );
+                    0xFFFFFFFF);
         }
 
         graphics.drawCenteredString(
                 this.font,
                 Component.translatable(
                         LangDefs.REPLACER_CAP_INFO.getTranslationKey(),
-                        SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_MAX_BLOCKS.get()
-                ),
+                        SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_MAX_BLOCKS.get()),
                 cx,
                 panelY + 98,
-                0xFFEDEDED
-        );
+                0xFFEDEDED);
 
         if (IsModLoaded.AE2) {
             renderAe2Status(graphics, tool, cx, panelY + 108);
@@ -408,24 +387,21 @@ public class PortableSpatialReplacerScreen
                         graphics,
                         Component.translatable(
                                 LangDefs.REPLACER_LINKED_TO_AE2.getTranslationKey(),
-                                coords
-                        ).withStyle(ChatFormatting.AQUA),
+                                coords).withStyle(ChatFormatting.AQUA),
                         cx,
                         y,
                         maxWidth,
-                        0xFF55FFFF
-                );
+                        0xFF55FFFF);
             } else {
                 drawCenteredWrapped(
                         graphics,
                         Component.translatable(
-                                LangDefs.REPLACER_NOT_LINKED_TO_AE2.getTranslationKey()
-                        ).withStyle(ChatFormatting.WHITE),
+                                LangDefs.REPLACER_NOT_LINKED_TO_AE2.getTranslationKey())
+                                .withStyle(ChatFormatting.WHITE),
                         cx,
                         y,
                         maxWidth,
-                        0xFFEDEDED
-                );
+                        0xFFEDEDED);
             }
         } catch (Throwable ignored) {
         }
@@ -436,8 +412,7 @@ public class PortableSpatialReplacerScreen
             GuiGraphics graphics,
             int mouseX,
             int mouseY,
-            float partialTick
-    ) {
+            float partialTick) {
         this.renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
 
@@ -451,16 +426,14 @@ public class PortableSpatialReplacerScreen
     protected void renderLabels(
             GuiGraphics graphics,
             int mouseX,
-            int mouseY
-    ) {
+            int mouseY) {
         graphics.drawString(
                 this.font,
                 this.title,
                 this.titleLabelX,
                 this.titleLabelY,
                 0xFF111111,
-                false
-        );
+                false);
 
         graphics.drawString(
                 this.font,
@@ -468,8 +441,7 @@ public class PortableSpatialReplacerScreen
                 this.inventoryLabelX,
                 this.inventoryLabelY,
                 0xFF111111,
-                false
-        );
+                false);
     }
 
     private void renderExtraTooltips(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -493,11 +465,9 @@ public class PortableSpatialReplacerScreen
             graphics.renderComponentTooltip(
                     this.font,
                     List.of(Component.translatable(
-                            LangDefs.REPLACER_SELECT_TARGET_HINT.getTranslationKey()
-                    ).withStyle(ChatFormatting.WHITE)),
+                            LangDefs.REPLACER_SELECT_TARGET_HINT.getTranslationKey()).withStyle(ChatFormatting.WHITE)),
                     mouseX,
-                    mouseY
-            );
+                    mouseY);
             return;
         }
 
@@ -505,12 +475,10 @@ public class PortableSpatialReplacerScreen
                 this.font,
                 target.getTooltipLines(
                         Minecraft.getInstance().player,
-                        TooltipFlag.Default.NORMAL
-                ),
+                        TooltipFlag.Default.NORMAL),
                 target.getTooltipImage(),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     private void renderRadiusTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -529,8 +497,7 @@ public class PortableSpatialReplacerScreen
                 boxX,
                 boxY,
                 RADIUS_VALUE_W,
-                RADIUS_VALUE_H
-        );
+                RADIUS_VALUE_H);
 
         if (!overDown && !overUp && !overValue) {
             return;
@@ -546,11 +513,9 @@ public class PortableSpatialReplacerScreen
                 this.font,
                 List.of(Component.translatable(
                         LangDefs.REPLACER_RADIUS_LABEL.getTranslationKey(),
-                        radius
-                ).withStyle(ChatFormatting.WHITE)),
+                        radius).withStyle(ChatFormatting.WHITE)),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     private void renderConnectivityTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -567,15 +532,14 @@ public class PortableSpatialReplacerScreen
         Component desc = Component.translatable(
                 mode == ConnectivityMode.DIRECT
                         ? LangDefs.REPLACER_CONNECTIVITY_DIRECT_DESC.getTranslationKey()
-                        : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL_DESC.getTranslationKey()
-        ).withStyle(ChatFormatting.GRAY);
+                        : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL_DESC.getTranslationKey())
+                .withStyle(ChatFormatting.GRAY);
 
         graphics.renderComponentTooltip(
                 this.font,
                 List.of(connectivityLabel().copy().withStyle(ChatFormatting.WHITE), desc),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     private void renderBlockstateTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -590,15 +554,14 @@ public class PortableSpatialReplacerScreen
         Component desc = Component.translatable(
                 strict
                         ? LangDefs.REPLACER_BLOCKSTATE_ON_DESC.getTranslationKey()
-                        : LangDefs.REPLACER_BLOCKSTATE_OFF_DESC.getTranslationKey()
-        ).withStyle(ChatFormatting.GRAY);
+                        : LangDefs.REPLACER_BLOCKSTATE_OFF_DESC.getTranslationKey())
+                .withStyle(ChatFormatting.GRAY);
 
         graphics.renderComponentTooltip(
                 this.font,
                 List.of(blockstateLabel().copy().withStyle(ChatFormatting.WHITE), desc),
                 mouseX,
-                mouseY
-        );
+                mouseY);
     }
 
     private void drawCenteredWrapped(
@@ -607,8 +570,7 @@ public class PortableSpatialReplacerScreen
             int centerX,
             int y,
             int maxWidth,
-            int color
-    ) {
+            int color) {
         int yy = y;
 
         for (var line : this.font.split(component, maxWidth)) {
@@ -622,16 +584,14 @@ public class PortableSpatialReplacerScreen
             Component component,
             int centerX,
             int y,
-            int color
-    ) {
+            int color) {
         graphics.drawString(
                 this.font,
                 component,
                 centerX - this.font.width(component) / 2,
                 y,
                 color,
-                true
-        );
+                true);
     }
 
     private boolean isMouseInside(
@@ -640,8 +600,7 @@ public class PortableSpatialReplacerScreen
             int x,
             int y,
             int width,
-            int height
-    ) {
+            int height) {
         return mouseX >= x
                 && mouseY >= y
                 && mouseX < x + width
@@ -698,8 +657,7 @@ public class PortableSpatialReplacerScreen
         return Component.translatable(
                 mode == ConnectivityMode.DIRECT
                         ? LangDefs.REPLACER_CONNECTIVITY_DIRECT.getTranslationKey()
-                        : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL.getTranslationKey()
-        );
+                        : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL.getTranslationKey());
     }
 
     private Component connectivityLabel() {
@@ -714,8 +672,7 @@ public class PortableSpatialReplacerScreen
         return Component.translatable(
                 mode == ConnectivityMode.DIRECT
                         ? LangDefs.REPLACER_CONNECTIVITY_DIRECT.getTranslationKey()
-                        : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL.getTranslationKey()
-        );
+                        : LangDefs.REPLACER_CONNECTIVITY_DIAGONAL.getTranslationKey());
     }
 
     private Component blockstateLabel() {
@@ -728,8 +685,7 @@ public class PortableSpatialReplacerScreen
         return Component.translatable(
                 PortableSpatialReplacer.isSameBlockstate(tool)
                         ? LangDefs.REPLACER_BLOCKSTATE_ON.getTranslationKey()
-                        : LangDefs.REPLACER_BLOCKSTATE_OFF.getTranslationKey()
-        );
+                        : LangDefs.REPLACER_BLOCKSTATE_OFF.getTranslationKey());
     }
 
     @Override

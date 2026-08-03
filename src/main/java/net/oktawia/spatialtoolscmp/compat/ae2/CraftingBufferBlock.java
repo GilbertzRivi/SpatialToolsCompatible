@@ -1,6 +1,9 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
-import appeng.block.AEBaseEntityBlock;
+import java.util.List;
+
+import javax.annotation.Nullable;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -18,10 +21,10 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.network.NetworkHooks;
-import net.oktawia.spatialtoolscmp.defs.LangDefs;
 
-import javax.annotation.Nullable;
-import java.util.List;
+import appeng.block.AEBaseEntityBlock;
+
+import net.oktawia.spatialtoolscmp.defs.LangDefs;
 
 public class CraftingBufferBlock extends AEBaseEntityBlock<CraftingBufferBlockEntity> {
 
@@ -35,14 +38,19 @@ public class CraftingBufferBlock extends AEBaseEntityBlock<CraftingBufferBlockEn
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable(LangDefs.CRAFTING_BUFFER_TOOLTIP_LINE1.getTranslationKey()).withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable(LangDefs.CRAFTING_BUFFER_TOOLTIP_LINE2.getTranslationKey()).withStyle(ChatFormatting.GRAY));
-        tooltip.add(Component.translatable(LangDefs.CRAFTING_BUFFER_TOOLTIP_LINE3.getTranslationKey()).withStyle(ChatFormatting.GRAY));
+    public void appendHoverText(ItemStack stack, @Nullable BlockGetter level, List<Component> tooltip,
+            TooltipFlag flag) {
+        tooltip.add(Component.translatable(LangDefs.CRAFTING_BUFFER_TOOLTIP_LINE1.getTranslationKey())
+                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable(LangDefs.CRAFTING_BUFFER_TOOLTIP_LINE2.getTranslationKey())
+                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable(LangDefs.CRAFTING_BUFFER_TOOLTIP_LINE3.getTranslationKey())
+                .withStyle(ChatFormatting.GRAY));
     }
 
     @Override
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand,
+            BlockHitResult hit) {
         if (level.isClientSide) {
             return InteractionResult.SUCCESS;
         }
@@ -72,8 +80,7 @@ public class CraftingBufferBlock extends AEBaseEntityBlock<CraftingBufferBlockEn
                         buf.writeLong(entry.requestedAmount());
                         buf.writeLong(entry.bufferedAmount());
                     }
-                }
-        );
+                });
 
         return InteractionResult.CONSUME;
     }

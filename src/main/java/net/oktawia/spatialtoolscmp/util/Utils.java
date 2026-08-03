@@ -12,16 +12,17 @@ public class Utils {
         SHORTEN_THRESHOLDS.put(1e18, "E");
         SHORTEN_THRESHOLDS.put(1e15, "P");
         SHORTEN_THRESHOLDS.put(1e12, "T");
-        SHORTEN_THRESHOLDS.put(1e9,  "G");
-        SHORTEN_THRESHOLDS.put(1e6,  "M");
-        SHORTEN_THRESHOLDS.put(1e3,  "K");
+        SHORTEN_THRESHOLDS.put(1e9, "G");
+        SHORTEN_THRESHOLDS.put(1e6, "M");
+        SHORTEN_THRESHOLDS.put(1e3, "K");
     }
 
     public static String toTitle(String id) {
         StringBuilder out = new StringBuilder();
 
         for (String part : id.split("_")) {
-            if (part.isEmpty()) continue;
+            if (part.isEmpty())
+                continue;
 
             if (part.chars().anyMatch(Character::isDigit)) {
                 out.append(part.toUpperCase());

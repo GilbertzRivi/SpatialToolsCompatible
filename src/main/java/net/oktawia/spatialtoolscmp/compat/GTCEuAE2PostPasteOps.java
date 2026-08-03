@@ -1,15 +1,18 @@
 package net.oktawia.spatialtoolscmp.compat;
 
-import appeng.api.networking.IManagedGridNode;
+import java.util.EnumSet;
+
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.integration.ae2.machine.feature.IGridConnectedMachine;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.block.entity.BlockEntity;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.EnumSet;
+import appeng.api.networking.IManagedGridNode;
 
 public final class GTCEuAE2PostPasteOps {
 
@@ -31,8 +34,7 @@ public final class GTCEuAE2PostPasteOps {
     public static void refreshGridNodeIfPresent(
             ServerLevel level,
             BlockPos pos,
-            BlockEntity blockEntity
-    ) {
+            BlockEntity blockEntity) {
         if (!(blockEntity instanceof MetaMachineBlockEntity mmbe)) {
             return;
         }

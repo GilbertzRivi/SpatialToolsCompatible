@@ -1,11 +1,13 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import appeng.api.implementations.parts.ICablePart;
-import appeng.api.parts.IPart;
-import appeng.api.parts.IPartHost;
-import appeng.api.parts.IPartItem;
-import appeng.core.definitions.AEBlocks;
+import java.util.Collections;
+import java.util.Set;
+
 import com.mojang.logging.LogUtils;
+
+import org.jetbrains.annotations.Nullable;
+import org.slf4j.Logger;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
@@ -16,15 +18,17 @@ import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+
+import appeng.api.implementations.parts.ICablePart;
+import appeng.api.parts.IPart;
+import appeng.api.parts.IPartHost;
+import appeng.api.parts.IPartItem;
+import appeng.core.definitions.AEBlocks;
+
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.helpers.ClonerBlockPlacer;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
-import org.jetbrains.annotations.Nullable;
-import org.slf4j.Logger;
-
-import java.util.Collections;
-import java.util.Set;
 
 public final class AE2ReplacerExtension implements ReplacerExtension {
 
@@ -42,16 +46,14 @@ public final class AE2ReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos startPos,
             BlockState sourceState,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         return findSameCablePositions(level, startPos, ctx);
     }
 
     public static Set<BlockPos> findSameCablePositions(
             BlockGetter level,
             BlockPos startPos,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         Item sourceCable = centerCableItem(level, startPos);
 
         if (sourceCable == null) {
@@ -62,8 +64,7 @@ public final class AE2ReplacerExtension implements ReplacerExtension {
                 level,
                 startPos,
                 ctx,
-                (checkedLevel, pos) -> centerCableItem(checkedLevel, pos) == sourceCable
-        );
+                (checkedLevel, pos) -> centerCableItem(checkedLevel, pos) == sourceCable);
     }
 
     @Override
@@ -106,8 +107,7 @@ public final class AE2ReplacerExtension implements ReplacerExtension {
             ServerLevel level,
             BlockPos pos,
             ItemStack target,
-            @Nullable ServerPlayer player
-    ) {
+            @Nullable ServerPlayer player) {
         IPartItem<?> partItem = asCablePartItem(target);
 
         if (partItem == null) {
@@ -127,8 +127,7 @@ public final class AE2ReplacerExtension implements ReplacerExtension {
             LOGGER.warn(
                     "Cable {} at {} is not compatible with the parts on this bus",
                     IPartItem.getId(partItem),
-                    pos
-            );
+                    pos);
 
             return false;
         }
@@ -155,8 +154,7 @@ public final class AE2ReplacerExtension implements ReplacerExtension {
                 IPartItem.getId(partItem),
                 pos,
                 placed,
-                be
-        );
+                be);
 
         level.setBlock(pos, oldState, Block.UPDATE_ALL);
         return false;
@@ -165,8 +163,7 @@ public final class AE2ReplacerExtension implements ReplacerExtension {
     private static <T extends IPart> T swapCenterCable(
             IPartHost host,
             IPartItem<T> partItem,
-            @Nullable ServerPlayer player
-    ) {
+            @Nullable ServerPlayer player) {
         return host.replacePart(partItem, null, player, null);
     }
 

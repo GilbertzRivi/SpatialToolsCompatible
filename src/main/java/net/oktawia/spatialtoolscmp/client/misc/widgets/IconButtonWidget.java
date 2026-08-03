@@ -1,33 +1,31 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
-import lombok.Getter;
-import lombok.Setter;
+import java.util.function.Consumer;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+
+import lombok.Getter;
+import lombok.Setter;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
-
-import java.util.function.Consumer;
 
 public class IconButtonWidget extends AbstractWidget {
 
     private static final int DEFAULT_SIZE = 16;
 
-    private static final ResourceLocation BACKGROUND_TEXTURE =
-            ResourceLocation.fromNamespaceAndPath(
-                    SpatialToolsCMP.MODID,
-                    "textures/gui/icons/button_bg.png"
-            );
+    private static final ResourceLocation BACKGROUND_TEXTURE = ResourceLocation.fromNamespaceAndPath(
+            SpatialToolsCMP.MODID,
+            "textures/gui/icons/button_bg.png");
 
-    private static final ResourceLocation BACKGROUND_TEXTURE_DARK =
-            ResourceLocation.fromNamespaceAndPath(
-                    SpatialToolsCMP.MODID,
-                    "textures/gui/icons/button_bg_dark.png"
-            );
+    private static final ResourceLocation BACKGROUND_TEXTURE_DARK = ResourceLocation.fromNamespaceAndPath(
+            SpatialToolsCMP.MODID,
+            "textures/gui/icons/button_bg_dark.png");
 
     @Setter
     @Getter
@@ -58,7 +56,8 @@ public class IconButtonWidget extends AbstractWidget {
         super(x, y, width, height, Component.empty());
 
         this.icon = icon;
-        this.onPress = onPress == null ? button -> {} : onPress;
+        this.onPress = onPress == null ? button -> {
+        } : onPress;
     }
 
     public void setOnPress(Runnable onPress) {
@@ -70,7 +69,8 @@ public class IconButtonWidget extends AbstractWidget {
     }
 
     public void setOnPress(Consumer<IconButtonWidget> onPress) {
-        this.onPress = onPress == null ? button -> {} : onPress;
+        this.onPress = onPress == null ? button -> {
+        } : onPress;
     }
 
     public void resize(int width, int height) {
@@ -116,8 +116,7 @@ public class IconButtonWidget extends AbstractWidget {
                 this.width,
                 this.height,
                 this.width,
-                this.height
-        );
+                this.height);
 
         if (this.icon != null) {
             guiGraphics.blit(
@@ -129,8 +128,7 @@ public class IconButtonWidget extends AbstractWidget {
                     this.width,
                     this.height,
                     this.width,
-                    this.height
-            );
+                    this.height);
         }
 
         if (!this.active) {

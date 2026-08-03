@@ -1,5 +1,11 @@
 package net.oktawia.spatialtoolscmp.client.screens;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jetbrains.annotations.Nullable;
+import org.lwjgl.glfw.GLFW;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -7,25 +13,21 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
-import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
-import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuPiperExtension;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
+import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuPiperExtension;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.StructureToolContextActionPacket;
-import org.jetbrains.annotations.Nullable;
-import org.lwjgl.glfw.GLFW;
-
-import java.util.ArrayList;
-import java.util.List;
 
 public class StructureToolContextMenuScreen extends Screen {
 
@@ -89,18 +91,15 @@ public class StructureToolContextMenuScreen extends Screen {
     private boolean lastHoldingPiper = false;
     private PortableSpatialPiper.FillMode lastPiperFillMode = PortableSpatialPiper.FillMode.PATH;
     private boolean lastPiperHasTarget = false;
-    private PortableSpatialPiper.PipeDirectionMode lastPiperPipeDirection =
-            PortableSpatialPiper.PipeDirectionMode.OFF;
+    private PortableSpatialPiper.PipeDirectionMode lastPiperPipeDirection = PortableSpatialPiper.PipeDirectionMode.OFF;
     private boolean lastPiperTargetIsDirectionalPipe = false;
     private int lastReplacerRadius = PortableSpatialReplacer.DEFAULT_RADIUS;
     private ConnectivityMode lastReplacerConnectivity = ConnectivityMode.DIRECT;
     private boolean lastReplacerBlockstateMode = false;
 
-    private PortableSpatialCloner.NestedInventoryResourceMode lastNestedMode =
-            PortableSpatialCloner.NestedInventoryResourceMode.NONE;
+    private PortableSpatialCloner.NestedInventoryResourceMode lastNestedMode = PortableSpatialCloner.NestedInventoryResourceMode.NONE;
 
-    private StructureToolStackState.SelectionMode lastSelectionMode =
-            StructureToolStackState.SelectionMode.DEFAULT;
+    private StructureToolStackState.SelectionMode lastSelectionMode = StructureToolStackState.SelectionMode.DEFAULT;
 
     private int topInfoY = 0;
 
@@ -162,8 +161,8 @@ public class StructureToolContextMenuScreen extends Screen {
         int leftPanelHeight = this.lastHasStructure
                 ? MOVE_PANEL_HEIGHT
                 : hasAnySelection
-                  ? SELECTION_PANEL_HEIGHT
-                  : MOVE_PANEL_HEIGHT;
+                        ? SELECTION_PANEL_HEIGHT
+                        : MOVE_PANEL_HEIGHT;
 
         int topPanelHeight = Math.max(leftPanelHeight, TRANSFORM_PANEL_HEIGHT);
         int totalHeight = topPanelHeight + PANEL_GAP_Y + OPTIONS_PANEL_HEIGHT;
@@ -202,8 +201,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     PANEL_WIDTH,
                     MOVE_PANEL_HEIGHT,
                     Component.translatable(LangDefs.CONTEXT_MENU_OFFSET_GROUP.getTranslationKey()),
-                    null
-            );
+                    null);
 
             buildOffsetPanel(leftPanelX, leftPanelY);
         } else if (hasAnySelection) {
@@ -213,8 +211,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     PANEL_WIDTH,
                     SELECTION_PANEL_HEIGHT,
                     Component.translatable(LangDefs.CONTEXT_MENU_MODIFY_SELECTION_GROUP.getTranslationKey()),
-                    null
-            );
+                    null);
 
             buildSelectionPanel(leftPanelX, leftPanelY);
         } else {
@@ -224,8 +221,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     PANEL_WIDTH,
                     MOVE_PANEL_HEIGHT,
                     Component.translatable(LangDefs.CONTEXT_MENU_MODIFY_SELECTION_GROUP.getTranslationKey()),
-                    Component.translatable(LangDefs.CONTEXT_MENU_SELECT_SOMETHING_FIRST.getTranslationKey())
-            );
+                    Component.translatable(LangDefs.CONTEXT_MENU_SELECT_SOMETHING_FIRST.getTranslationKey()));
         }
 
         if (this.lastHasStructure) {
@@ -235,8 +231,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     PANEL_WIDTH,
                     TRANSFORM_PANEL_HEIGHT,
                     Component.translatable(LangDefs.CONTEXT_MENU_TRANSFORM_GROUP.getTranslationKey()),
-                    null
-            );
+                    null);
 
             buildTransformPanel(rightPanelX, transformPanelY);
         } else {
@@ -246,8 +241,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     PANEL_WIDTH,
                     TRANSFORM_PANEL_HEIGHT,
                     Component.translatable(LangDefs.CONTEXT_MENU_TRANSFORM_GROUP.getTranslationKey()),
-                    Component.translatable(LangDefs.CONTEXT_MENU_CUT_COPY_FIRST.getTranslationKey())
-            );
+                    Component.translatable(LangDefs.CONTEXT_MENU_CUT_COPY_FIRST.getTranslationKey()));
         }
 
         int optionsPanelX = centerX - OPTIONS_PANEL_WIDTH / 2;
@@ -258,8 +252,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 OPTIONS_PANEL_WIDTH,
                 OPTIONS_PANEL_HEIGHT,
                 Component.translatable(LangDefs.CONTEXT_MENU_OPTIONS_GROUP.getTranslationKey()),
-                null
-        );
+                null);
 
         buildOptionsPanel(optionsPanelX, optionsPanelY);
     }
@@ -331,8 +324,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 PIPER_PANEL_WIDTH,
                 PIPER_PANEL_HEIGHT,
                 Component.translatable(LangDefs.CONTEXT_MENU_OPTIONS_GROUP.getTranslationKey()),
-                null
-        );
+                null);
 
         int rowWidth = BUTTON_SIZE * 4 + BUTTON_GAP * 3;
         int buttonX = panelX + (PIPER_PANEL_WIDTH - rowWidth) / 2;
@@ -344,8 +336,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.CONTEXT_MENU_SELECTION_MODE,
                 iconForSelectionMode(this.lastSelectionMode),
                 buttonX,
-                buttonY
-        );
+                buttonY);
 
         addButton(
                 StructureToolContextActionPacket.PIPER_TOGGLE_FILL_MODE,
@@ -353,8 +344,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.PIPER_FILL_MODE,
                 this.lastPiperFillMode == PortableSpatialPiper.FillMode.FILL ? Icon.CHECK : Icon.CROSS,
                 buttonX + BUTTON_SIZE + BUTTON_GAP,
-                buttonY
-        );
+                buttonY);
 
         addButton(
                 StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION,
@@ -364,8 +354,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 buttonX + (BUTTON_SIZE + BUTTON_GAP) * 2,
                 buttonY,
                 this.lastPiperTargetIsDirectionalPipe,
-                false
-        );
+                false);
 
         addButton(
                 StructureToolContextActionPacket.PIPER_CLEAR_TARGET,
@@ -375,8 +364,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 buttonX + (BUTTON_SIZE + BUTTON_GAP) * 3,
                 buttonY,
                 this.lastPiperHasTarget,
-                false
-        );
+                false);
     }
 
     private void buildOffsetPanel(int panelX, int panelY) {
@@ -390,8 +378,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 StructureToolContextActionPacket.OFFSET_FRONT,
                 StructureToolContextActionPacket.OFFSET_BACK,
                 StructureToolContextActionPacket.OFFSET_UP,
-                StructureToolContextActionPacket.OFFSET_DOWN
-        );
+                StructureToolContextActionPacket.OFFSET_DOWN);
     }
 
     private void buildSelectionPanel(int panelX, int panelY) {
@@ -408,8 +395,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 selectorX,
                 selectorY,
                 true,
-                !this.selectedGreenCorner
-        );
+                !this.selectedGreenCorner);
 
         addButton(
                 LOCAL_SELECT_GREEN,
@@ -419,8 +405,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 selectorX + BUTTON_SIZE + selectorGap,
                 selectorY,
                 this.lastHasSelectionB,
-                this.selectedGreenCorner
-        );
+                this.selectedGreenCorner);
 
         int baseY = panelY + 24 + BUTTON_SIZE + BUTTON_GAP;
 
@@ -433,8 +418,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     StructureToolContextActionPacket.MOVE_SELECTION_GREEN_NORTH,
                     StructureToolContextActionPacket.MOVE_SELECTION_GREEN_SOUTH,
                     StructureToolContextActionPacket.MOVE_SELECTION_GREEN_UP,
-                    StructureToolContextActionPacket.MOVE_SELECTION_GREEN_DOWN
-            );
+                    StructureToolContextActionPacket.MOVE_SELECTION_GREEN_DOWN);
         } else {
             buildMovementGrid(
                     panelX,
@@ -444,8 +428,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     StructureToolContextActionPacket.MOVE_SELECTION_RED_NORTH,
                     StructureToolContextActionPacket.MOVE_SELECTION_RED_SOUTH,
                     StructureToolContextActionPacket.MOVE_SELECTION_RED_UP,
-                    StructureToolContextActionPacket.MOVE_SELECTION_RED_DOWN
-            );
+                    StructureToolContextActionPacket.MOVE_SELECTION_RED_DOWN);
         }
     }
 
@@ -457,8 +440,7 @@ public class StructureToolContextMenuScreen extends Screen {
             int northAction,
             int southAction,
             int upAction,
-            int downAction
-    ) {
+            int downAction) {
         int baseX = panelX + (PANEL_WIDTH - MOVE_GRID_WIDTH) / 2;
 
         int centerButtonX = baseX + BUTTON_STEP;
@@ -470,8 +452,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.OFFSET_NORTH_TOOLTIP,
                 Icon.ARROW_UP,
                 centerButtonX,
-                baseY
-        );
+                baseY);
 
         addButton(
                 westAction,
@@ -479,8 +460,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.OFFSET_WEST_TOOLTIP,
                 Icon.ARROW_LEFT,
                 baseX,
-                middleY
-        );
+                middleY);
 
         addButton(
                 eastAction,
@@ -488,8 +468,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.OFFSET_EAST_TOOLTIP,
                 Icon.ARROW_RIGHT,
                 baseX + BUTTON_STEP * 2,
-                middleY
-        );
+                middleY);
 
         addButton(
                 southAction,
@@ -497,8 +476,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.OFFSET_SOUTH_TOOLTIP,
                 Icon.ARROW_DOWN,
                 centerButtonX,
-                baseY + BUTTON_STEP * 2
-        );
+                baseY + BUTTON_STEP * 2);
 
         int yAxisY = baseY + BUTTON_STEP * 3 + 8;
 
@@ -508,8 +486,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.OFFSET_DOWN_TOOLTIP,
                 Icon.ARROW_DOWN,
                 baseX,
-                yAxisY
-        );
+                yAxisY);
 
         addButton(
                 upAction,
@@ -517,8 +494,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.OFFSET_UP_TOOLTIP,
                 Icon.ARROW_UP,
                 baseX + BUTTON_STEP * 2,
-                yAxisY
-        );
+                yAxisY);
     }
 
     private void buildTransformPanel(int panelX, int panelY) {
@@ -534,8 +510,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 aroundOrigin ? LangDefs.ROTATE_CLOCKWISE_AROUND_ORIGIN : LangDefs.ROTATE_CLOCKWISE,
                 Icon.ROTATE,
                 baseX,
-                baseY
-        );
+                baseY);
 
         addButton(
                 StructureToolContextActionPacket.FLIP_EAST_WEST,
@@ -543,8 +518,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 aroundOrigin ? LangDefs.FLIP_EAST_WEST_AROUND_ORIGIN : LangDefs.FLIP_EAST_WEST,
                 Icon.ARROW_LEFT,
                 baseX + BUTTON_STEP,
-                baseY
-        );
+                baseY);
 
         addButton(
                 StructureToolContextActionPacket.FLIP_NORTH_SOUTH,
@@ -552,8 +526,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 aroundOrigin ? LangDefs.FLIP_NORTH_SOUTH_AROUND_ORIGIN : LangDefs.FLIP_NORTH_SOUTH,
                 Icon.ARROW_FRONT,
                 baseX + BUTTON_STEP * 2,
-                baseY
-        );
+                baseY);
 
         addButton(
                 StructureToolContextActionPacket.FLIP_VERTICAL,
@@ -561,8 +534,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 aroundOrigin ? LangDefs.FLIP_VERTICAL_AROUND_ORIGIN : LangDefs.FLIP_VERTICAL,
                 Icon.ARROW_UP,
                 baseX + BUTTON_STEP,
-                baseY + BUTTON_STEP
-        );
+                baseY + BUTTON_STEP);
     }
 
     private void buildOptionsPanel(int panelX, int panelY) {
@@ -573,16 +545,14 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.CONTEXT_MENU_SELECTION_MODE,
                 iconForSelectionMode(this.lastSelectionMode),
                 true,
-                false
-        ));
+                false));
 
         specs.add(new OptionButtonSpec(
                 StructureToolContextActionPacket.TOGGLE_ANCHOR,
                 LangDefs.CONTEXT_MENU_ANCHOR,
                 this.lastAnchorEnabled ? Icon.ANCHOR : Icon.ANCHOR_CROSS,
                 this.lastHasStructure,
-                this.lastAnchorEnabled
-        ));
+                this.lastAnchorEnabled));
 
         if (this.lastHasSelectionA || this.lastHasSelectionB) {
             specs.add(new OptionButtonSpec(
@@ -590,8 +560,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     LangDefs.CONTEXT_MENU_CANCEL_SELECTION,
                     Icon.MINUS,
                     true,
-                    false
-            ));
+                    false));
         }
 
         if (this.lastHoldingCloner) {
@@ -600,8 +569,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     LangDefs.CONTEXT_MENU_NESTED_ITEMS,
                     iconForNestedInventoryMode(this.lastNestedMode),
                     true,
-                    false
-            ));
+                    false));
         }
 
         int totalWidth = specs.size() * BUTTON_SIZE + Math.max(0, specs.size() - 1) * BUTTON_GAP;
@@ -617,8 +585,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     x,
                     y,
                     spec.enabled(),
-                    spec.highlighted()
-            );
+                    spec.highlighted());
 
             x += BUTTON_SIZE + BUTTON_GAP;
         }
@@ -630,16 +597,14 @@ public class StructureToolContextMenuScreen extends Screen {
             int width,
             int height,
             Component title,
-            Component message
-    ) {
+            Component message) {
         this.panels.add(new ContextPanel(
                 x,
                 y,
                 width,
                 height,
                 title,
-                message
-        ));
+                message));
     }
 
     private void addButton(
@@ -648,8 +613,7 @@ public class StructureToolContextMenuScreen extends Screen {
             LangDefs label,
             Icon icon,
             int x,
-            int y
-    ) {
+            int y) {
         addButton(action, aroundOrigin, label, icon, x, y, true, false);
     }
 
@@ -661,8 +625,7 @@ public class StructureToolContextMenuScreen extends Screen {
             int x,
             int y,
             boolean enabled,
-            boolean highlighted
-    ) {
+            boolean highlighted) {
         this.buttons.add(new ContextButton(
                 action,
                 aroundOrigin,
@@ -671,8 +634,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 x,
                 y,
                 enabled,
-                highlighted
-        ));
+                highlighted));
     }
 
     @Override
@@ -715,8 +677,10 @@ public class StructureToolContextMenuScreen extends Screen {
                 : this.lastPiperTargetIsDirectionalPipe;
 
         int replacerRadius = holdingReplacer ? PortableSpatialReplacer.getRadius(held) : this.lastReplacerRadius;
-        ConnectivityMode replacerConn = holdingReplacer ? PortableSpatialReplacer.getConnectivityMode(held) : this.lastReplacerConnectivity;
-        boolean replacerBlockstate = holdingReplacer ? PortableSpatialReplacer.isSameBlockstate(held) : this.lastReplacerBlockstateMode;
+        ConnectivityMode replacerConn = holdingReplacer ? PortableSpatialReplacer.getConnectivityMode(held)
+                : this.lastReplacerConnectivity;
+        boolean replacerBlockstate = holdingReplacer ? PortableSpatialReplacer.isSameBlockstate(held)
+                : this.lastReplacerBlockstateMode;
 
         if (SpatialMultiTool.isMultiTool(held) != this.lastMultiTool
                 || SpatialMultiTool.getMode(held) != this.lastMultiToolMode
@@ -875,8 +839,7 @@ public class StructureToolContextMenuScreen extends Screen {
 
         NetworkHandler.sendToServer(new StructureToolContextActionPacket(
                 hovered.action(),
-                aroundOrigin
-        ));
+                aroundOrigin));
 
         return true;
     }
@@ -887,8 +850,7 @@ public class StructureToolContextMenuScreen extends Screen {
         if (mc.player != null) {
             mc.player.displayClientMessage(
                     Component.translatable(message.getTranslationKey()),
-                    true
-            );
+                    true);
         }
     }
 
@@ -920,8 +882,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     this.font,
                     tooltipFor(hovered),
                     mouseX,
-                    mouseY
-            );
+                    mouseY);
         }
     }
 
@@ -939,8 +900,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 title,
                 centerX,
                 y,
-                TEXT_GREEN
-        );
+                TEXT_GREEN);
 
         if (!this.lastMultiTool && !toolName.getString().isBlank()) {
             graphics.drawCenteredString(
@@ -948,8 +908,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     toolName,
                     centerX,
                     y + 14,
-                    TEXT_NORMAL
-            );
+                    TEXT_NORMAL);
         }
 
         if (this.lastMultiToolMode == null) {
@@ -966,8 +925,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     Component.translatable(LangDefs.CONTEXT_MENU_HOLD_SHIFT_ORIGIN.getTranslationKey()),
                     centerX,
                     hintY,
-                    this.lastShiftDown ? TEXT_GREEN : TEXT_DIM
-            );
+                    this.lastShiftDown ? TEXT_GREEN : TEXT_DIM);
         }
     }
 
@@ -975,8 +933,7 @@ public class StructureToolContextMenuScreen extends Screen {
         this.toolModeDropdown.setToolStack(getHeldStack());
         this.toolModeDropdown.setPosition(
                 this.width / 2 - ToolModeDropdownWidget.WIDTH / 2,
-                this.topInfoY + TOOL_DROPDOWN_TOP_OFFSET
-        );
+                this.topInfoY + TOOL_DROPDOWN_TOP_OFFSET);
 
         return this.toolModeDropdown;
     }
@@ -1009,8 +966,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 panel.title(),
                 x + width / 2,
                 y + 7,
-                PANEL_TITLE
-        );
+                PANEL_TITLE);
     }
 
     private void renderPanelMessage(GuiGraphics graphics, ContextPanel panel) {
@@ -1031,8 +987,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     centerX - lineWidth / 2,
                     y,
                     TEXT_DIM,
-                    false
-            );
+                    false);
 
             y += 10;
         }
@@ -1048,8 +1003,8 @@ public class StructureToolContextMenuScreen extends Screen {
 
         int border = button.enabled()
                 ? button.highlighted()
-                  ? BUTTON_BORDER_SELECTED
-                  : hovered ? BUTTON_BORDER_HOVER : BUTTON_BORDER
+                        ? BUTTON_BORDER_SELECTED
+                        : hovered ? BUTTON_BORDER_HOVER : BUTTON_BORDER
                 : BUTTON_BORDER_DISABLED;
 
         graphics.fill(x, y, x + BUTTON_SIZE, y + BUTTON_SIZE, bg);
@@ -1071,8 +1026,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 iconSize,
                 iconSize,
                 iconSize,
-                iconSize
-        );
+                iconSize);
 
         if (!button.enabled()) {
             graphics.fill(x, y, x + BUTTON_SIZE, y + BUTTON_SIZE, 0x77000000);
@@ -1091,10 +1045,8 @@ public class StructureToolContextMenuScreen extends Screen {
 
         if (isTransformAction(button.action()) && !this.lastHoldingReplacer) {
             lines.add(Component.translatable(
-                    LangDefs.CONTEXT_MENU_HOLD_SHIFT_ORIGIN.getTranslationKey()
-            ).withStyle(
-                    isShiftPhysicallyDown() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY
-            ));
+                    LangDefs.CONTEXT_MENU_HOLD_SHIFT_ORIGIN.getTranslationKey()).withStyle(
+                            isShiftPhysicallyDown() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
         }
 
         if (button.action() == StructureToolContextActionPacket.TOGGLE_SELECTION_MODE) {
@@ -1112,8 +1064,7 @@ public class StructureToolContextMenuScreen extends Screen {
 
             addWrappedTooltipLines(
                     lines,
-                    Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY)
-            );
+                    Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY));
         }
 
         if (button.action() == StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION) {
@@ -1134,9 +1085,7 @@ public class StructureToolContextMenuScreen extends Screen {
                     Component.translatable(desc.getTranslationKey()).withStyle(
                             this.lastPiperTargetIsDirectionalPipe
                                     ? ChatFormatting.GRAY
-                                    : ChatFormatting.RED
-                    )
-            );
+                                    : ChatFormatting.RED));
         }
 
         if (button.action() == StructureToolContextActionPacket.TOGGLE_ANCHOR) {
@@ -1151,14 +1100,16 @@ public class StructureToolContextMenuScreen extends Screen {
             LangDefs desc = this.lastReplacerConnectivity == ConnectivityMode.DIAGONAL
                     ? LangDefs.REPLACER_CONNECTIVITY_DIAGONAL_DESC
                     : LangDefs.REPLACER_CONNECTIVITY_DIRECT_DESC;
-            addWrappedTooltipLines(lines, Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY));
+            addWrappedTooltipLines(lines,
+                    Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY));
         }
 
         if (button.action() == StructureToolContextActionPacket.REPLACER_TOGGLE_BLOCKSTATE) {
             LangDefs desc = this.lastReplacerBlockstateMode
                     ? LangDefs.REPLACER_BLOCKSTATE_ON_DESC
                     : LangDefs.REPLACER_BLOCKSTATE_OFF_DESC;
-            addWrappedTooltipLines(lines, Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY));
+            addWrappedTooltipLines(lines,
+                    Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY));
         }
 
         if (button.action() == StructureToolContextActionPacket.CYCLE_NESTED_ITEMS
@@ -1167,17 +1118,13 @@ public class StructureToolContextMenuScreen extends Screen {
 
             Component modeTooltip = switch (mode) {
                 case NONE -> Component.translatable(
-                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_NONE_TOOLTIP.getTranslationKey()
-                );
+                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_NONE_TOOLTIP.getTranslationKey());
                 case PLAYER -> Component.translatable(
-                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_PLAYER_TOOLTIP.getTranslationKey()
-                );
+                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_PLAYER_TOOLTIP.getTranslationKey());
                 case CONNECTED -> Component.translatable(
-                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_CONNECTED_TOOLTIP.getTranslationKey()
-                );
+                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_CONNECTED_TOOLTIP.getTranslationKey());
                 case BOTH -> Component.translatable(
-                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_BOTH_TOOLTIP.getTranslationKey()
-                );
+                        LangDefs.PORTABLE_SPATIAL_CLONER_NESTED_MODE_BOTH_TOOLTIP.getTranslationKey());
             };
 
             addWrappedTooltipLines(lines, modeTooltip.copy().withStyle(ChatFormatting.GRAY));
@@ -1186,8 +1133,7 @@ public class StructureToolContextMenuScreen extends Screen {
         if (!button.enabled()
                 && button.action() != StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION) {
             lines.add(Component.translatable(
-                    LangDefs.CONTEXT_MENU_STRUCTURE_REQUIRED.getTranslationKey()
-            ).withStyle(ChatFormatting.RED));
+                    LangDefs.CONTEXT_MENU_STRUCTURE_REQUIRED.getTranslationKey()).withStyle(ChatFormatting.RED));
         }
 
         return lines;
@@ -1313,7 +1259,7 @@ public class StructureToolContextMenuScreen extends Screen {
         return (action >= StructureToolContextActionPacket.MOVE_SELECTION_RED_WEST
                 && action <= StructureToolContextActionPacket.MOVE_SELECTION_RED_DOWN)
                 || (action >= StructureToolContextActionPacket.MOVE_SELECTION_GREEN_WEST
-                && action <= StructureToolContextActionPacket.MOVE_SELECTION_GREEN_DOWN);
+                        && action <= StructureToolContextActionPacket.MOVE_SELECTION_GREEN_DOWN);
     }
 
     private List<FormattedCharSequence> wrapComponent(Component component, int maxWidth) {
@@ -1369,8 +1315,7 @@ public class StructureToolContextMenuScreen extends Screen {
             int width,
             int height,
             Component title,
-            Component message
-    ) {
+            Component message) {
     }
 
     private record ContextButton(
@@ -1381,8 +1326,7 @@ public class StructureToolContextMenuScreen extends Screen {
             int x,
             int y,
             boolean enabled,
-            boolean highlighted
-    ) {
+            boolean highlighted) {
     }
 
     private record OptionButtonSpec(
@@ -1390,7 +1334,6 @@ public class StructureToolContextMenuScreen extends Screen {
             LangDefs label,
             Icon icon,
             boolean enabled,
-            boolean highlighted
-    ) {
+            boolean highlighted) {
     }
 }

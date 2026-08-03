@@ -1,5 +1,13 @@
 package net.oktawia.spatialtoolscmp.util;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.util.*;
+import java.util.function.UnaryOperator;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -13,17 +21,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.jetbrains.annotations.Nullable;
-
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.*;
-import java.util.function.UnaryOperator;
 
 public final class TemplateUtil {
 
-    public record BlockInfo(BlockPos pos, BlockState state, @Nullable CompoundTag blockEntityTag) {}
+    public record BlockInfo(BlockPos pos, BlockState state, @Nullable CompoundTag blockEntityTag) {
+    }
 
     private static final String AE2_CABLE_BUS_ID = "ae2:cable_bus";
 
@@ -60,8 +62,7 @@ public final class TemplateUtil {
     private static final String KEY_UPWARDS_FACING = "upwards_facing";
 
     private static final Set<String> PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES = Set.of(
-            KEY_UPWARDS_FACING
-    );
+            KEY_UPWARDS_FACING);
 
     public static final String TEMPLATE_OFFSET_X_KEY = "crazy_template_offset_x";
     public static final String TEMPLATE_OFFSET_Y_KEY = "crazy_template_offset_y";
@@ -70,8 +71,7 @@ public final class TemplateUtil {
     public static final String ENERGY_ORIGIN_KEY = "energyOrigin";
 
     /*
-     * Kopia CodeChickenLib Rotation.sideRotMap / rotSideMap.
-     * Dzięki temu TemplateUtil nie musi importować CCL.
+     * Kopia CodeChickenLib Rotation.sideRotMap / rotSideMap. Dzięki temu TemplateUtil nie musi importować CCL.
      */
     private static final int[] CCL_SIDE_ROT_MAP = {
             3, 4, 2, 5,
@@ -83,12 +83,12 @@ public final class TemplateUtil {
     };
 
     private static final int[] CCL_ROT_SIDE_MAP = {
-            -1, -1,  2,  0,  1,  3,
-            -1, -1,  2,  0,  3,  1,
-            2,  0, -1, -1,  3,  1,
-            2,  0, -1, -1,  1,  3,
-            2,  0,  1,  3, -1, -1,
-            2,  0,  3,  1, -1, -1
+            -1, -1, 2, 0, 1, 3,
+            -1, -1, 2, 0, 3, 1,
+            2, 0, -1, -1, 3, 1,
+            2, 0, -1, -1, 1, 3,
+            2, 0, 1, 3, -1, -1,
+            2, 0, 3, 1, -1, -1
     };
 
     private TemplateUtil() {
@@ -120,8 +120,7 @@ public final class TemplateUtil {
         return new BlockPos(
                 clampOffset(tag.getInt(TEMPLATE_OFFSET_X_KEY)),
                 clampOffset(tag.getInt(TEMPLATE_OFFSET_Y_KEY)),
-                clampOffset(tag.getInt(TEMPLATE_OFFSET_Z_KEY))
-        );
+                clampOffset(tag.getInt(TEMPLATE_OFFSET_Z_KEY)));
     }
 
     public static void setTemplateOffset(CompoundTag tag, BlockPos offset) {
@@ -141,8 +140,7 @@ public final class TemplateUtil {
         setTemplateOffset(result, new BlockPos(
                 current.getX() + dx,
                 current.getY() + dy,
-                current.getZ() + dz
-        ));
+                current.getZ() + dz));
 
         return result;
     }
@@ -216,8 +214,7 @@ public final class TemplateUtil {
             BlockPos pos = new BlockPos(
                     posTag.getInt(0),
                     posTag.getInt(1),
-                    posTag.getInt(2)
-            ).offset(templateOffset);
+                    posTag.getInt(2)).offset(templateOffset);
 
             CompoundTag blockEntityTag = blockTag.contains("nbt", Tag.TAG_COMPOUND)
                     ? blockTag.getCompound("nbt").copy()
@@ -281,8 +278,7 @@ public final class TemplateUtil {
                 tag,
                 horizontalFlipPositionTransform(mirrorAxis),
                 state -> flipHorizontalState(state, sourceFacing),
-                cableBusTransform
-        );
+                cableBusTransform);
     }
 
     public static CompoundTag applyFlipEastWestToTag(CompoundTag tag) {
@@ -309,22 +305,18 @@ public final class TemplateUtil {
 
     private static Transform horizontalFlipPositionTransform(Direction.Axis mirrorAxis) {
         if (mirrorAxis == Direction.Axis.Z) {
-            return (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) ->
-                    new int[]{x, y, minZ + maxZ - z};
+            return (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) -> new int[] { x, y, minZ + maxZ - z };
         }
 
-        return (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) ->
-                new int[]{minX + maxX - x, y, z};
+        return (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) -> new int[] { minX + maxX - x, y, z };
     }
 
     public static CompoundTag applyFlipVToTag(CompoundTag tag) {
         return applyTransform(
                 tag,
-                (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) ->
-                        new int[]{x, minY + maxY - y, z},
+                (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) -> new int[] { x, minY + maxY - y, z },
                 TemplateUtil::flipVerticalState,
-                CableBusTransform.FLIP_V
-        );
+                CableBusTransform.FLIP_V);
     }
 
     public static CompoundTag applyRotateCWToTag(CompoundTag tag, int times) {
@@ -350,26 +342,25 @@ public final class TemplateUtil {
         return applyTransform(
                 tag,
                 (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) -> switch (normalizedTurns) {
-                    case 1 -> new int[]{
+                    case 1 -> new int[] {
                             minX + (maxZ - z),
                             y,
                             minZ + (x - minX)
                     };
-                    case 2 -> new int[]{
+                    case 2 -> new int[] {
                             minX + (maxX - x),
                             y,
                             minZ + (maxZ - z)
                     };
-                    case 3 -> new int[]{
+                    case 3 -> new int[] {
                             minX + (z - minZ),
                             y,
                             minZ + (maxX - x)
                     };
-                    default -> new int[]{x, y, z};
+                    default -> new int[] { x, y, z };
                 },
                 state -> rotateState(state, rotation),
-                cableBusTransform
-        );
+                cableBusTransform);
     }
 
     public static CompoundTag applyFlipHAroundOriginToTag(CompoundTag tag, Direction sourceFacing) {
@@ -400,18 +391,15 @@ public final class TemplateUtil {
             case 1 -> new BlockPos(
                     clampOffset(-offset.getZ()),
                     clampOffset(offset.getY()),
-                    clampOffset(offset.getX())
-            );
+                    clampOffset(offset.getX()));
             case 2 -> new BlockPos(
                     clampOffset(-offset.getX()),
                     clampOffset(offset.getY()),
-                    clampOffset(-offset.getZ())
-            );
+                    clampOffset(-offset.getZ()));
             case 3 -> new BlockPos(
                     clampOffset(offset.getZ()),
                     clampOffset(offset.getY()),
-                    clampOffset(-offset.getX())
-            );
+                    clampOffset(-offset.getX()));
             default -> offset;
         };
     }
@@ -423,23 +411,20 @@ public final class TemplateUtil {
             return new BlockPos(
                     clampOffset(-offset.getX()),
                     clampOffset(offset.getY()),
-                    clampOffset(offset.getZ())
-            );
+                    clampOffset(offset.getZ()));
         }
 
         return new BlockPos(
                 clampOffset(offset.getX()),
                 clampOffset(offset.getY()),
-                clampOffset(-offset.getZ())
-        );
+                clampOffset(-offset.getZ()));
     }
 
     private static BlockPos flipVerticalOffset(BlockPos offset) {
         return new BlockPos(
                 clampOffset(offset.getX()),
                 clampOffset(-offset.getY()),
-                clampOffset(offset.getZ())
-        );
+                clampOffset(offset.getZ()));
     }
 
     @FunctionalInterface
@@ -473,8 +458,7 @@ public final class TemplateUtil {
             CompoundTag tag,
             Transform positionTransform,
             UnaryOperator<BlockState> stateTransform,
-            CableBusTransform cableBusTransform
-    ) {
+            CableBusTransform cableBusTransform) {
         return applyTransformInternal(tag, positionTransform, stateTransform, cableBusTransform);
     }
 
@@ -482,8 +466,7 @@ public final class TemplateUtil {
             CompoundTag tag,
             Transform positionTransform,
             UnaryOperator<BlockState> stateTransform,
-            CableBusTransform cableBusTransform
-    ) {
+            CableBusTransform cableBusTransform) {
         ListTag blocksTag = tag.getList("blocks", Tag.TAG_COMPOUND);
         ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
 
@@ -580,8 +563,7 @@ public final class TemplateUtil {
                         minY,
                         maxY,
                         minZ,
-                        maxZ
-                );
+                        maxZ);
 
                 tx[i] = transformed[0];
                 ty[i] = transformed[1];
@@ -600,8 +582,7 @@ public final class TemplateUtil {
             if (blockTag.contains("nbt", Tag.TAG_COMPOUND)) {
                 CompoundTag transformedBlockEntityTag = transformBlockEntityTag(
                         blockTag.getCompound("nbt"),
-                        cableBusTransform
-                );
+                        cableBusTransform);
                 blockTag.put("nbt", transformedBlockEntityTag);
             }
         }
@@ -662,21 +643,18 @@ public final class TemplateUtil {
                 minY,
                 maxY,
                 minZ,
-                maxZ
-        );
+                maxZ);
 
         BlockPos newOrigin = new BlockPos(
                 transformedOrigin[0] - newMinX,
                 transformedOrigin[1] - newMinY,
-                transformedOrigin[2] - newMinZ
-        );
+                transformedOrigin[2] - newMinZ);
 
         setEnergyOrigin(result, newOrigin);
         setTemplateOffset(result, new BlockPos(
                 clampOffset(oldOffset.getX() + newOrigin.getX() - oldOrigin.getX()),
                 clampOffset(oldOffset.getY() + newOrigin.getY() - oldOrigin.getY()),
-                clampOffset(oldOffset.getZ() + newOrigin.getZ() - oldOrigin.getZ())
-        ));
+                clampOffset(oldOffset.getZ() + newOrigin.getZ() - oldOrigin.getZ())));
 
         transformCloneMetadata(
                 result,
@@ -685,8 +663,7 @@ public final class TemplateUtil {
                 minY, maxY,
                 minZ, maxZ,
                 newMinX, newMinY, newMinZ,
-                cableBusTransform
-        );
+                cableBusTransform);
 
         return result;
     }
@@ -703,8 +680,7 @@ public final class TemplateUtil {
             int newMinX,
             int newMinY,
             int newMinZ,
-            CableBusTransform cableBusTransform
-    ) {
+            CableBusTransform cableBusTransform) {
         if (!tag.contains(StructureToolKeys.CLONE_METADATA_KEY, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -736,8 +712,7 @@ public final class TemplateUtil {
                         minY,
                         maxY,
                         minZ,
-                        maxZ
-                );
+                        maxZ);
 
                 CompoundTag newPos = new CompoundTag();
                 newPos.putInt("x", transformed[0] - newMinX);
@@ -751,9 +726,7 @@ public final class TemplateUtil {
                         StructureToolKeys.CLONE_KEY_PARTS,
                         transformDirectionalMetadataTag(
                                 blockEntry.getCompound(StructureToolKeys.CLONE_KEY_PARTS),
-                                cableBusTransform
-                        )
-                );
+                                cableBusTransform));
             }
 
             if (blockEntry.contains(CB_MULTIPART_META_KEY, Tag.TAG_COMPOUND)) {
@@ -761,9 +734,7 @@ public final class TemplateUtil {
                         CB_MULTIPART_META_KEY,
                         transformCbMultipartCloneMetadata(
                                 blockEntry.getCompound(CB_MULTIPART_META_KEY),
-                                cableBusTransform
-                        )
-                );
+                                cableBusTransform));
             }
 
             if (blockEntry.contains(FASTSTONE_META_KEY, Tag.TAG_COMPOUND)) {
@@ -771,9 +742,7 @@ public final class TemplateUtil {
                         FASTSTONE_META_KEY,
                         transformFaststoneCloneMetadata(
                                 blockEntry.getCompound(FASTSTONE_META_KEY),
-                                cableBusTransform
-                        )
-                );
+                                cableBusTransform));
             }
 
             if (blockEntry.contains(StructureToolKeys.CLONE_KEY_LASERIO, Tag.TAG_COMPOUND)) {
@@ -789,8 +758,7 @@ public final class TemplateUtil {
                 if (gregTag.contains(KEY_COVER, Tag.TAG_COMPOUND)) {
                     gregTag.put(
                             KEY_COVER,
-                            transformGregPipeCoverTag(gregTag.getCompound(KEY_COVER), cableBusTransform)
-                    );
+                            transformGregPipeCoverTag(gregTag.getCompound(KEY_COVER), cableBusTransform));
                 }
 
                 if (gregTag.contains(StructureToolKeys.CLONE_KEY_GREG_PIPE, Tag.TAG_COMPOUND)) {
@@ -799,15 +767,13 @@ public final class TemplateUtil {
                     if (pipeTag.contains("connections", Tag.TAG_INT)) {
                         pipeTag.putInt(
                                 "connections",
-                                remapGregConnectionMask(pipeTag.getInt("connections"), cableBusTransform)
-                        );
+                                remapGregConnectionMask(pipeTag.getInt("connections"), cableBusTransform));
                     }
 
                     if (pipeTag.contains("blockedConnections", Tag.TAG_INT)) {
                         pipeTag.putInt(
                                 "blockedConnections",
-                                remapGregConnectionMask(pipeTag.getInt("blockedConnections"), cableBusTransform)
-                        );
+                                remapGregConnectionMask(pipeTag.getInt("blockedConnections"), cableBusTransform));
                     }
 
                     gregTag.put(StructureToolKeys.CLONE_KEY_GREG_PIPE, pipeTag);
@@ -821,9 +787,7 @@ public final class TemplateUtil {
                         StructureToolKeys.CLONE_KEY_MEKANISM,
                         transformMekanismSideKeys(
                                 blockEntry.getCompound(StructureToolKeys.CLONE_KEY_MEKANISM),
-                                cableBusTransform
-                        )
-                );
+                                cableBusTransform));
             }
 
             if (blockEntry.contains(StructureToolKeys.CLONE_KEY_CHISELED, Tag.TAG_COMPOUND)) {
@@ -831,9 +795,7 @@ public final class TemplateUtil {
                         StructureToolKeys.CLONE_KEY_CHISELED,
                         appendChiseledOp(
                                 blockEntry.getCompound(StructureToolKeys.CLONE_KEY_CHISELED),
-                                cableBusTransform
-                        )
-                );
+                                cableBusTransform));
             }
 
             newBlocks.add(blockEntry);
@@ -847,13 +809,13 @@ public final class TemplateUtil {
         CompoundTag result = chiseledData.copy();
 
         int opCode = switch (transform) {
-            case ROTATE_CW     -> StructureToolKeys.CHISELED_OP_ROTATE_CW;
-            case ROTATE_180    -> StructureToolKeys.CHISELED_OP_ROTATE_180;
-            case ROTATE_CCW    -> StructureToolKeys.CHISELED_OP_ROTATE_CCW;
+            case ROTATE_CW -> StructureToolKeys.CHISELED_OP_ROTATE_CW;
+            case ROTATE_180 -> StructureToolKeys.CHISELED_OP_ROTATE_180;
+            case ROTATE_CCW -> StructureToolKeys.CHISELED_OP_ROTATE_CCW;
             case FLIP_H_AXIS_Z -> StructureToolKeys.CHISELED_OP_MIRROR_Z;
             case FLIP_H_AXIS_X -> StructureToolKeys.CHISELED_OP_MIRROR_X;
-            case FLIP_V        -> StructureToolKeys.CHISELED_OP_MIRROR_Y;
-            case NONE          -> 0;
+            case FLIP_V -> StructureToolKeys.CHISELED_OP_MIRROR_Y;
+            case NONE -> 0;
         };
 
         if (opCode == 0) {
@@ -995,8 +957,7 @@ public final class TemplateUtil {
         if (side != null) {
             result.putString(
                     StructureToolKeys.INTDYN_KEY_PART_SIDE,
-                    directionName(mapCableBusSide(side, transform))
-            );
+                    directionName(mapCableBusSide(side, transform)));
         }
 
         if (result.contains(StructureToolKeys.INTDYN_KEY_TARGET_SIDE, Tag.TAG_ANY_NUMERIC)) {
@@ -1005,16 +966,14 @@ public final class TemplateUtil {
             if (targetSide != null) {
                 result.putInt(
                         StructureToolKeys.INTDYN_KEY_TARGET_SIDE,
-                        mapCableBusSide(targetSide, transform).ordinal()
-                );
+                        mapCableBusSide(targetSide, transform).ordinal());
             }
         }
 
         Vec3i offset = new Vec3i(
                 result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_X),
                 result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_Y),
-                result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_Z)
-        );
+                result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_Z));
 
         if (!offset.equals(Vec3i.ZERO)) {
             Vec3i mapped = mapCableBusOffset(offset, transform);
@@ -1035,8 +994,7 @@ public final class TemplateUtil {
         return new Vec3i(
                 x.getX() + y.getX() + z.getX(),
                 x.getY() + y.getY() + z.getY(),
-                x.getZ() + y.getZ() + z.getZ()
-        );
+                x.getZ() + y.getZ() + z.getZ());
     }
 
     @Nullable
@@ -1144,13 +1102,13 @@ public final class TemplateUtil {
 
     private static int[] transformRelativeOffset(int dx, int dy, int dz, CableBusTransform transform) {
         return switch (transform) {
-            case ROTATE_CW     -> new int[]{ -dz, dy,  dx };
-            case ROTATE_180    -> new int[]{ -dx, dy, -dz };
-            case ROTATE_CCW    -> new int[]{  dz, dy, -dx };
-            case FLIP_H_AXIS_Z -> new int[]{ -dx, dy,  dz };
-            case FLIP_H_AXIS_X -> new int[]{  dx, dy, -dz };
-            case FLIP_V        -> new int[]{  dx,-dy,  dz };
-            case NONE          -> new int[]{  dx, dy,  dz };
+            case ROTATE_CW -> new int[] { -dz, dy, dx };
+            case ROTATE_180 -> new int[] { -dx, dy, -dz };
+            case ROTATE_CCW -> new int[] { dz, dy, -dx };
+            case FLIP_H_AXIS_Z -> new int[] { -dx, dy, dz };
+            case FLIP_H_AXIS_X -> new int[] { dx, dy, -dz };
+            case FLIP_V -> new int[] { dx, -dy, dz };
+            case NONE -> new int[] { dx, dy, dz };
         };
     }
 
@@ -1165,8 +1123,7 @@ public final class TemplateUtil {
     private static void remapLaserIOInventories(
             CompoundTag source,
             CompoundTag target,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         Direction[] dirs = Direction.values();
 
         for (int i = 0; i < dirs.length; i++) {
@@ -1224,12 +1181,12 @@ public final class TemplateUtil {
 
     private static int[] collapsibleVertexPermutation(Direction oldFace, CableBusTransform transform) {
         return switch (transform) {
-            case FLIP_V -> new int[]{1, 0, 3, 2};
-            case FLIP_H_AXIS_Z -> new int[]{3, 2, 1, 0};
+            case FLIP_V -> new int[] { 1, 0, 3, 2 };
+            case FLIP_H_AXIS_Z -> new int[] { 3, 2, 1, 0 };
             case FLIP_H_AXIS_X -> oldFace.getAxis() == Direction.Axis.Y
-                    ? new int[]{1, 0, 3, 2}
-                    : new int[]{3, 2, 1, 0};
-            default -> new int[]{0, 1, 2, 3};
+                    ? new int[] { 1, 0, 3, 2 }
+                    : new int[] { 3, 2, 1, 0 };
+            default -> new int[] { 0, 1, 2, 3 };
         };
     }
 
@@ -1258,8 +1215,7 @@ public final class TemplateUtil {
 
     private static CompoundTag transformCbMultipartBlockEntityTag(
             CompoundTag tag,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         CompoundTag result = tag.copy();
 
         if (!result.contains(NBT_CB_PARTS, Tag.TAG_LIST)) {
@@ -1270,17 +1226,14 @@ public final class TemplateUtil {
                 NBT_CB_PARTS,
                 transformCbMultipartParts(
                         result.getList(NBT_CB_PARTS, Tag.TAG_COMPOUND),
-                        transform
-                )
-        );
+                        transform));
 
         return result;
     }
 
     private static CompoundTag transformCbMultipartCloneMetadata(
             CompoundTag metadata,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         CompoundTag result = metadata.copy();
 
         if (!result.contains(CB_MULTIPART_META_PARTS_KEY, Tag.TAG_LIST)) {
@@ -1291,17 +1244,14 @@ public final class TemplateUtil {
                 CB_MULTIPART_META_PARTS_KEY,
                 transformCbMultipartParts(
                         result.getList(CB_MULTIPART_META_PARTS_KEY, Tag.TAG_COMPOUND),
-                        transform
-                )
-        );
+                        transform));
 
         return result;
     }
 
     private static ListTag transformCbMultipartParts(
             ListTag parts,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         ListTag out = new ListTag();
 
         for (int i = 0; i < parts.size(); i++) {
@@ -1313,8 +1263,7 @@ public final class TemplateUtil {
 
     private static CompoundTag transformCbMultipartPartTag(
             CompoundTag partTag,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         CompoundTag result = partTag.copy();
 
         if (transform == CableBusTransform.NONE) {
@@ -1331,8 +1280,7 @@ public final class TemplateUtil {
                     result,
                     NBT_SIDE,
                     partTag.get(NBT_SIDE),
-                    newSide.ordinal()
-            );
+                    newSide.ordinal());
         }
 
         if (isProjectRedTransmissionPart(partTag)
@@ -1345,13 +1293,11 @@ public final class TemplateUtil {
                 newConnMap = remapProjectRedFaceConnMap(
                         oldConnMap,
                         oldSide,
-                        transform
-                );
+                        transform);
             } else {
                 newConnMap = remapProjectRedCenterConnMap(
                         oldConnMap,
-                        transform
-                );
+                        transform);
             }
 
             result.putInt(NBT_CONN_MAP, newConnMap);
@@ -1371,20 +1317,14 @@ public final class TemplateUtil {
     private static int remapProjectRedFaceConnMap(
             int connMap,
             Direction oldSide,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         Direction newSide = mapCableBusSide(oldSide, transform);
 
         int result = connMap;
 
         /*
-         * ProjectRed face connMap:
-         * bits 0..3      corner
-         * bits 4..7      straight
-         * bits 8..11     internal
-         * bits 12..15    open
-         * bit 16         center
-         * bits 20..23    render corner
+         * ProjectRed face connMap: bits 0..3 corner bits 4..7 straight bits 8..11 internal bits 12..15 open bit 16
+         * center bits 20..23 render corner
          */
         result &= ~0x0000000F;
         result &= ~0x000000F0;
@@ -1428,28 +1368,22 @@ public final class TemplateUtil {
 
     private static int remapProjectRedCenterConnMap(
             int connMap,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         /*
-         * ProjectRed center connMap:
-         * bits 0..5    external straight
-         * bits 6..11   internal
-         * bits 12..17  open
+         * ProjectRed center connMap: bits 0..5 external straight bits 6..11 internal bits 12..17 open
          */
         return remapSixDirectionBitGroups(
                 connMap,
                 transform,
                 0,
                 6,
-                12
-        );
+                12);
     }
 
     private static int remapSixDirectionBitGroups(
             int value,
             CableBusTransform transform,
-            int... groupOffsets
-    ) {
+            int... groupOffsets) {
         int result = value;
         int clearMask = 0;
 
@@ -1511,8 +1445,7 @@ public final class TemplateUtil {
             CompoundTag target,
             String key,
             @Nullable Tag originalTag,
-            int value
-    ) {
+            int value) {
         if (originalTag == null) {
             target.putInt(key, value);
             return;
@@ -1546,8 +1479,7 @@ public final class TemplateUtil {
 
     private static CompoundTag transformFaststoneBlockEntityTag(
             CompoundTag tag,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         CompoundTag result = tag.copy();
 
         remapFaststoneDirectionalCompound(result, KEY_PARTS, transform);
@@ -1563,8 +1495,7 @@ public final class TemplateUtil {
     private static void remapFaststoneDirectionalCompound(
             CompoundTag tag,
             String key,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         if (!tag.contains(key, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -1573,15 +1504,12 @@ public final class TemplateUtil {
                 key,
                 transformDirectionalMetadataTag(
                         tag.getCompound(key),
-                        transform
-                )
-        );
+                        transform));
     }
 
     private static CompoundTag transformFaststoneCloneMetadata(
             CompoundTag metadata,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         CompoundTag result = metadata.copy();
 
         if (result.contains(FASTSTONE_FULL_BE_TAG_KEY, Tag.TAG_COMPOUND)) {
@@ -1589,9 +1517,7 @@ public final class TemplateUtil {
                     FASTSTONE_FULL_BE_TAG_KEY,
                     transformFaststoneBlockEntityTag(
                             result.getCompound(FASTSTONE_FULL_BE_TAG_KEY),
-                            transform
-                    )
-            );
+                            transform));
         }
 
         return result;
@@ -1605,7 +1531,8 @@ public final class TemplateUtil {
         }
 
         if (result.contains("blockedConnections", Tag.TAG_INT)) {
-            result.putInt("blockedConnections", remapGregConnectionMask(result.getInt("blockedConnections"), transform));
+            result.putInt("blockedConnections",
+                    remapGregConnectionMask(result.getInt("blockedConnections"), transform));
         }
 
         if (result.contains(KEY_COVER, Tag.TAG_COMPOUND)) {
@@ -1876,8 +1803,7 @@ public final class TemplateUtil {
             CompoundTag target,
             CableBusTransform transform,
             Direction fromSide,
-            @Nullable Tag sideTag
-    ) {
+            @Nullable Tag sideTag) {
         if (sideTag == null) {
             return;
         }
@@ -1954,8 +1880,7 @@ public final class TemplateUtil {
             for (Map.Entry<Property<?>, Comparable<?>> entry : state.getValues().entrySet()) {
                 properties.putString(
                         entry.getKey().getName(),
-                        getPropertyValueName(entry.getKey(), entry.getValue())
-                );
+                        getPropertyValueName(entry.getKey(), entry.getValue()));
             }
 
             tag.put("Properties", properties);
@@ -2008,14 +1933,12 @@ public final class TemplateUtil {
         mirrored = preserveNamedProperties(
                 state,
                 mirrored,
-                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES
-        );
+                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES);
 
         BlockState result = remapUnchangedHorizontalDirectionalProperties(
                 state,
                 mirrored,
-                sourceFacing.getAxis()
-        );
+                sourceFacing.getAxis());
 
         CableBusTransform transform = sourceFacing.getAxis() == Direction.Axis.Z
                 ? CableBusTransform.FLIP_H_AXIS_Z
@@ -2031,8 +1954,7 @@ public final class TemplateUtil {
     private static BlockState remapUnchangedHorizontalDirectionalProperties(
             BlockState original,
             BlockState transformed,
-            Direction.Axis sourceAxis
-    ) {
+            Direction.Axis sourceAxis) {
         if (original.getBlock() != transformed.getBlock()) {
             return transformed;
         }
@@ -2106,22 +2028,19 @@ public final class TemplateUtil {
                 "top", "bottom",
                 "bottom", "top",
                 "upper", "lower",
-                "lower", "upper"
-        ));
+                "lower", "upper"));
 
         result = remapPropertyValues(result, "face", Map.of(
                 "floor", "ceiling",
                 "ceiling", "floor",
                 "up", "down",
-                "down", "up"
-        ));
+                "down", "up"));
 
         result = remapPropertyValues(result, KEY_UPWARDS_FACING, Map.of(
                 "north", "south",
                 "south", "north",
                 "east", "west",
-                "west", "east"
-        ));
+                "west", "east"));
 
         result = flipVerticalDirectionProperties(result);
         result = remapFramedProperties(result, FramedPropertyTransform.FLIP_V);
@@ -2140,8 +2059,7 @@ public final class TemplateUtil {
         rotated = preserveNamedProperties(
                 state,
                 rotated,
-                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES
-        );
+                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES);
 
         if (rotation == Rotation.NONE) {
             return rotated;
@@ -2175,8 +2093,7 @@ public final class TemplateUtil {
     private static BlockState rotateUnchangedDirectionalProperties(
             BlockState original,
             BlockState transformed,
-            Rotation rotation
-    ) {
+            Rotation rotation) {
         if (rotation == Rotation.NONE || original.getBlock() != transformed.getBlock()) {
             return transformed;
         }
@@ -2230,8 +2147,7 @@ public final class TemplateUtil {
     private static BlockState preserveNamedProperties(
             BlockState original,
             BlockState transformed,
-            Set<String> propertyNames
-    ) {
+            Set<String> propertyNames) {
         if (original.getBlock() != transformed.getBlock()) {
             return transformed;
         }
@@ -2296,8 +2212,7 @@ public final class TemplateUtil {
 
     private static BlockState remapDirectionalBooleanProperties(
             BlockState state,
-            CableBusTransform transform
-    ) {
+            CableBusTransform transform) {
         if (transform == CableBusTransform.NONE) {
             return state;
         }
@@ -2356,8 +2271,7 @@ public final class TemplateUtil {
 
     private static boolean hasDirectionalBooleanPropertyChange(
             BlockState before,
-            BlockState after
-    ) {
+            BlockState after) {
         for (Direction direction : Direction.values()) {
             Property<?> property = before.getBlock()
                     .getStateDefinition()
@@ -2513,17 +2427,17 @@ public final class TemplateUtil {
         return key != null && "framedblocks".equals(key.getNamespace());
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static BlockState setUnchecked(BlockState state, Property<?> property, Comparable value) {
         return state.setValue((Property) property, value);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static Object getPropertyValue(BlockState state, Property<?> property) {
         return state.getValue((Property) property);
     }
 
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static String getPropertyValueName(Property<?> property, Object value) {
         return ((Property) property).getName((Comparable) value);
     }
@@ -2531,8 +2445,7 @@ public final class TemplateUtil {
     private static BlockState remapFramedTypePropertyIfUnchanged(
             BlockState original,
             BlockState transformed,
-            FramedTypeTransform transform
-    ) {
+            FramedTypeTransform transform) {
         if (!isFramedBlocksState(original)) {
             return transformed;
         }
@@ -2572,8 +2485,7 @@ public final class TemplateUtil {
     private static @Nullable Comparable findMappedFramedTypeValue(
             Property<?> property,
             String currentName,
-            FramedTypeTransform transform
-    ) {
+            FramedTypeTransform transform) {
         FramedTypeParts currentParts = parseFramedTypeParts(currentName);
         if (currentParts.directionalTokens().isEmpty()) {
             return null;
@@ -2673,7 +2585,6 @@ public final class TemplateUtil {
 
     private record FramedTypeParts(
             List<String> otherTokens,
-            List<String> directionalTokens
-    ) {
+            List<String> directionalTokens) {
     }
 }

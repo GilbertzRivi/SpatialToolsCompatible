@@ -1,6 +1,12 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.*;
+import java.util.function.Consumer;
+
 import com.direwolf20.laserio.common.blockentities.basebe.BaseLaserBE;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -22,16 +28,13 @@ import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
-import java.util.function.Consumer;
 
 public final class LaserIOStructureExtension implements StructureCloneExtension {
 
@@ -67,8 +70,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isLaserIOTag(rawBeTag)) {
             return false;
         }
@@ -111,8 +113,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isLaserIOTag(rawBeTag)) {
             return Optional.empty();
         }
@@ -170,8 +171,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         CompoundTag laserData = getLaserData(blockMetadata);
 
         if (laserData.isEmpty()) {
@@ -194,8 +194,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
                 level,
                 pos.immutable(),
                 laserData.copy(),
-                level.getGameTime() + NEXT_TICK_DELAY
-        ));
+                level.getGameTime() + NEXT_TICK_DELAY));
     }
 
     @Override
@@ -204,8 +203,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag tag = saveTag(be);
 
         if (!handlesRequirements(state, tag)) {
@@ -275,8 +273,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
     private static void applyConnectionsDeferred(
             ServerLevel level,
             BlockPos nodePos,
-            CompoundTag laserData
-    ) {
+            CompoundTag laserData) {
         BlockEntity be = level.getBlockEntity(nodePos);
 
         if (!(be instanceof BaseLaserBE thisNode)) {
@@ -317,8 +314,8 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             ServerLevel level,
             BlockPos nodePos,
             CompoundTag laserData,
-            long runAtGameTime
-    ) {}
+            long runAtGameTime) {
+    }
 
     // --- Survival-mode inventory filtering ---
 
@@ -326,8 +323,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             CompoundTag inv,
             Map<Item, Integer> reserved,
             List<ItemStack> costs,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         CompoundTag out = new CompoundTag();
         NbtUtil.copyIntIfPresent(inv, out, "Size");
 
@@ -351,8 +347,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
     private static boolean canAffordSlot(
             CompoundTag slot,
             Map<Item, Integer> probe,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         ItemStack stack = readItem(slot);
 
         if (stack.isEmpty()) {
@@ -376,8 +371,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
     private static boolean canAffordCardInv(
             CompoundTag cardTag,
             Map<Item, Integer> probe,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!cardTag.contains("inv", Tag.TAG_COMPOUND)) {
             return true;
         }
@@ -404,8 +398,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             CompoundTag slot,
             Map<Item, Integer> reserved,
             List<ItemStack> costs,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         ItemStack stack = readItem(slot);
 
         if (stack.isEmpty()) {
@@ -426,8 +419,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             CompoundTag cardTag,
             Map<Item, Integer> reserved,
             List<ItemStack> costs,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!cardTag.contains("inv", Tag.TAG_COMPOUND)) {
             return;
         }
@@ -598,8 +590,7 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
     private static void addBaseBlockRequirement(
             ServerLevel level,
             BlockPos pos,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
 

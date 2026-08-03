@@ -1,9 +1,14 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+
 import com.lowdragmc.lowdraglib.gui.widget.SceneWidget;
 import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -18,11 +23,8 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
-import net.oktawia.spatialtoolscmp.client.renderer.*;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
+import net.oktawia.spatialtoolscmp.client.renderer.*;
 
 public class PortableSpatialStorageSceneWidget extends SceneWidget {
 
@@ -33,7 +35,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
     protected final PortableSpatialStorageDummyWorld previewWorld;
 
     protected PreviewStructure previewStructure;
-    protected int[] sideMap = new int[] {0, 1, 2, 3, 4, 5};
+    protected int[] sideMap = new int[] { 0, 1, 2, 3, 4, 5 };
     protected String sideMapKey = Arrays.toString(sideMap);
 
     protected final Set<BlockPos> extensionBlocks = new HashSet<>();
@@ -50,7 +52,8 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
     protected int floorY;
     protected boolean hasFloor = false;
 
-    public PortableSpatialStorageSceneWidget(int x, int y, int width, int height, PortableSpatialStorageDummyWorld world) {
+    public PortableSpatialStorageSceneWidget(int x, int y, int width, int height,
+            PortableSpatialStorageDummyWorld world) {
         super(x, y, width, height, world);
         this.previewWorld = world;
         this.useCacheBuffer(false);
@@ -61,8 +64,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             int[] sideMap,
             Set<BlockPos> renderedSurface,
             BlockPos originMarkerPos,
-            BlockPos floorAnchorPos
-    ) {
+            BlockPos floorAnchorPos) {
         this.previewStructure = structure;
         this.sideMap = Arrays.copyOf(sideMap, sideMap.length);
         this.sideMapKey = Arrays.toString(sideMap);
@@ -109,10 +111,14 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             }
         }
 
-        this.floorMinX = Math.min(Math.min(minX, this.floorAnchorPos.getX()), this.originMarkerPos.getX()) - FLOOR_PADDING;
-        this.floorMaxX = Math.max(Math.max(maxX, this.floorAnchorPos.getX()), this.originMarkerPos.getX()) + FLOOR_PADDING;
-        this.floorMinZ = Math.min(Math.min(minZ, this.floorAnchorPos.getZ()), this.originMarkerPos.getZ()) - FLOOR_PADDING;
-        this.floorMaxZ = Math.max(Math.max(maxZ, this.floorAnchorPos.getZ()), this.originMarkerPos.getZ()) + FLOOR_PADDING;
+        this.floorMinX = Math.min(Math.min(minX, this.floorAnchorPos.getX()), this.originMarkerPos.getX())
+                - FLOOR_PADDING;
+        this.floorMaxX = Math.max(Math.max(maxX, this.floorAnchorPos.getX()), this.originMarkerPos.getX())
+                + FLOOR_PADDING;
+        this.floorMinZ = Math.min(Math.min(minZ, this.floorAnchorPos.getZ()), this.originMarkerPos.getZ())
+                - FLOOR_PADDING;
+        this.floorMaxZ = Math.max(Math.max(maxZ, this.floorAnchorPos.getZ()), this.originMarkerPos.getZ())
+                + FLOOR_PADDING;
 
         int floorBaseY = Math.min(minY, this.originMarkerPos.getY());
         this.floorY = floorBaseY - 1;
@@ -122,7 +128,8 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
         needCompileCache();
     }
 
-    protected boolean classifySpecialBlock(PreviewBlock block, BlockPos pos, BlockState state, Set<BlockPos> renderedSurface) {
+    protected boolean classifySpecialBlock(PreviewBlock block, BlockPos pos, BlockState state,
+            Set<BlockPos> renderedSurface) {
         return false;
     }
 
@@ -135,8 +142,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         return false;
     }
 
@@ -172,7 +178,8 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
         }
 
         BlockRenderDispatcher dispatcher = minecraft.getBlockRenderer();
-        PreviewBlockAndTintGetter localLevel = new PreviewBlockAndTintGetter(clientLevel, previewStructure, BlockPos.ZERO);
+        PreviewBlockAndTintGetter localLevel = new PreviewBlockAndTintGetter(clientLevel, previewStructure,
+                BlockPos.ZERO);
 
         PoseStack poseStack = new PoseStack();
 
@@ -194,8 +201,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                     sideMapKey,
                     clientLevel,
                     model,
-                    localLevel
-            );
+                    localLevel);
 
             poseStack.pushPose();
             poseStack.translate(localPos.getX(), localPos.getY(), localPos.getZ());
@@ -210,18 +216,17 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                         localPos,
                         poseStack,
                         bufferSource,
-                        seed
-                ) && !renderSpecialBlock(
-                        previewBlock,
-                        dispatcher,
-                        localLevel,
-                        state,
-                        model,
-                        localPos,
-                        poseStack,
-                        bufferSource,
-                        seed
-                )) {
+                        seed)
+                        && !renderSpecialBlock(
+                                previewBlock,
+                                dispatcher,
+                                localLevel,
+                                state,
+                                model,
+                                localPos,
+                                poseStack,
+                                bufferSource,
+                                seed)) {
                     renderStandardBlock(
                             dispatcher,
                             localLevel,
@@ -231,8 +236,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                             poseStack,
                             bufferSource,
                             seed,
-                            modelData
-                    );
+                            modelData);
                 }
             } catch (Throwable ignored) {
             }
@@ -250,8 +254,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         CompoundTag rawBeTag = previewBlock.blockEntityTag();
 
         for (BlockRenderExtension extension : BlockRenderExtensions.all()) {
@@ -269,8 +272,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                     localPos,
                     poseStack,
                     bufferSource,
-                    seed
-            )) {
+                    seed)) {
                 return true;
             }
         }
@@ -287,8 +289,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             PoseStack poseStack,
             MultiBufferSource bufferSource,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(seed), modelData)) {
             dispatcher.getModelRenderer().tesselateBlock(
                     localLevel,
@@ -302,8 +303,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     modelData,
-                    renderType
-            );
+                    renderType);
         }
     }
 
@@ -326,7 +326,8 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                 poseStack.translate(pos.getX(), pos.getY(), pos.getZ());
 
                 try {
-                    for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(seed), ModelData.EMPTY)) {
+                    for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(seed),
+                            ModelData.EMPTY)) {
                         dispatcher.getModelRenderer().tesselateBlock(
                                 previewWorld,
                                 model,
@@ -339,8 +340,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                                 seed,
                                 OverlayTexture.NO_OVERLAY,
                                 ModelData.EMPTY,
-                                renderType
-                        );
+                                renderType);
                     }
                 } catch (Throwable ignored) {
                 }
@@ -366,10 +366,8 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                 lines,
                 minX, minY, minZ,
                 maxX, maxY, maxZ,
-                1.0F, 0.1F, 0.1F, 1.0F
-        );
+                1.0F, 0.1F, 0.1F, 1.0F);
     }
-
 
     public static Set<BlockPos> buildDirectionCompassStructure(TrackedDummyWorld world) {
         Set<BlockPos> core = new HashSet<>();
@@ -443,7 +441,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
 
         placeCompassPillar(world, core, -8, 0, west);
 
-        placeCompassGlyph(world, core, -2, -14, north, new String[]{
+        placeCompassGlyph(world, core, -2, -14, north, new String[] {
                 "#...#",
                 "##..#",
                 "#.#.#",
@@ -451,7 +449,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                 "#...#"
         });
 
-        placeCompassGlyph(world, core, -2, 10, south, new String[]{
+        placeCompassGlyph(world, core, -2, 10, south, new String[] {
                 "#####",
                 "#....",
                 "#####",
@@ -459,7 +457,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                 "#####"
         });
 
-        placeCompassGlyph(world, core, 10, -2, east, new String[]{
+        placeCompassGlyph(world, core, 10, -2, east, new String[] {
                 "#####",
                 "#....",
                 "####.",
@@ -467,7 +465,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                 "#####"
         });
 
-        placeCompassGlyph(world, core, -14, -2, west, new String[]{
+        placeCompassGlyph(world, core, -14, -2, west, new String[] {
                 "#...#",
                 "#...#",
                 "#.#.#",
@@ -484,8 +482,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             int startX,
             int startZ,
             BlockState state,
-            String[] rows
-    ) {
+            String[] rows) {
         for (int dz = 0; dz < rows.length; dz++) {
             String row = rows[dz];
 
@@ -502,8 +499,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             Set<BlockPos> core,
             int x,
             int z,
-            BlockState state
-    ) {
+            BlockState state) {
         placeCompassBlock(world, core, new BlockPos(x, 0, z), state);
         placeCompassBlock(world, core, new BlockPos(x, 1, z), state);
     }
@@ -512,8 +508,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             TrackedDummyWorld world,
             Set<BlockPos> core,
             BlockPos pos,
-            BlockState state
-    ) {
+            BlockState state) {
         world.setBlock(pos, state, 3, 0);
         core.add(pos);
     }

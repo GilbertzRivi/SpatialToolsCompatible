@@ -1,7 +1,11 @@
 package net.oktawia.spatialtoolscmp;
 
 import com.mojang.logging.LogUtils;
-import lombok.Getter;
+
+import org.slf4j.Logger;
+
+import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.item.ItemProperties;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.api.distmarker.Dist;
@@ -19,10 +23,9 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.RegisterEvent;
-import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraft.client.renderer.item.ItemProperties;
-import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
-import net.oktawia.spatialtoolscmp.recipes.SpatialRecipeSerializerRegistrar;
+
+import lombok.Getter;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtensions;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialPiperPreviewRenderer;
 import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialReplacerPreviewRenderer;
@@ -36,6 +39,7 @@ import net.oktawia.spatialtoolscmp.defs.SpatialCreativeTabRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialScreenRegistrar;
+import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtensions;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtensions;
 import net.oktawia.spatialtoolscmp.logic.PiperExtensions;
@@ -44,7 +48,7 @@ import net.oktawia.spatialtoolscmp.logic.ReplacerExtensions;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
 import net.oktawia.spatialtoolscmp.logic.extensions.*;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
-import org.slf4j.Logger;
+import net.oktawia.spatialtoolscmp.recipes.SpatialRecipeSerializerRegistrar;
 
 @Mod(SpatialToolsCMP.MODID)
 public class SpatialToolsCMP {
@@ -147,8 +151,7 @@ public class SpatialToolsCMP {
             evt.register(
                     Registries.CREATIVE_MODE_TAB,
                     SpatialCreativeTabRegistrar.ID,
-                    () -> SpatialCreativeTabRegistrar.TAB
-            );
+                    () -> SpatialCreativeTabRegistrar.TAB);
         }
     }
 
@@ -185,9 +188,7 @@ public class SpatialToolsCMP {
                     ModLoadingContext.get().registerExtensionPoint(
                             ConfigScreenHandler.ConfigScreenFactory.class,
                             () -> new ConfigScreenHandler.ConfigScreenFactory(
-                                    (mc, parent) -> SpatialConfigScreen.create(parent)
-                            )
-                    );
+                                    (mc, parent) -> SpatialConfigScreen.create(parent)));
                 }
                 if (IsModLoaded.AE2) {
                     BlockRenderExtensions.register(new AE2BlockRenderExtension());
@@ -228,8 +229,7 @@ public class SpatialToolsCMP {
                 if (IsModLoaded.INTEGRATED_DYNAMICS) {
                     BlockRenderExtensions.register(new IntegratedDynamicsBlockRenderExtension());
 
-                    IntegratedDynamicsClientCableExtension integratedDynamicsCables =
-                            new IntegratedDynamicsClientCableExtension();
+                    IntegratedDynamicsClientCableExtension integratedDynamicsCables = new IntegratedDynamicsClientCableExtension();
 
                     ClientReplacerExtensions.register(integratedDynamicsCables);
                     ClientPiperExtensions.register(integratedDynamicsCables);
@@ -247,8 +247,7 @@ public class SpatialToolsCMP {
                 ItemProperties.register(
                         mode.item(),
                         makeId(MULTI_TOOL_MODEL_PROPERTY),
-                        (stack, level, entity, seed) -> SpatialMultiTool.isMultiTool(stack) ? 1.0F : 0.0F
-                );
+                        (stack, level, entity, seed) -> SpatialMultiTool.isMultiTool(stack) ? 1.0F : 0.0F);
             }
         }
     }

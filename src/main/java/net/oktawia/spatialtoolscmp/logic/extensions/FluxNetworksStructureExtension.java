@@ -1,5 +1,11 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -15,30 +21,26 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 public final class FluxNetworksStructureExtension implements StructureCloneExtension {
 
-    private static final String ID_NAMESPACE    = "fluxnetworks";
-    private static final String CLONE_KEY       = "fluxnetworks";
-    private static final String NBT_ID           = "id";
-    private static final String NBT_CUSTOM_NAME  = "customName";
-    private static final String NBT_PRIORITY     = "priority";
-    private static final String NBT_SURGE_MODE   = "surgeMode";
-    private static final String NBT_LIMIT        = "limit";
+    private static final String ID_NAMESPACE = "fluxnetworks";
+    private static final String CLONE_KEY = "fluxnetworks";
+    private static final String NBT_ID = "id";
+    private static final String NBT_CUSTOM_NAME = "customName";
+    private static final String NBT_PRIORITY = "priority";
+    private static final String NBT_SURGE_MODE = "surgeMode";
+    private static final String NBT_LIMIT = "limit";
     private static final String NBT_DISABLE_LIMIT = "disableLimit";
-    private static final String NBT_PLAYER_UUID  = "playerUUID";
-    private static final String NBT_NETWORK_ID      = "networkID";
-    private static final String ID_FLUX_CONTROLLER  = "fluxnetworks:flux_controller";
+    private static final String NBT_PLAYER_UUID = "playerUUID";
+    private static final String NBT_NETWORK_ID = "networkID";
+    private static final String ID_FLUX_CONTROLLER = "fluxnetworks:flux_controller";
 
     @Override
     public boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag) {
@@ -56,8 +58,7 @@ public final class FluxNetworksStructureExtension implements StructureCloneExten
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isFluxTag(rawBeTag)) {
             return false;
         }
@@ -93,8 +94,7 @@ public final class FluxNetworksStructureExtension implements StructureCloneExten
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isFluxTag(rawBeTag)) {
             return Optional.empty();
         }
@@ -119,8 +119,8 @@ public final class FluxNetworksStructureExtension implements StructureCloneExten
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {}
+            @Nullable CompoundTag blockMetadata) {
+    }
 
     @Override
     public boolean collectUndoRefunds(
@@ -128,8 +128,7 @@ public final class FluxNetworksStructureExtension implements StructureCloneExten
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
         if (blockId == null || !ID_NAMESPACE.equals(blockId.getNamespace())) {
             return false;
@@ -183,8 +182,7 @@ public final class FluxNetworksStructureExtension implements StructureCloneExten
     private static void addBaseBlockRequirement(
             ServerLevel level,
             BlockPos pos,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         BlockHitResult hit = new BlockHitResult(Vec3.atCenterOf(pos), Direction.UP, pos, false);
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
         if (!picked.isEmpty()) {

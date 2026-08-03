@@ -1,5 +1,20 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.io.ByteArrayInputStream;
+import java.io.DataInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.UUID;
+import java.util.zip.GZIPInputStream;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtAccounter;
@@ -9,21 +24,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.LevelResource;
-import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
 
-import java.io.ByteArrayInputStream;
-import java.io.DataInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.util.zip.GZIPInputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.UUID;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public final class ClonerStructureLibraryStore {
 
@@ -64,8 +66,7 @@ public final class ClonerStructureLibraryStore {
             long created,
             long updated,
             int blockCount,
-            String folder
-    ) {
+            String folder) {
     }
 
     private static Path getRoot(MinecraftServer server) throws IOException {
@@ -119,8 +120,7 @@ public final class ClonerStructureLibraryStore {
                     row.getLong(KEY_CREATED),
                     row.getLong(KEY_UPDATED),
                     Math.max(0, row.getInt(KEY_BLOCK_COUNT)),
-                    row.getString(KEY_FOLDER)
-            ));
+                    row.getString(KEY_FOLDER)));
         }
 
         entries.sort(Comparator
@@ -169,8 +169,7 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             CompoundTag tag,
-            @Nullable String requestedName
-    ) throws IOException {
+            @Nullable String requestedName) throws IOException {
         String id = UUID.randomUUID().toString();
         long now = System.currentTimeMillis();
 
@@ -187,8 +186,7 @@ public final class ClonerStructureLibraryStore {
                 now,
                 now,
                 countBlocks(tag),
-                ""
-        );
+                "");
 
         writeStructure(server, owner, id, tag);
 
@@ -202,8 +200,7 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             String id,
-            CompoundTag tag
-    ) throws IOException {
+            CompoundTag tag) throws IOException {
         if (!isValidId(id)) {
             return null;
         }
@@ -224,8 +221,7 @@ public final class ClonerStructureLibraryStore {
                     old.created(),
                     now,
                     countBlocks(tag),
-                    old.folder()
-            );
+                    old.folder());
 
             writeStructure(server, owner, id, tag);
             entries.set(i, updated);
@@ -241,15 +237,13 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             ItemStack stack,
-            CompoundTag tag
-    ) throws IOException {
+            CompoundTag tag) throws IOException {
         Entry created = saveNew(server, owner, tag, null);
 
         StructureToolStackState.setSelectedClonerLibraryEntry(
                 stack,
                 owner,
-                created.id()
-        );
+                created.id());
 
         return created;
     }
@@ -258,8 +252,7 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             String id,
-            String requestedName
-    ) throws IOException {
+            String requestedName) throws IOException {
         if (!isValidId(id)) {
             return false;
         }
@@ -286,8 +279,7 @@ public final class ClonerStructureLibraryStore {
                     old.created(),
                     System.currentTimeMillis(),
                     old.blockCount(),
-                    old.folder()
-            ));
+                    old.folder()));
 
             changed = true;
             break;
@@ -321,8 +313,7 @@ public final class ClonerStructureLibraryStore {
     public static @Nullable CompoundTag loadSelectedOrMigrateLegacy(
             MinecraftServer server,
             UUID fallbackOwner,
-            ItemStack stack
-    ) throws IOException {
+            ItemStack stack) throws IOException {
         String selectedId = StructureToolStackState.getStructureId(stack);
 
         if (selectedId.isBlank()) {
@@ -373,11 +364,10 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             byte[] bytes,
-            @Nullable String requestedName
-    ) throws IOException {
+            @Nullable String requestedName) throws IOException {
         CompoundTag tag;
         try (GZIPInputStream gzip = new GZIPInputStream(new ByteArrayInputStream(bytes));
-             DataInputStream data = new DataInputStream(gzip)) {
+                DataInputStream data = new DataInputStream(gzip)) {
             tag = NbtIo.read(data, new NbtAccounter(IMPORT_SIZE_LIMIT));
         }
 
@@ -506,8 +496,7 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             String structureId,
-            String folderName
-    ) throws IOException {
+            String folderName) throws IOException {
         if (!isValidId(structureId)) {
             return false;
         }
@@ -525,8 +514,7 @@ public final class ClonerStructureLibraryStore {
             }
 
             entries.set(i, new Entry(
-                    old.id(), old.name(), old.created(), old.updated(), old.blockCount(), targetFolder
-            ));
+                    old.id(), old.name(), old.created(), old.updated(), old.blockCount(), targetFolder));
             changed = true;
             break;
         }
@@ -542,8 +530,7 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             String id,
-            CompoundTag tag
-    ) throws IOException {
+            CompoundTag tag) throws IOException {
         Path path = getStructurePath(server, owner, id);
 
         try (OutputStream out = Files.newOutputStream(path)) {
@@ -567,8 +554,7 @@ public final class ClonerStructureLibraryStore {
     private static void writeIndex(
             MinecraftServer server,
             UUID owner,
-            List<Entry> entries
-    ) throws IOException {
+            List<Entry> entries) throws IOException {
         writeIndex(server, owner, entries, null);
     }
 
@@ -576,8 +562,7 @@ public final class ClonerStructureLibraryStore {
             MinecraftServer server,
             UUID owner,
             List<Entry> entries,
-            List<String> folders
-    ) throws IOException {
+            List<String> folders) throws IOException {
         CompoundTag root = new CompoundTag();
         ListTag entriesTag = new ListTag();
 

@@ -1,6 +1,12 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
@@ -8,12 +14,9 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
+
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewStructure;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class PortableSpatialStorageDummyWorld extends TrackedDummyWorld {
 
@@ -60,8 +63,8 @@ public class PortableSpatialStorageDummyWorld extends TrackedDummyWorld {
     }
 
     private static boolean isSafeToRenderAsTesr(BlockEntity blockEntity) {
-        BlockEntityRenderer<BlockEntity> renderer =
-                Minecraft.getInstance().getBlockEntityRenderDispatcher().getRenderer(blockEntity);
+        BlockEntityRenderer<BlockEntity> renderer = Minecraft.getInstance().getBlockEntityRenderDispatcher()
+                .getRenderer(blockEntity);
 
         if (renderer == null) {
             return true;

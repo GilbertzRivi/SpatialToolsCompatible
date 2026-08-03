@@ -3,6 +3,7 @@ package net.oktawia.spatialtoolscmp.menus;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
@@ -16,8 +17,7 @@ public class PortableSpatialReplacerMenu extends AbstractPortableStructureToolMe
                 SpatialMenuRegistrar.PORTABLE_SPATIAL_REPLACER_MENU.get(),
                 id,
                 playerInventory,
-                findToolStack(playerInventory)
-        );
+                findToolStack(playerInventory));
     }
 
     private static ItemStack findToolStack(Inventory inventory) {
@@ -49,13 +49,11 @@ public class PortableSpatialReplacerMenu extends AbstractPortableStructureToolMe
 
         PortableSpatialReplacer.setRadius(
                 stack,
-                PortableSpatialReplacer.getRadius(stack) - 1
-        );
+                PortableSpatialReplacer.getRadius(stack) - 1);
 
         if (isClientSide()) {
             NetworkHandler.sendToServer(new ReplacerContextActionPacket(
-                    ReplacerContextActionPacket.RADIUS_DOWN
-            ));
+                    ReplacerContextActionPacket.RADIUS_DOWN));
         }
     }
 
@@ -68,13 +66,11 @@ public class PortableSpatialReplacerMenu extends AbstractPortableStructureToolMe
 
         PortableSpatialReplacer.setRadius(
                 stack,
-                PortableSpatialReplacer.getRadius(stack) + 1
-        );
+                PortableSpatialReplacer.getRadius(stack) + 1);
 
         if (isClientSide()) {
             NetworkHandler.sendToServer(new ReplacerContextActionPacket(
-                    ReplacerContextActionPacket.RADIUS_UP
-            ));
+                    ReplacerContextActionPacket.RADIUS_UP));
         }
     }
 
@@ -89,8 +85,7 @@ public class PortableSpatialReplacerMenu extends AbstractPortableStructureToolMe
 
         if (isClientSide()) {
             NetworkHandler.sendToServer(new ReplacerContextActionPacket(
-                    ReplacerContextActionPacket.TOGGLE_BLOCKSTATE
-            ));
+                    ReplacerContextActionPacket.TOGGLE_BLOCKSTATE));
         }
     }
 
@@ -107,13 +102,11 @@ public class PortableSpatialReplacerMenu extends AbstractPortableStructureToolMe
                 stack,
                 current == ConnectivityMode.DIRECT
                         ? ConnectivityMode.DIAGONAL
-                        : ConnectivityMode.DIRECT
-        );
+                        : ConnectivityMode.DIRECT);
 
         if (isClientSide()) {
             NetworkHandler.sendToServer(new ReplacerContextActionPacket(
-                    ReplacerContextActionPacket.TOGGLE_CONNECTIVITY
-            ));
+                    ReplacerContextActionPacket.TOGGLE_CONNECTIVITY));
         }
     }
 

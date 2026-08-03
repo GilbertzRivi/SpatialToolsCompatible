@@ -1,5 +1,13 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -12,6 +20,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.RegistryObject;
+
 import net.oktawia.faststone.blocks.LogicCableBlock;
 import net.oktawia.faststone.defs.regs.BlockRegistrar;
 import net.oktawia.faststone.defs.regs.ItemRegistrar;
@@ -23,13 +32,6 @@ import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public final class FaststoneClonerExtension implements StructureCloneExtension {
 
@@ -51,8 +53,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isFaststoneTag(rawBeTag)) {
             return false;
         }
@@ -88,8 +89,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         CompoundTag fullBeTag = getFullBeTag(rawBeTag, blockMetadata);
 
         if (!isFaststoneTag(rawBeTag) && !hasFaststoneMetadata(blockMetadata)) {
@@ -125,8 +125,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (be == null || !hasFaststoneMetadata(blockMetadata)) {
             return;
         }
@@ -166,8 +165,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         if (!isFaststoneCableState(state)) {
             return false;
         }
@@ -219,8 +217,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
                         neighborState,
                         level,
                         pos,
-                        neighborPos
-                );
+                        neighborPos);
             }
 
             if (!newState.equals(state)) {
@@ -243,8 +240,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
                         state,
                         level,
                         neighborPos,
-                        pos
-                );
+                        pos);
 
                 if (!updatedNeighborState.equals(neighborState)) {
                     level.setBlock(neighborPos, updatedNeighborState, Block.UPDATE_ALL);
@@ -253,16 +249,14 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
                             neighborPos,
                             neighborState,
                             neighborState,
-                            Block.UPDATE_ALL
-                    );
+                            Block.UPDATE_ALL);
 
                     neighborState.neighborChanged(
                             level,
                             neighborPos,
                             block,
                             pos,
-                            false
-                    );
+                            false);
                 }
 
                 LogicNetworkGraph.scheduleRebuildAround(level, neighborPos);
@@ -281,8 +275,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
     @Nullable
     private static CompoundTag buildPlacementBeTag(
             @Nullable CompoundTag rawBeTag,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         CompoundTag tag = getFullBeTag(rawBeTag, blockMetadata);
 
         if (tag == null) {
@@ -301,8 +294,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
     @Nullable
     private static CompoundTag getFullBeTag(
             @Nullable CompoundTag rawBeTag,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (blockMetadata != null && blockMetadata.contains(META_KEY, Tag.TAG_COMPOUND)) {
             CompoundTag metadata = blockMetadata.getCompound(META_KEY);
 
@@ -320,8 +312,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
 
     private static void collectCablePartRequirements(
             @Nullable CompoundTag beTag,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         if (beTag == null || !beTag.contains(KEY_PARTS, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -343,8 +334,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
             Player player,
             ClonerPasteContext ctx,
             Map<Item, Integer> reserved,
-            List<ItemStack> costs
-    ) {
+            List<ItemStack> costs) {
         if (beTag == null || !beTag.contains(KEY_PARTS, Tag.TAG_COMPOUND)) {
             return true;
         }
@@ -369,8 +359,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
 
     private static void collectCablePartRefunds(
             @Nullable CompoundTag beTag,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         if (beTag == null || !beTag.contains(KEY_PARTS, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -445,8 +434,7 @@ public final class FaststoneClonerExtension implements StructureCloneExtension {
             ClonerPasteContext ctx,
             Map<Item, Integer> reserved,
             List<ItemStack> costs,
-            ItemStack stack
-    ) {
+            ItemStack stack) {
         ItemStack normalized = normalizeCountPreserving(stack);
 
         if (normalized.isEmpty()) {

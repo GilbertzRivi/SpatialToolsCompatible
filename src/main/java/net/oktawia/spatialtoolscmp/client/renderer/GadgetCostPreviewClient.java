@@ -18,6 +18,7 @@ import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
@@ -106,8 +107,7 @@ public class GadgetCostPreviewClient {
                     : PortableSpatialPiperPreviewRenderer.getPreviewDistanceSum();
 
             long cost = ceilToLongClamped(
-                    SpatialPowerCost.fromDistanceSum(distanceSum, effectivePowerPerBlock)
-            );
+                    SpatialPowerCost.fromDistanceSum(distanceSum, effectivePowerPerBlock));
 
             if (cost <= 0) {
                 return;
@@ -119,8 +119,7 @@ public class GadgetCostPreviewClient {
 
             currentText = Component.translatable(
                     label.getTranslationKey(),
-                    String.format("%,d", cost)
-            );
+                    String.format("%,d", cost));
 
             currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
             return;
@@ -131,8 +130,7 @@ public class GadgetCostPreviewClient {
 
             BlockPos anchor = StructureToolStackState.getAnchorIfValid(
                     held,
-                    mc.level.dimension()
-            );
+                    mc.level.dimension());
 
             if (anchor == null) {
                 BlockHitResult hit = StructureToolUtil.rayTrace(mc.level, mc.player, 50.0D);
@@ -150,8 +148,7 @@ public class GadgetCostPreviewClient {
 
             currentText = Component.translatable(
                     LangDefs.PASTE_COST_PREVIEW.getTranslationKey(),
-                    String.format("%,d", cost)
-            );
+                    String.format("%,d", cost));
 
             currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
             return;
@@ -189,8 +186,7 @@ public class GadgetCostPreviewClient {
                 selectionA.immutable(),
                 previewB,
                 previewB,
-                effectivePowerPerBlock
-        );
+                effectivePowerPerBlock);
 
         if (cost <= 0) {
             return;
@@ -202,8 +198,7 @@ public class GadgetCostPreviewClient {
 
         currentText = Component.translatable(
                 captureLabel.getTranslationKey(),
-                String.format("%,d", cost)
-        );
+                String.format("%,d", cost));
 
         currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
     }
@@ -344,8 +339,7 @@ public class GadgetCostPreviewClient {
     private static long blockCaptureCostContribution(
             BlockPos pos,
             BlockPos energyOrigin,
-            double effectivePowerPerBlock
-    ) {
+            double effectivePowerPerBlock) {
         double dx = pos.getX() - energyOrigin.getX();
         double dy = pos.getY() - energyOrigin.getY();
         double dz = pos.getZ() - energyOrigin.getZ();
@@ -409,8 +403,7 @@ public class GadgetCostPreviewClient {
                 BlockPos newSelectionA,
                 BlockPos newSelectionB,
                 BlockPos newEnergyOrigin,
-                double newEffectivePowerPerBlock
-        ) {
+                double newEffectivePowerPerBlock) {
             CuboidBounds newBounds = CuboidBounds.from(newSelectionA, newSelectionB);
 
             if (!valid
@@ -426,8 +419,7 @@ public class GadgetCostPreviewClient {
                         newSelectionA,
                         newEnergyOrigin,
                         newEffectivePowerPerBlock,
-                        newBounds
-                );
+                        newBounds);
 
                 return toAeCost();
             }
@@ -441,16 +433,14 @@ public class GadgetCostPreviewClient {
                     newBounds,
                     bounds,
                     energyOrigin,
-                    effectivePowerPerBlock
-            );
+                    effectivePowerPerBlock);
 
             CountResult removed = countDifference(
                     level,
                     bounds,
                     newBounds,
                     energyOrigin,
-                    effectivePowerPerBlock
-            );
+                    effectivePowerPerBlock);
 
             nonAirBlocks += added.nonAirBlocks;
             nonAirBlocks -= removed.nonAirBlocks;
@@ -477,14 +467,12 @@ public class GadgetCostPreviewClient {
                 BlockPos newSelectionA,
                 BlockPos newEnergyOrigin,
                 double newEffectivePowerPerBlock,
-                CuboidBounds newBounds
-        ) {
+                CuboidBounds newBounds) {
             CountResult result = countCuboid(
                     level,
                     newBounds,
                     newEnergyOrigin,
-                    newEffectivePowerPerBlock
-            );
+                    newEffectivePowerPerBlock);
 
             valid = true;
             dimension = newDimension;
@@ -511,8 +499,7 @@ public class GadgetCostPreviewClient {
             CuboidBounds include,
             CuboidBounds exclude,
             BlockPos energyOrigin,
-            double effectivePowerPerBlock
-    ) {
+            double effectivePowerPerBlock) {
         CountResult result = new CountResult();
 
         forEachDifference(
@@ -522,9 +509,7 @@ public class GadgetCostPreviewClient {
                         level,
                         cuboid,
                         energyOrigin,
-                        effectivePowerPerBlock
-                ))
-        );
+                        effectivePowerPerBlock)));
 
         return result;
     }
@@ -533,8 +518,7 @@ public class GadgetCostPreviewClient {
             Level level,
             CuboidBounds bounds,
             BlockPos energyOrigin,
-            double effectivePowerPerBlock
-    ) {
+            double effectivePowerPerBlock) {
         CountResult result = new CountResult();
 
         if (effectivePowerPerBlock <= 0.0D) {
@@ -558,8 +542,7 @@ public class GadgetCostPreviewClient {
                     result.totalCost += unpackCost(blockCaptureCostContribution(
                             mutablePos,
                             energyOrigin,
-                            effectivePowerPerBlock
-                    ));
+                            effectivePowerPerBlock));
                 }
             }
         }
@@ -570,8 +553,7 @@ public class GadgetCostPreviewClient {
     private static void forEachDifference(
             CuboidBounds source,
             CuboidBounds subtract,
-            CuboidConsumer consumer
-    ) {
+            CuboidConsumer consumer) {
         CuboidBounds intersection = source.intersection(subtract);
 
         if (intersection == null) {
@@ -586,8 +568,7 @@ public class GadgetCostPreviewClient {
                     source.minZ(),
                     intersection.minX() - 1,
                     source.maxY(),
-                    source.maxZ()
-            ));
+                    source.maxZ()));
         }
 
         if (source.maxX() > intersection.maxX()) {
@@ -597,8 +578,7 @@ public class GadgetCostPreviewClient {
                     source.minZ(),
                     source.maxX(),
                     source.maxY(),
-                    source.maxZ()
-            ));
+                    source.maxZ()));
         }
 
         int midMinX = intersection.minX();
@@ -611,8 +591,7 @@ public class GadgetCostPreviewClient {
                     source.minZ(),
                     midMaxX,
                     intersection.minY() - 1,
-                    source.maxZ()
-            ));
+                    source.maxZ()));
         }
 
         if (source.maxY() > intersection.maxY()) {
@@ -622,8 +601,7 @@ public class GadgetCostPreviewClient {
                     source.minZ(),
                     midMaxX,
                     source.maxY(),
-                    source.maxZ()
-            ));
+                    source.maxZ()));
         }
 
         int midMinY = intersection.minY();
@@ -636,8 +614,7 @@ public class GadgetCostPreviewClient {
                     source.minZ(),
                     midMaxX,
                     midMaxY,
-                    intersection.minZ() - 1
-            ));
+                    intersection.minZ() - 1));
         }
 
         if (source.maxZ() > intersection.maxZ()) {
@@ -647,8 +624,7 @@ public class GadgetCostPreviewClient {
                     intersection.maxZ() + 1,
                     midMaxX,
                     midMaxY,
-                    source.maxZ()
-            ));
+                    source.maxZ()));
         }
     }
 
@@ -672,8 +648,7 @@ public class GadgetCostPreviewClient {
             int minZ,
             int maxX,
             int maxY,
-            int maxZ
-    ) {
+            int maxZ) {
         private static CuboidBounds from(BlockPos a, BlockPos b) {
             return new CuboidBounds(
                     Math.min(a.getX(), b.getX()),
@@ -681,8 +656,7 @@ public class GadgetCostPreviewClient {
                     Math.min(a.getZ(), b.getZ()),
                     Math.max(a.getX(), b.getX()),
                     Math.max(a.getY(), b.getY()),
-                    Math.max(a.getZ(), b.getZ())
-            );
+                    Math.max(a.getZ(), b.getZ()));
         }
 
         private CuboidBounds intersection(CuboidBounds other) {

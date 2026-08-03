@@ -1,12 +1,13 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
-import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
-import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.minecraftforge.network.NetworkEvent;
 
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 
 public class SetClonerNestedInventoryModePacket {
 
@@ -26,14 +27,12 @@ public class SetClonerNestedInventoryModePacket {
     public static SetClonerNestedInventoryModePacket decode(FriendlyByteBuf buffer) {
         return new SetClonerNestedInventoryModePacket(
                 buffer.readVarInt(),
-                buffer.readVarInt()
-        );
+                buffer.readVarInt());
     }
 
     public static void handle(
             SetClonerNestedInventoryModePacket packet,
-            Supplier<NetworkEvent.Context> contextSupplier
-    ) {
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> {
@@ -52,8 +51,7 @@ public class SetClonerNestedInventoryModePacket {
             }
 
             menu.setNestedInventoryMode(
-                    PortableSpatialCloner.NestedInventoryResourceMode.byId(packet.modeId)
-            );
+                    PortableSpatialCloner.NestedInventoryResourceMode.byId(packet.modeId));
         });
 
         context.setPacketHandled(true);

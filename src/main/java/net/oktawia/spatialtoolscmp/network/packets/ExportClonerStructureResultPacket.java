@@ -1,10 +1,11 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureFileTransferClient;
 
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureFileTransferClient;
 
 public class ExportClonerStructureResultPacket {
 
@@ -26,11 +27,11 @@ public class ExportClonerStructureResultPacket {
     public static ExportClonerStructureResultPacket decode(FriendlyByteBuf buffer) {
         return new ExportClonerStructureResultPacket(
                 buffer.readUtf(32767),
-                buffer.readByteArray(MAX_EXPORT_BYTES)
-        );
+                buffer.readByteArray(MAX_EXPORT_BYTES));
     }
 
-    public static void handle(ExportClonerStructureResultPacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
+    public static void handle(ExportClonerStructureResultPacket packet,
+            Supplier<NetworkEvent.Context> contextSupplier) {
         NetworkEvent.Context context = contextSupplier.get();
 
         context.enqueueWork(() -> ClonerStructureFileTransferClient.completeExport(packet.id, packet.bytes));

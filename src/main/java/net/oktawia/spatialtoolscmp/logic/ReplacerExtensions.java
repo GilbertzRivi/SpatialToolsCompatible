@@ -1,11 +1,11 @@
 package net.oktawia.spatialtoolscmp.logic;
 
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.item.ItemStack;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 
 public final class ReplacerExtensions {
 

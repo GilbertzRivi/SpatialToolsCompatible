@@ -2,6 +2,9 @@ package net.oktawia.spatialtoolscmp.client.renderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
@@ -12,7 +15,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
-import org.jetbrains.annotations.Nullable;
 
 public interface BlockRenderExtension {
 
@@ -31,8 +33,7 @@ public interface BlockRenderExtension {
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         return false;
     }
 
@@ -46,8 +47,7 @@ public interface BlockRenderExtension {
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         return false;
     }
 
@@ -57,8 +57,7 @@ public interface BlockRenderExtension {
             PreviewBlockAndTintGetter localLevel,
             BakedModel model,
             BlockState state,
-            @Nullable BlockEntity blockEntity
-    ) {
+            @Nullable BlockEntity blockEntity) {
         return null;
     }
 
@@ -72,8 +71,7 @@ public interface BlockRenderExtension {
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         return null;
     }
 }

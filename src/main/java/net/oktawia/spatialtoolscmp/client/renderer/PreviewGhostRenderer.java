@@ -1,10 +1,23 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.function.Function;
+
 import com.gregtechceu.gtceu.client.model.GTModelProperties;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -30,18 +43,8 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
-import net.oktawia.spatialtoolscmp.SpatialConfig;
-import org.jetbrains.annotations.Nullable;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
-import java.util.Collection;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.function.Function;
+import net.oktawia.spatialtoolscmp.SpatialConfig;
 
 public final class PreviewGhostRenderer {
 
@@ -60,8 +63,7 @@ public final class PreviewGhostRenderer {
                 ModelData modelData,
                 PoseStack poseStack,
                 MultiBufferSource bufferSource,
-                long seed
-        );
+                long seed);
     }
 
     private static final int PREVIEW_BUFFER_SIZE = 262_144;
@@ -71,8 +73,8 @@ public final class PreviewGhostRenderer {
     private static final float PREVIEW_POLYGON_OFFSET_UNITS = -10.0F;
 
     private final BufferBuilder previewBufferBuilder = new BufferBuilder(PREVIEW_BUFFER_SIZE);
-    private final MultiBufferSource.BufferSource previewBufferSource =
-            MultiBufferSource.immediate(this.previewBufferBuilder);
+    private final MultiBufferSource.BufferSource previewBufferSource = MultiBufferSource
+            .immediate(this.previewBufferBuilder);
 
     public static boolean isTripwireStage(RenderLevelStageEvent.Stage stage) {
         return stage == RenderLevelStageEvent.Stage.AFTER_TRIPWIRE_BLOCKS;
@@ -133,8 +135,7 @@ public final class PreviewGhostRenderer {
             PreviewPass pass,
             Function<BlockPos, ModelData> modelDataProvider,
             @Nullable GhostBlockRenderer customRenderer,
-            @Nullable Iterable<RenderType> renderTypesOverride
-    ) {
+            @Nullable Iterable<RenderType> renderTypesOverride) {
         if (targetState.isAir() || positions.isEmpty()) {
             return;
         }
@@ -163,8 +164,7 @@ public final class PreviewGhostRenderer {
         RenderSystem.enablePolygonOffset();
         RenderSystem.polygonOffset(
                 PREVIEW_POLYGON_OFFSET_FACTOR,
-                PREVIEW_POLYGON_OFFSET_UNITS
-        );
+                PREVIEW_POLYGON_OFFSET_UNITS);
 
         mc.gameRenderer.lightTexture().turnOnLightLayer();
 
@@ -175,11 +175,9 @@ public final class PreviewGhostRenderer {
         GhostBlockGetter ghostLevel = new GhostBlockGetter(
                 mc.level,
                 positions,
-                targetState
-        );
+                targetState);
 
-        Set<RenderType> usedRenderTypes =
-                Collections.newSetFromMap(new IdentityHashMap<>());
+        Set<RenderType> usedRenderTypes = Collections.newSetFromMap(new IdentityHashMap<>());
 
         try {
             for (BlockPos pos : positions) {
@@ -191,18 +189,15 @@ public final class PreviewGhostRenderer {
                 poseStack.translate(
                         pos.getX() + 0.5D,
                         pos.getY() + 0.5D,
-                        pos.getZ() + 0.5D
-                );
+                        pos.getZ() + 0.5D);
                 poseStack.scale(
                         PREVIEW_MODEL_SCALE,
                         PREVIEW_MODEL_SCALE,
-                        PREVIEW_MODEL_SCALE
-                );
+                        PREVIEW_MODEL_SCALE);
                 poseStack.translate(
                         -0.5D,
                         -0.5D,
-                        -0.5D
-                );
+                        -0.5D);
 
                 try {
                     Iterable<RenderType> renderTypes = renderTypesOverride != null
@@ -210,8 +205,7 @@ public final class PreviewGhostRenderer {
                             : model.getRenderTypes(
                                     targetState,
                                     RandomSource.create(seed),
-                                    modelData
-                            );
+                                    modelData);
 
                     for (RenderType renderType : renderTypes) {
                         if (renderTypesOverride == null && classifyRenderType(renderType) != pass) {
@@ -230,8 +224,7 @@ public final class PreviewGhostRenderer {
                                 modelData,
                                 poseStack,
                                 this.previewBufferSource,
-                                seed
-                        )) {
+                                seed)) {
                             continue;
                         }
 
@@ -247,8 +240,7 @@ public final class PreviewGhostRenderer {
                                 seed,
                                 OverlayTexture.NO_OVERLAY,
                                 modelData,
-                                renderType
-                        );
+                                renderType);
                     }
                 } catch (Throwable ignored) {
                 } finally {
@@ -276,8 +268,7 @@ public final class PreviewGhostRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         if (positions.isEmpty()) {
             return;
         }
@@ -308,8 +299,7 @@ public final class PreviewGhostRenderer {
                         red,
                         green,
                         blue,
-                        alpha
-                );
+                        alpha);
             }
         } finally {
             this.previewBufferSource.endBatch(renderType);
@@ -320,8 +310,7 @@ public final class PreviewGhostRenderer {
             Minecraft mc,
             PoseStack poseStack,
             Set<BlockPos> positions,
-            Function<BlockPos, ModelData> modelDataProvider
-    ) {
+            Function<BlockPos, ModelData> modelDataProvider) {
         if (positions.isEmpty()) {
             return;
         }
@@ -371,8 +360,7 @@ public final class PreviewGhostRenderer {
                             0.20F,
                             0.85F,
                             1.00F,
-                            1.00F
-                    );
+                            1.00F);
                 }
             }
         } finally {
@@ -428,8 +416,7 @@ public final class PreviewGhostRenderer {
 
     public static void resetPreviewRenderState(
             Minecraft mc,
-            boolean turnOffLightLayer
-    ) {
+            boolean turnOffLightLayer) {
         RenderSystem.polygonOffset(0.0F, 0.0F);
         RenderSystem.disablePolygonOffset();
         RenderSystem.enableDepthTest();
@@ -452,8 +439,7 @@ public final class PreviewGhostRenderer {
                 .getTextureAtlas(TextureAtlas.LOCATION_BLOCKS)
                 .apply(ResourceLocation.fromNamespaceAndPath(
                         "minecraft",
-                        "block/white_concrete"
-                ));
+                        "block/white_concrete"));
     }
 
     private static void addBillboardLineBox(
@@ -471,8 +457,7 @@ public final class PreviewGhostRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         billboardLine(consumer, matrix, camera, sprite, x1, y1, z1, x2, y1, z1, halfWidth, red, green, blue, alpha);
         billboardLine(consumer, matrix, camera, sprite, x2, y1, z1, x2, y1, z2, halfWidth, red, green, blue, alpha);
         billboardLine(consumer, matrix, camera, sprite, x2, y1, z2, x1, y1, z2, halfWidth, red, green, blue, alpha);
@@ -504,13 +489,11 @@ public final class PreviewGhostRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         Vector3f direction = new Vector3f(
                 x2 - x1,
                 y2 - y1,
-                z2 - z1
-        );
+                z2 - z1);
 
         if (direction.lengthSquared() < 1.0e-6F) {
             return;
@@ -519,14 +502,12 @@ public final class PreviewGhostRenderer {
         Vector3f middle = new Vector3f(
                 (x1 + x2) * 0.5F,
                 (y1 + y2) * 0.5F,
-                (z1 + z2) * 0.5F
-        );
+                (z1 + z2) * 0.5F);
 
         Vector3f toCamera = new Vector3f(
                 (float) camera.x - middle.x,
                 (float) camera.y - middle.y,
-                (float) camera.z - middle.z
-        );
+                (float) camera.z - middle.z);
 
         if (toCamera.lengthSquared() < 1.0e-6F) {
             toCamera.set(0.0F, 1.0F, 0.0F);
@@ -537,14 +518,12 @@ public final class PreviewGhostRenderer {
         if (side.lengthSquared() < 1.0e-6F) {
             side = direction.cross(
                     new Vector3f(0.0F, 1.0F, 0.0F),
-                    new Vector3f()
-            );
+                    new Vector3f());
 
             if (side.lengthSquared() < 1.0e-6F) {
                 side = direction.cross(
                         new Vector3f(1.0F, 0.0F, 0.0F),
-                        new Vector3f()
-                );
+                        new Vector3f());
             }
         }
 
@@ -576,8 +555,7 @@ public final class PreviewGhostRenderer {
             float blue,
             float alpha,
             float u,
-            float v
-    ) {
+            float v) {
         consumer.vertex(matrix, x, y, z)
                 .color(red, green, blue, alpha)
                 .uv(u, v)
@@ -589,8 +567,7 @@ public final class PreviewGhostRenderer {
     private record GhostBlockGetter(
             ClientLevel wrapped,
             Set<BlockPos> ghostPositions,
-            BlockState ghostState
-    ) implements BlockAndTintGetter {
+            BlockState ghostState) implements BlockAndTintGetter {
 
         @Override
         public BlockState getBlockState(BlockPos pos) {

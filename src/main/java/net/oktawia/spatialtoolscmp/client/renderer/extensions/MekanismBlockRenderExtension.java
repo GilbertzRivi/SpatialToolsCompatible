@@ -1,10 +1,12 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
+import java.lang.reflect.Method;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import mekanism.client.model.data.TransmitterModelData;
-import mekanism.common.lib.transmitter.ConnectionType;
-import mekanism.common.tile.transmitter.TileEntityTransmitter;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
@@ -22,12 +24,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import mekanism.client.model.data.TransmitterModelData;
+import mekanism.common.lib.transmitter.ConnectionType;
+import mekanism.common.tile.transmitter.TileEntityTransmitter;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
-import org.jetbrains.annotations.Nullable;
-
-import java.lang.reflect.Method;
 
 public final class MekanismBlockRenderExtension implements BlockRenderExtension {
 
@@ -50,20 +54,17 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         ModelData mekanismData = buildTransmitterModelData(
                 previewBlock,
                 localLevel,
                 localPos,
-                modelData
-        );
+                modelData);
 
         return model.getRenderTypes(
                 state,
                 RandomSource.create(seed),
-                mekanismData
-        );
+                mekanismData);
     }
 
     @Override
@@ -80,14 +81,12 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         ModelData mekanismData = buildTransmitterModelData(
                 previewBlock,
                 localLevel,
                 localPos,
-                modelData
-        );
+                modelData);
 
         modelRenderer.tesselateBlock(
                 localLevel,
@@ -101,8 +100,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
                 seed,
                 OverlayTexture.NO_OVERLAY,
                 mekanismData,
-                renderType
-        );
+                renderType);
 
         return true;
     }
@@ -118,20 +116,17 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         ModelData mekanismData = buildTransmitterModelData(
                 previewBlock,
                 localLevel,
                 localPos,
-                ModelData.EMPTY
-        );
+                ModelData.EMPTY);
 
         for (RenderType renderType : model.getRenderTypes(
                 state,
                 RandomSource.create(seed),
-                mekanismData
-        )) {
+                mekanismData)) {
             dispatcher.getModelRenderer().tesselateBlock(
                     localLevel,
                     model,
@@ -144,8 +139,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     mekanismData,
-                    renderType
-            );
+                    renderType);
         }
 
         return true;
@@ -155,8 +149,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
             PreviewBlock previewBlock,
             PreviewBlockAndTintGetter localLevel,
             BlockPos localPos,
-            ModelData fallback
-    ) {
+            ModelData fallback) {
         CompoundTag rawTag = getRawBlockEntityTag(previewBlock, localLevel, localPos);
 
         TransmitterModelData transmitterData = new TransmitterModelData();
@@ -185,8 +178,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
 
     private static ConnectionType readConnectionType(
             @Nullable CompoundTag rawTag,
-            Direction side
-    ) {
+            Direction side) {
         if (rawTag == null) {
             return ConnectionType.NORMAL;
         }
@@ -207,8 +199,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
     private static boolean hasConnectableNeighbor(
             PreviewBlockAndTintGetter localLevel,
             BlockPos localPos,
-            Direction side
-    ) {
+            Direction side) {
         BlockPos neighborPos = localPos.relative(side);
         BlockState neighborState = localLevel.getBlockState(neighborPos);
 
@@ -242,8 +233,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
     private static @Nullable CompoundTag getRawBlockEntityTag(
             @Nullable PreviewBlock previewBlock,
             PreviewBlockAndTintGetter localLevel,
-            BlockPos localPos
-    ) {
+            BlockPos localPos) {
         CompoundTag fromPreview = getRawTagFromPreviewBlock(previewBlock);
 
         if (fromPreview != null) {

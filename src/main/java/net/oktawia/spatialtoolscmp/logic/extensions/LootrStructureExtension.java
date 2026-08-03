@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -10,15 +14,13 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructurePasteExtension;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Optional;
 
 public final class LootrStructureExtension implements StructureCloneExtension, StructurePasteExtension {
 
@@ -39,8 +41,7 @@ public final class LootrStructureExtension implements StructureCloneExtension, S
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isLootrBlock(level.getBlockState(pos))) {
             return false;
         }
@@ -69,8 +70,7 @@ public final class LootrStructureExtension implements StructureCloneExtension, S
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         return Optional.empty();
     }
 
@@ -79,8 +79,7 @@ public final class LootrStructureExtension implements StructureCloneExtension, S
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
     }
 
     @Override
@@ -103,8 +102,7 @@ public final class LootrStructureExtension implements StructureCloneExtension, S
             BlockPos worldPos = placementOrigin.offset(
                     posTag.getInt("x"),
                     posTag.getInt("y"),
-                    posTag.getInt("z")
-            ).immutable();
+                    posTag.getInt("z")).immutable();
 
             if (!isLootrBlock(level.getBlockState(worldPos))) {
                 continue;
@@ -124,8 +122,7 @@ public final class LootrStructureExtension implements StructureCloneExtension, S
             ServerLevel level,
             BlockPos pos,
             BlockEntity be,
-            CompoundTag data
-    ) {
+            CompoundTag data) {
         if (!data.hasUUID(NBT_TILE_ID)) {
             return;
         }

@@ -5,7 +5,8 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 
 public final class NbtUtil {
-    private NbtUtil() {}
+    private NbtUtil() {
+    }
 
     public static ItemStack tryReadSavedItemStack(CompoundTag tag) {
         if (!tag.contains("id", Tag.TAG_STRING)) {

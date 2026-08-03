@@ -1,13 +1,14 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.Consumer;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import mod.chiselsandbits.api.multistate.snapshot.IMultiStateSnapshot;
-import mod.chiselsandbits.block.entities.storage.SimpleStateEntryStorage;
-import mod.chiselsandbits.client.model.baked.chiseled.ChiselRenderType;
-import mod.chiselsandbits.client.model.baked.chiseled.ChiseledBlockBakedModelManager;
-import mod.chiselsandbits.utils.LZ4DataCompressionUtils;
-import mod.chiselsandbits.utils.MultiStateSnapshotUtils;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.BlockRenderDispatcher;
@@ -21,16 +22,19 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
+import mod.chiselsandbits.api.multistate.snapshot.IMultiStateSnapshot;
+import mod.chiselsandbits.block.entities.storage.SimpleStateEntryStorage;
+import mod.chiselsandbits.client.model.baked.chiseled.ChiselRenderType;
+import mod.chiselsandbits.client.model.baked.chiseled.ChiseledBlockBakedModelManager;
+import mod.chiselsandbits.utils.LZ4DataCompressionUtils;
+import mod.chiselsandbits.utils.MultiStateSnapshotUtils;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtension {
 
@@ -56,8 +60,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         IMultiStateSnapshot snapshot = getSnapshot(previewBlock);
 
         if (snapshot == null) {
@@ -89,8 +92,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         IMultiStateSnapshot snapshot = getSnapshot(previewBlock);
 
         if (snapshot == null) {
@@ -110,8 +112,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     ModelData.EMPTY,
-                    renderType
-            );
+                    renderType);
         }
 
         return true;
@@ -128,8 +129,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         IMultiStateSnapshot snapshot = getSnapshot(previewBlock);
 
         if (snapshot == null) {
@@ -152,8 +152,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
                             null,
                             null,
                             localPos,
-                            renderType
-                    ),
+                            renderType),
                     state,
                     localPos,
                     poseStack,
@@ -163,8 +162,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     ModelData.EMPTY,
-                    renderType
-            );
+                    renderType);
         }
 
         return true;
@@ -185,8 +183,7 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
                     null,
                     null,
                     BlockPos.ZERO,
-                    renderType
-            ));
+                    renderType));
         }
 
         return models;

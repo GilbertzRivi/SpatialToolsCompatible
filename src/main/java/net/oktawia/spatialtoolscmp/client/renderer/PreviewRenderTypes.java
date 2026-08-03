@@ -2,6 +2,7 @@ package net.oktawia.spatialtoolscmp.client.renderer;
 
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
+
 import net.minecraft.client.renderer.RenderType;
 
 public final class PreviewRenderTypes extends RenderType {
@@ -14,8 +15,7 @@ public final class PreviewRenderTypes extends RenderType {
             boolean affectsCrumbling,
             boolean sortOnUpload,
             Runnable setupState,
-            Runnable clearState
-    ) {
+            Runnable clearState) {
         super(
                 name,
                 format,
@@ -24,8 +24,7 @@ public final class PreviewRenderTypes extends RenderType {
                 affectsCrumbling,
                 sortOnUpload,
                 setupState,
-                clearState
-        );
+                clearState);
     }
 
     public static final RenderType SELECTION_FILL = RenderType.create(
@@ -41,6 +40,5 @@ public final class PreviewRenderTypes extends RenderType {
                     .setDepthTestState(NO_DEPTH_TEST)
                     .setCullState(NO_CULL)
                     .setWriteMaskState(COLOR_WRITE)
-                    .createCompositeState(false)
-    );
+                    .createCompositeState(false));
 }

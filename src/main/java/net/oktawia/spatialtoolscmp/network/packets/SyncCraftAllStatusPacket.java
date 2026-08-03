@@ -1,10 +1,11 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.client.misc.CraftingBufferStatusClientCache;
 
-import java.util.function.Supplier;
+import net.oktawia.spatialtoolscmp.client.misc.CraftingBufferStatusClientCache;
 
 public record SyncCraftAllStatusPacket(int containerId, int status) {
 

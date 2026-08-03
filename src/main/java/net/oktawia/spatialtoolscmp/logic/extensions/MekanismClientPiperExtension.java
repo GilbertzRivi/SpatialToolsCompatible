@@ -1,11 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import mekanism.client.model.data.TransmitterModelData;
-import mekanism.common.capabilities.Capabilities;
-import mekanism.common.content.network.transmitter.Transmitter;
-import mekanism.common.lib.transmitter.ConnectionType;
-import mekanism.common.lib.transmitter.TransmissionType;
-import mekanism.common.tile.transmitter.TileEntityTransmitter;
+import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -16,10 +14,15 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
-import org.jetbrains.annotations.Nullable;
 
-import java.util.Set;
+import mekanism.client.model.data.TransmitterModelData;
+import mekanism.common.capabilities.Capabilities;
+import mekanism.common.content.network.transmitter.Transmitter;
+import mekanism.common.lib.transmitter.ConnectionType;
+import mekanism.common.lib.transmitter.TransmissionType;
+import mekanism.common.tile.transmitter.TileEntityTransmitter;
+
+import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 
 public final class MekanismClientPiperExtension implements ClientPiperExtension {
 
@@ -31,8 +34,7 @@ public final class MekanismClientPiperExtension implements ClientPiperExtension 
             BlockState targetState,
             ItemStack target,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         Set<TransmissionType> transmissionTypes = transmissionTypes(targetState, pos);
 
         if (transmissionTypes.isEmpty()) {
@@ -50,8 +52,7 @@ public final class MekanismClientPiperExtension implements ClientPiperExtension 
 
             transmitterData.setConnectionData(
                     side,
-                    connected ? ConnectionType.NORMAL : ConnectionType.NONE
-            );
+                    connected ? ConnectionType.NORMAL : ConnectionType.NONE);
         }
 
         transmitterData.setHasColor(false);
@@ -93,8 +94,7 @@ public final class MekanismClientPiperExtension implements ClientPiperExtension 
             @Nullable ClientLevel level,
             BlockPos neighborPos,
             Direction side,
-            Set<TransmissionType> transmissionTypes
-    ) {
+            Set<TransmissionType> transmissionTypes) {
         if (level == null) {
             return false;
         }
@@ -123,8 +123,7 @@ public final class MekanismClientPiperExtension implements ClientPiperExtension 
     private static boolean connectsToTransmitter(
             TileEntityTransmitter neighbor,
             Direction neighborSide,
-            Set<TransmissionType> transmissionTypes
-    ) {
+            Set<TransmissionType> transmissionTypes) {
         Transmitter<?, ?, ?> transmitter = neighbor.getTransmitter();
 
         if (transmitter.getConnectionTypeRaw(neighborSide) == ConnectionType.NONE) {
@@ -143,8 +142,7 @@ public final class MekanismClientPiperExtension implements ClientPiperExtension 
     private static boolean hasAcceptorCapability(
             BlockEntity neighbor,
             Direction side,
-            TransmissionType type
-    ) {
+            TransmissionType type) {
         try {
             return switch (type) {
                 case ENERGY -> neighbor.getCapability(Capabilities.STRICT_ENERGY, side).isPresent()

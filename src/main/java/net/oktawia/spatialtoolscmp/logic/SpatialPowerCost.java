@@ -1,8 +1,8 @@
 package net.oktawia.spatialtoolscmp.logic;
 
-import net.minecraft.core.BlockPos;
-
 import java.util.Collection;
+
+import net.minecraft.core.BlockPos;
 
 public final class SpatialPowerCost {
 
@@ -34,8 +34,7 @@ public final class SpatialPowerCost {
     public static double cost(
             Collection<BlockPos> positions,
             BlockPos origin,
-            double effectivePowerPerBlock
-    ) {
+            double effectivePowerPerBlock) {
         if (positions.isEmpty()) {
             return 0.0D;
         }

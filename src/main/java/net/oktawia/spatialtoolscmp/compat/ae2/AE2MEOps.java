@@ -1,30 +1,29 @@
 package net.oktawia.spatialtoolscmp.compat.ae2;
 
+import static appeng.api.storage.StorageHelper.poweredExtraction;
+import static appeng.api.storage.StorageHelper.poweredInsert;
+
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+
 import appeng.api.networking.IGrid;
-import appeng.api.networking.crafting.ICraftingService;
-import appeng.api.networking.energy.IEnergyService;
 import appeng.api.networking.energy.IEnergySource;
 import appeng.api.networking.security.IActionSource;
-import appeng.api.networking.storage.IStorageService;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.MEStorage;
 import appeng.me.helpers.BaseActionSource;
 import appeng.me.helpers.PlayerSource;
-import appeng.menu.locator.MenuLocators;
-import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import org.jetbrains.annotations.Nullable;
-
-import static appeng.api.storage.StorageHelper.poweredExtraction;
-import static appeng.api.storage.StorageHelper.poweredInsert;
 
 public final class AE2MEOps {
 
-    private AE2MEOps() {}
+    private AE2MEOps() {
+    }
 
     @Nullable
     private static IGrid getGrid(ItemStack linkedItem, ServerLevel level) {
@@ -52,10 +51,12 @@ public final class AE2MEOps {
 
     public static long getAmount(ItemStack filter, ItemStack linkedItem, ServerLevel level) {
         IGrid grid = getGrid(linkedItem, level);
-        if (grid == null || filter.isEmpty()) return 0;
+        if (grid == null || filter.isEmpty())
+            return 0;
 
         MEStorage storage = getStorage(grid);
-        if (storage == null) return 0;
+        if (storage == null)
+            return 0;
 
         KeyCounter counter = new KeyCounter();
         storage.getAvailableStacks(counter);
@@ -68,15 +69,17 @@ public final class AE2MEOps {
             ServerLevel level,
             long amount,
             boolean simulate,
-            @Nullable Player player
-    ) {
-        if (filter.isEmpty() || amount <= 0) return 0;
+            @Nullable Player player) {
+        if (filter.isEmpty() || amount <= 0)
+            return 0;
 
         IGrid grid = getGrid(linkedItem, level);
-        if (grid == null) return 0;
+        if (grid == null)
+            return 0;
 
         MEStorage storage = getStorage(grid);
-        if (storage == null) return 0;
+        if (storage == null)
+            return 0;
 
         if (simulate) {
             return storage.extract(toKey(filter), amount, appeng.api.config.Actionable.SIMULATE, source(player));
@@ -89,8 +92,7 @@ public final class AE2MEOps {
             ItemStack filter,
             ItemStack linkedItem,
             ServerLevel level,
-            long amount
-    ) {
+            long amount) {
         var extracted = extract(filter, linkedItem, level, amount, true, null);
         return extracted == amount;
     }
@@ -100,15 +102,17 @@ public final class AE2MEOps {
             ItemStack linkedItem,
             ServerLevel level,
             boolean simulate,
-            @Nullable Player player
-    ) {
-        if (toInsert.isEmpty()) return 0;
+            @Nullable Player player) {
+        if (toInsert.isEmpty())
+            return 0;
 
         IGrid grid = getGrid(linkedItem, level);
-        if (grid == null) return toInsert.getCount();
+        if (grid == null)
+            return toInsert.getCount();
 
         MEStorage storage = getStorage(grid);
-        if (storage == null) return toInsert.getCount();
+        if (storage == null)
+            return toInsert.getCount();
 
         long amount = toInsert.getCount();
 
@@ -128,9 +132,11 @@ public final class AE2MEOps {
     }
 
     public static boolean isCraftable(ItemStack filter, ItemStack linkedItem, ServerLevel level) {
-        if (filter.isEmpty()) return false;
+        if (filter.isEmpty())
+            return false;
         IGrid grid = getGrid(linkedItem, level);
-        if (grid == null) return false;
+        if (grid == null)
+            return false;
         return grid.getCraftingService().isCraftable(AEItemKey.of(filter));
     }
 
@@ -149,8 +155,7 @@ public final class AE2MEOps {
                 player,
                 new AE2ClonerCraftingLocator(slot),
                 AEItemKey.of(filter),
-                amount
-        );
+                amount);
     }
 
     private static ItemStack findActiveClonerStack(ServerPlayer player) {

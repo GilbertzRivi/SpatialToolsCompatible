@@ -4,6 +4,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.client.model.data.ModelData;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 
 public final class PreviewRenderModelDataHelper {
@@ -18,8 +19,7 @@ public final class PreviewRenderModelDataHelper {
             String sideMapKey,
             ClientLevel level,
             BakedModel model,
-            PreviewBlockAndTintGetter localLevel
-    ) {
+            PreviewBlockAndTintGetter localLevel) {
         return structure.getOrComputeModelData(sideMapKey, previewBlock.pos(), () -> {
             ModelData baseData;
             try {
@@ -27,8 +27,7 @@ public final class PreviewRenderModelDataHelper {
                         localLevel,
                         previewBlock.pos(),
                         previewBlock.state(),
-                        ModelData.EMPTY
-                );
+                        ModelData.EMPTY);
             } catch (Throwable t) {
                 SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
                 baseData = ModelData.EMPTY;
@@ -48,8 +47,7 @@ public final class PreviewRenderModelDataHelper {
                             localLevel,
                             model,
                             previewBlock.state(),
-                            blockEntity
-                    );
+                            blockEntity);
                 } catch (Throwable t) {
                     SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
                     continue;

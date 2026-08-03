@@ -1,15 +1,16 @@
 package net.oktawia.spatialtoolscmp.logic;
 
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 
 public final class PiperRoute {
 
@@ -267,8 +268,7 @@ public final class PiperRoute {
             Set<BlockPos> positions,
             BlockPos from,
             BlockPos to,
-            int maxPositions
-    ) {
+            int maxPositions) {
         int steps = steps(from, to);
 
         int stepX = Integer.signum(to.getX() - from.getX());
@@ -288,8 +288,6 @@ public final class PiperRoute {
                 Math.abs(to.getX() - from.getX()),
                 Math.max(
                         Math.abs(to.getY() - from.getY()),
-                        Math.abs(to.getZ() - from.getZ())
-                )
-        );
+                        Math.abs(to.getZ() - from.getZ())));
     }
 }

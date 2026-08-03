@@ -1,6 +1,13 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
-import mekanism.api.Upgrade;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -18,17 +25,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
+
+import mekanism.api.Upgrade;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public final class MekanismClonerExtension implements StructureCloneExtension {
 
@@ -55,8 +58,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         BlockState state = level.getBlockState(pos);
 
         if (!isMekanismBlock(state, rawBeTag)) {
@@ -87,8 +89,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isMekanismBlock(state, rawBeTag)) {
             return Optional.empty();
         }
@@ -132,8 +133,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
                 true,
                 state,
                 filteredTag.isEmpty() ? null : filteredTag,
-                costs
-        ));
+                costs));
     }
 
     @Override
@@ -141,8 +141,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (be == null || getMekanismMetadata(blockMetadata).isEmpty()) {
             return;
         }
@@ -178,8 +177,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
                 CompoundTag componentUpgrade = new CompoundTag();
                 componentUpgrade.put(
                         NBT_UPGRADES,
-                        rawComponentUpgrade.getList(NBT_UPGRADES, Tag.TAG_COMPOUND).copy()
-                );
+                        rawComponentUpgrade.getList(NBT_UPGRADES, Tag.TAG_COMPOUND).copy());
 
                 out.put(NBT_COMPONENT_UPGRADE, componentUpgrade);
                 return;
@@ -189,8 +187,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
         if (rawBeTag.contains(NBT_UPGRADES, Tag.TAG_LIST)) {
             out.put(
                     NBT_UPGRADES,
-                    rawBeTag.getList(NBT_UPGRADES, Tag.TAG_COMPOUND).copy()
-            );
+                    rawBeTag.getList(NBT_UPGRADES, Tag.TAG_COMPOUND).copy());
         }
     }
 
@@ -208,8 +205,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
 
     private static CompoundTag createWhitelistedMekanismTag(
             @Nullable CompoundTag rawBeTag,
-            CompoundTag mekanismData
-    ) {
+            CompoundTag mekanismData) {
         CompoundTag out = new CompoundTag();
 
         if (rawBeTag != null) {
@@ -310,8 +306,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
     private static ItemStack getUpgradeItemStack(Upgrade upgrade, int amount) {
         ResourceLocation itemId = new ResourceLocation(
                 MOD_ID,
-                "upgrade_" + upgrade.getRawName()
-        );
+                "upgrade_" + upgrade.getRawName());
 
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
 
@@ -350,14 +345,12 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
     private static void addBaseBlockRequirement(
             ServerLevel level,
             BlockPos pos,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         BlockHitResult hit = new BlockHitResult(
                 Vec3.atCenterOf(pos),
                 Direction.UP,
                 pos,
-                false
-        );
+                false);
 
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
 
@@ -431,8 +424,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag currentTag = saveCurrentTag(be);
 
         if (!isMekanismBlock(state, currentTag)) {
@@ -468,14 +460,12 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
     private static void addBaseBlockRefund(
             ServerLevel level,
             BlockPos pos,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         BlockHitResult hit = new BlockHitResult(
                 Vec3.atCenterOf(pos),
                 Direction.UP,
                 pos,
-                false
-        );
+                false);
 
         ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
 

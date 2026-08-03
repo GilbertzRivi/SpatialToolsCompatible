@@ -1,13 +1,14 @@
 package net.oktawia.spatialtoolscmp.client.renderer.extensions;
 
-import appeng.api.implementations.items.IFacadeItem;
-import appeng.blockentity.networking.CableBusBlockEntity;
-import appeng.client.render.cablebus.CableBusRenderState;
-import appeng.client.render.cablebus.FacadeBuilder;
-import appeng.client.render.cablebus.FacadeRenderState;
-import appeng.thirdparty.fabric.Mesh;
+import java.util.EnumMap;
+import java.util.LinkedHashSet;
+import java.util.Set;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -26,17 +27,20 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
+import appeng.api.implementations.items.IFacadeItem;
+import appeng.blockentity.networking.CableBusBlockEntity;
+import appeng.client.render.cablebus.CableBusRenderState;
+import appeng.client.render.cablebus.FacadeBuilder;
+import appeng.client.render.cablebus.FacadeRenderState;
+import appeng.thirdparty.fabric.Mesh;
+
 import net.oktawia.spatialtoolscmp.client.renderer.BlockRenderExtension;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlockAndTintGetter;
 import net.oktawia.spatialtoolscmp.mixin.ae2.CableBusBakedModelAccessor;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.EnumMap;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 public final class AE2BlockRenderExtension implements BlockRenderExtension {
 
@@ -61,14 +65,12 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         ModelData ae2ModelData = getCableBusModelData(
                 previewBlock,
                 localLevel,
                 localPos,
-                modelData
-        );
+                modelData);
 
         modelRenderer.tesselateBlock(
                 localLevel,
@@ -82,8 +84,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
                 seed,
                 OverlayTexture.NO_OVERLAY,
                 ae2ModelData,
-                renderType
-        );
+                renderType);
 
         renderFacadeQuads(
                 model,
@@ -92,8 +93,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
                 seed,
                 renderType,
                 poseStack,
-                vertexConsumer
-        );
+                vertexConsumer);
 
         return true;
     }
@@ -109,14 +109,12 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             BlockPos localPos,
             PoseStack poseStack,
             MultiBufferSource bufferSource,
-            long seed
-    ) {
+            long seed) {
         ModelData modelData = getCableBusModelData(
                 previewBlock,
                 localLevel,
                 localPos,
-                ModelData.EMPTY
-        );
+                ModelData.EMPTY);
 
         for (RenderType renderType : collectCableBusRenderTypes(model, state, modelData, seed)) {
             RenderType guiSafeRenderType = toGuiSafeRenderType(renderType);
@@ -133,8 +131,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
                     seed,
                     OverlayTexture.NO_OVERLAY,
                     modelData,
-                    renderType
-            );
+                    renderType);
 
             renderFacadeQuads(
                     model,
@@ -143,8 +140,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
                     seed,
                     renderType,
                     poseStack,
-                    bufferSource.getBuffer(guiSafeRenderType)
-            );
+                    bufferSource.getBuffer(guiSafeRenderType));
         }
 
         return true;
@@ -160,8 +156,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         Set<RenderType> renderTypes = new LinkedHashSet<>();
 
         for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(seed), modelData)) {
@@ -177,8 +172,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             BakedModel model,
             BlockState state,
             ModelData modelData,
-            long seed
-    ) {
+            long seed) {
         Set<RenderType> renderTypes = new LinkedHashSet<>();
 
         for (RenderType renderType : model.getRenderTypes(state, RandomSource.create(seed), modelData)) {
@@ -236,8 +230,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             @Nullable PreviewBlock previewBlock,
             PreviewBlockAndTintGetter localLevel,
             BlockPos localPos,
-            ModelData fallback
-    ) {
+            ModelData fallback) {
         BlockEntity blockEntity = localLevel.getBlockEntity(localPos);
 
         if (!(blockEntity instanceof CableBusBlockEntity)) {
@@ -274,8 +267,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             CableBusRenderState renderState,
             PreviewBlockAndTintGetter localLevel,
             BlockPos localPos,
-            @Nullable PreviewBlock previewBlock
-    ) {
+            @Nullable PreviewBlock previewBlock) {
         if (previewBlock == null) {
             return;
         }
@@ -318,8 +310,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
 
             renderState.getFacades().put(
                     side,
-                    new FacadeRenderState(facadeState, transparent)
-            );
+                    new FacadeRenderState(facadeState, transparent));
         }
     }
 
@@ -330,8 +321,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
             long seed,
             RenderType renderType,
             PoseStack poseStack,
-            VertexConsumer vertexConsumer
-    ) {
+            VertexConsumer vertexConsumer) {
         if (renderState == null || renderState.getFacades().isEmpty()) {
             return;
         }
@@ -354,8 +344,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
                     () -> RandomSource.create(seed),
                     localLevel,
                     facadeData,
-                    renderType
-            );
+                    renderType);
 
             for (BakedQuad quad : mesh.toBakedBlockQuads()) {
                 vertexConsumer.putBulkData(
@@ -363,8 +352,7 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
                         quad,
                         1f, 1f, 1f,
                         0xF000F0,
-                        OverlayTexture.NO_OVERLAY
-                );
+                        OverlayTexture.NO_OVERLAY);
             }
         } catch (Throwable ignored) {
         }

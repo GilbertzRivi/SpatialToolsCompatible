@@ -1,18 +1,18 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.List;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.List;
 
 public record PlacementPlan(
         boolean shouldPlace,
         @Nullable BlockState stateToPlace,
         @Nullable CompoundTag blockEntityTag,
-        List<ItemStack> consumedStacks
-) {
+        List<ItemStack> consumedStacks) {
     public static PlacementPlan none() {
         return new PlacementPlan(false, null, null, List.of());
     }

@@ -5,6 +5,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
@@ -52,8 +53,7 @@ public class PortableSpatialStorageScreen
                 this.imageWidth,
                 this.imageHeight,
                 256,
-                256
-        );
+                256);
     }
 
     @Override
@@ -62,8 +62,7 @@ public class PortableSpatialStorageScreen
                 this.leftPos + PREVIEW_LEFT,
                 this.topPos + PREVIEW_TOP,
                 PREVIEW_WIDTH,
-                PREVIEW_HEIGHT
-        );
+                PREVIEW_HEIGHT);
     }
 
     @Override
@@ -77,15 +76,13 @@ public class PortableSpatialStorageScreen
         ItemStack stack = StructureToolUtil.findActive(
                 player,
                 PortableSpatialStorage.class,
-                PortableSpatialCloner.class
-        );
+                PortableSpatialCloner.class);
 
         if (stack.isEmpty()) {
             stack = StructureToolUtil.findHeld(
                     player,
                     PortableSpatialStorage.class,
-                    PortableSpatialCloner.class
-            );
+                    PortableSpatialCloner.class);
         }
 
         return stack;

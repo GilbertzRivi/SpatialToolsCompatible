@@ -5,6 +5,7 @@ import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
 import net.minecraftforge.network.simple.SimpleChannel;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.network.packets.*;
 import net.oktawia.spatialtoolscmp.network.packets.ReplacerContextActionPacket;
@@ -17,12 +18,12 @@ public final class NetworkHandler {
             SpatialToolsCMP.makeId("main"),
             () -> PROTOCOL_VERSION,
             PROTOCOL_VERSION::equals,
-            PROTOCOL_VERSION::equals
-    );
+            PROTOCOL_VERSION::equals);
 
     private static int nextId = 0;
 
-    private NetworkHandler() {}
+    private NetworkHandler() {
+    }
 
     public static void registerMessages() {
         CHANNEL.messageBuilder(SendLongStringToClientPacket.class, nextId++, NetworkDirection.PLAY_TO_CLIENT)
@@ -30,7 +31,6 @@ public final class NetworkHandler {
                 .decoder(SendLongStringToClientPacket::decode)
                 .consumerMainThread(SendLongStringToClientPacket::handle)
                 .add();
-
 
         CHANNEL.messageBuilder(RequestStructureToolPreviewPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(RequestStructureToolPreviewPacket::encode)

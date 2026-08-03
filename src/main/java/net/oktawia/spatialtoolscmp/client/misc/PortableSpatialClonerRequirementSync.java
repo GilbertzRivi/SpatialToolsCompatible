@@ -1,11 +1,11 @@
 package net.oktawia.spatialtoolscmp.client.misc;
 
-import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import net.oktawia.spatialtoolscmp.client.misc.widgets.ClonerMaterialListWidget;
 
 public final class PortableSpatialClonerRequirementSync {
 
@@ -27,10 +27,8 @@ public final class PortableSpatialClonerRequirementSync {
                                 entry.stack().copy(),
                                 entry.available(),
                                 entry.required(),
-                                entry.craftable()
-                        ))
-                        .collect(Collectors.toList())
-        );
+                                entry.craftable()))
+                        .collect(Collectors.toList()));
     }
 
     public static List<ClonerMaterialListWidget.MaterialEntry> getEntries(int containerId) {

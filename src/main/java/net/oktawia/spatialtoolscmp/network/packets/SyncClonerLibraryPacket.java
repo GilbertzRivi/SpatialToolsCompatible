@@ -1,16 +1,17 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.MinecraftServer;
-import net.minecraftforge.network.NetworkEvent;
-import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureLibraryClientCache;
-import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
+
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.server.MinecraftServer;
+import net.minecraftforge.network.NetworkEvent;
+
+import net.oktawia.spatialtoolscmp.client.misc.ClonerStructureLibraryClientCache;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 
 public class SyncClonerLibraryPacket {
 
@@ -21,8 +22,7 @@ public class SyncClonerLibraryPacket {
     public SyncClonerLibraryPacket(
             List<Entry> entries,
             String selectedId,
-            List<String> folders
-    ) {
+            List<String> folders) {
         this.entries = List.copyOf(entries);
         this.selectedId = selectedId == null ? "" : selectedId;
         this.folders = List.copyOf(folders);
@@ -34,22 +34,19 @@ public class SyncClonerLibraryPacket {
             long created,
             long updated,
             int blockCount,
-            String folder
-    ) {
+            String folder) {
     }
 
     public static SyncClonerLibraryPacket fromStoreEntries(
             List<ClonerStructureLibraryStore.Entry> storeEntries,
-            String selectedId
-    ) {
+            String selectedId) {
         return fromStoreEntries(storeEntries, selectedId, List.of());
     }
 
     public static SyncClonerLibraryPacket fromStoreEntries(
             List<ClonerStructureLibraryStore.Entry> storeEntries,
             String selectedId,
-            List<String> folders
-    ) {
+            List<String> folders) {
         List<Entry> entries = new ArrayList<>();
 
         for (ClonerStructureLibraryStore.Entry entry : storeEntries) {
@@ -59,8 +56,7 @@ public class SyncClonerLibraryPacket {
                     entry.created(),
                     entry.updated(),
                     entry.blockCount(),
-                    entry.folder() == null ? "" : entry.folder()
-            ));
+                    entry.folder() == null ? "" : entry.folder()));
         }
 
         return new SyncClonerLibraryPacket(entries, selectedId, folders);
@@ -69,13 +65,11 @@ public class SyncClonerLibraryPacket {
     public static SyncClonerLibraryPacket fromPlayer(
             MinecraftServer server,
             UUID owner,
-            String selectedId
-    ) throws IOException {
+            String selectedId) throws IOException {
         return fromStoreEntries(
                 ClonerStructureLibraryStore.list(server, owner),
                 selectedId,
-                ClonerStructureLibraryStore.listFolders(server, owner)
-        );
+                ClonerStructureLibraryStore.listFolders(server, owner));
     }
 
     public static void encode(SyncClonerLibraryPacket packet, FriendlyByteBuf buffer) {
@@ -111,8 +105,7 @@ public class SyncClonerLibraryPacket {
                     buffer.readLong(),
                     buffer.readLong(),
                     buffer.readVarInt(),
-                    buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH)
-            ));
+                    buffer.readUtf(ClonerStructureLibraryStore.MAX_NAME_LENGTH)));
         }
 
         int folderCount = buffer.readVarInt();
@@ -138,8 +131,7 @@ public class SyncClonerLibraryPacket {
                         entry.created(),
                         entry.updated(),
                         entry.blockCount(),
-                        entry.folder() == null ? "" : entry.folder()
-                ));
+                        entry.folder() == null ? "" : entry.folder()));
             }
 
             ClonerStructureLibraryClientCache.set(cached, packet.selectedId, packet.folders);

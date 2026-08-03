@@ -1,5 +1,9 @@
 package net.oktawia.spatialtoolscmp.logic;
 
+import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -9,9 +13,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.UUID;
 
 public final class StructureToolStackState {
 
@@ -104,8 +105,7 @@ public final class StructureToolStackState {
     public static void setSelectedClonerLibraryEntry(
             ItemStack stack,
             @Nullable UUID owner,
-            @Nullable String id
-    ) {
+            @Nullable String id) {
         if (owner == null || id == null || id.isBlank()) {
             clearSelectedClonerLibraryEntry(stack);
             return;
@@ -271,8 +271,7 @@ public final class StructureToolStackState {
 
         stack.getOrCreateTag().putInt(
                 TAG_SELECTION_MODE,
-                mode == null ? SelectionMode.DEFAULT.id() : mode.id()
-        );
+                mode == null ? SelectionMode.DEFAULT.id() : mode.id());
     }
 
     public static SelectionMode cycleSelectionMode(ItemStack stack) {
@@ -349,7 +348,7 @@ public final class StructureToolStackState {
             return;
         }
 
-        tag.putIntArray(key, new int[]{pos.getX(), pos.getY(), pos.getZ()});
+        tag.putIntArray(key, new int[] { pos.getX(), pos.getY(), pos.getZ() });
     }
 
     private static @Nullable BlockPos getPos(ItemStack stack, String key) {

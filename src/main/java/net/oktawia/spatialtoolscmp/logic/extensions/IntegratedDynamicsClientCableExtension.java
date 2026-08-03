@@ -1,5 +1,12 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.Optional;
+import java.util.Set;
+
+import org.cyclops.integrateddynamics.block.BlockCable;
+import org.cyclops.integrateddynamics.core.helper.CableHelpers;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.RenderType;
@@ -8,15 +15,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
-import org.cyclops.integrateddynamics.block.BlockCable;
-import org.cyclops.integrateddynamics.core.helper.CableHelpers;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Optional;
-import java.util.Set;
 
 public final class IntegratedDynamicsClientCableExtension
         implements ClientReplacerExtension, ClientPiperExtension {
@@ -32,8 +34,7 @@ public final class IntegratedDynamicsClientCableExtension
             ClientLevel level,
             BlockPos pos,
             BlockState state,
-            ReplacerContext ctx
-    ) {
+            ReplacerContext ctx) {
         return null;
     }
 
@@ -55,8 +56,7 @@ public final class IntegratedDynamicsClientCableExtension
             BlockState targetState,
             ItemStack target,
             BlockPos pos,
-            Set<BlockPos> allPositions
-    ) {
+            Set<BlockPos> allPositions) {
         if (!(targetState.getBlock() instanceof BlockCable)) {
             return null;
         }
@@ -82,8 +82,7 @@ public final class IntegratedDynamicsClientCableExtension
     private static boolean connectsToWorld(
             @Nullable ClientLevel level,
             BlockPos neighborPos,
-            Direction neighborSide
-    ) {
+            Direction neighborSide) {
         if (level == null) {
             return false;
         }

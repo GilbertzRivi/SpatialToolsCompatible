@@ -11,7 +11,8 @@ public final class ClientReplacerExtensions {
     }
 
     public static void register(ClientReplacerExtension extension) {
-        if (extension == null || EXTENSIONS.contains(extension)) return;
+        if (extension == null || EXTENSIONS.contains(extension))
+            return;
         EXTENSIONS.add(extension);
     }
 

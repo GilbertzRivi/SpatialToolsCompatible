@@ -1,13 +1,5 @@
 package net.oktawia.spatialtoolscmp.util;
 
-import lombok.Getter;
-import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.registries.ForgeRegistries;
-import org.jetbrains.annotations.Nullable;
-
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -16,6 +8,16 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import org.jetbrains.annotations.Nullable;
+
+import net.minecraft.core.Holder;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.registries.ForgeRegistries;
+
+import lombok.Getter;
 
 public final class BlockMatcher {
 
@@ -70,8 +72,7 @@ public final class BlockMatcher {
 
     private record BlockKeys(String id, Set<String> tags) {
 
-        private static final ThreadLocal<Map<Block, BlockKeys>> CACHE =
-                ThreadLocal.withInitial(IdentityHashMap::new);
+        private static final ThreadLocal<Map<Block, BlockKeys>> CACHE = ThreadLocal.withInitial(IdentityHashMap::new);
 
         static BlockKeys of(Block block) {
             Map<Block, BlockKeys> cache = CACHE.get();

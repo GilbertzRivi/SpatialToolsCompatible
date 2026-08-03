@@ -1,5 +1,10 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.*;
+import java.util.function.Supplier;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -9,13 +14,10 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
-import java.util.function.Supplier;
 
 public final class PreviewStructure {
 
@@ -33,8 +35,7 @@ public final class PreviewStructure {
     private PreviewStructure(
             BlockPos size,
             List<PreviewBlock> blocks,
-            List<PreviewBlock> surfaceBlocks
-    ) {
+            List<PreviewBlock> surfaceBlocks) {
         this.size = size;
         this.blocks = blocks;
         this.surfaceBlocks = surfaceBlocks;
@@ -63,8 +64,7 @@ public final class PreviewStructure {
     public ModelData getOrComputeModelData(
             String sideMapKey,
             BlockPos localPos,
-            Supplier<ModelData> compute
-    ) {
+            Supplier<ModelData> compute) {
         return modelDataCache
                 .computeIfAbsent(sideMapKey, k -> new HashMap<>())
                 .computeIfAbsent(localPos, k -> compute.get());
@@ -108,8 +108,7 @@ public final class PreviewStructure {
                     level,
                     block.pos(),
                     block.state(),
-                    block.blockEntityTag()
-            );
+                    block.blockEntityTag());
 
             if (be != null) {
                 result.put(block.pos(), be);
@@ -123,8 +122,7 @@ public final class PreviewStructure {
             ClientLevel level,
             BlockPos pos,
             BlockState state,
-            CompoundTag tag
-    ) {
+            CompoundTag tag) {
         CompoundTag copy = tag.copy();
 
         copy.putInt("x", pos.getX());
@@ -169,8 +167,7 @@ public final class PreviewStructure {
                     info.pos(),
                     info.state(),
                     info.blockEntityTag(),
-                    cloneMetadata.get(info.pos())
-            ));
+                    cloneMetadata.get(info.pos())));
         }
 
         BlockPos size = readSize(tag, blocks);
@@ -179,8 +176,7 @@ public final class PreviewStructure {
         return new PreviewStructure(
                 size,
                 List.copyOf(blocks),
-                List.copyOf(surface)
-        );
+                List.copyOf(surface));
     }
 
     private static Map<BlockPos, CompoundTag> readCloneMetadata(CompoundTag tag) {
@@ -201,8 +197,7 @@ public final class PreviewStructure {
             BlockPos pos = new BlockPos(
                     posTag.getInt("x"),
                     posTag.getInt("y"),
-                    posTag.getInt("z")
-            ).offset(templateOffset);
+                    posTag.getInt("z")).offset(templateOffset);
 
             result.put(pos, entry);
         }
@@ -218,8 +213,7 @@ public final class PreviewStructure {
                 return new BlockPos(
                         sizeTag.getInt(0),
                         sizeTag.getInt(1),
-                        sizeTag.getInt(2)
-                );
+                        sizeTag.getInt(2));
             }
         }
 
@@ -240,14 +234,12 @@ public final class PreviewStructure {
         return new BlockPos(
                 maxX + 1,
                 maxY + 1,
-                maxZ + 1
-        );
+                maxZ + 1);
     }
 
     private static List<PreviewBlock> computeSurfaceDepth(
             List<PreviewBlock> blocks,
-            int maxDepth
-    ) {
+            int maxDepth) {
         if (blocks.isEmpty()) {
             return List.of();
         }
@@ -282,8 +274,7 @@ public final class PreviewStructure {
                 minZ - 1,
                 maxX + 1,
                 maxY + 1,
-                maxZ + 1
-        );
+                maxZ + 1);
 
         Map<BlockPos, Integer> bestDepth = new HashMap<>();
         Queue<DepthNode> queue = new ArrayDeque<>();
@@ -346,8 +337,7 @@ public final class PreviewStructure {
     private static void enqueueBoundary(
             Bounds bounds,
             Map<BlockPos, Integer> bestDepth,
-            Queue<DepthNode> queue
-    ) {
+            Queue<DepthNode> queue) {
         for (int x = bounds.minX(); x <= bounds.maxX(); x++) {
             for (int y = bounds.minY(); y <= bounds.maxY(); y++) {
                 enqueueIfBetter(new BlockPos(x, y, bounds.minZ()), 0, bestDepth, queue);
@@ -374,8 +364,7 @@ public final class PreviewStructure {
             BlockPos pos,
             int depth,
             Map<BlockPos, Integer> bestDepth,
-            Queue<DepthNode> queue
-    ) {
+            Queue<DepthNode> queue) {
         Integer oldDepth = bestDepth.get(pos);
 
         if (oldDepth != null && oldDepth <= depth) {
@@ -395,8 +384,7 @@ public final class PreviewStructure {
             int minZ,
             int maxX,
             int maxY,
-            int maxZ
-    ) {
+            int maxZ) {
         private boolean contains(BlockPos pos) {
             return pos.getX() >= minX
                     && pos.getX() <= maxX

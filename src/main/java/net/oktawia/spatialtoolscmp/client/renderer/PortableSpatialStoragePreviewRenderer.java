@@ -1,9 +1,19 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
@@ -30,20 +40,13 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
 
 public class PortableSpatialStoragePreviewRenderer {
 
@@ -51,7 +54,8 @@ public class PortableSpatialStoragePreviewRenderer {
     private static final int PREVIEW_BUFFER_SIZE = 262_144;
 
     private final BufferBuilder previewBufferBuilder = new BufferBuilder(PREVIEW_BUFFER_SIZE);
-    private final MultiBufferSource.BufferSource previewBufferSource = MultiBufferSource.immediate(previewBufferBuilder);
+    private final MultiBufferSource.BufferSource previewBufferSource = MultiBufferSource
+            .immediate(previewBufferBuilder);
 
     private enum PreviewPass {
         SOLID,
@@ -96,15 +100,13 @@ public class PortableSpatialStoragePreviewRenderer {
                     minecraft,
                     event,
                     poseStack,
-                    stack
-            );
+                    stack);
         } finally {
             poseStack.popPose();
 
             resetPreviewRenderState(
                     minecraft,
-                    isTripwireStage(event.getStage())
-            );
+                    isTripwireStage(event.getStage()));
         }
     }
 
@@ -140,8 +142,7 @@ public class PortableSpatialStoragePreviewRenderer {
             Minecraft minecraft,
             RenderLevelStageEvent event,
             PoseStack poseStack,
-            ItemStack stack
-    ) {
+            ItemStack stack) {
         int[] sideMap = StructureToolStackState.getPreviewSideMap(stack);
         String sideMapKey = Arrays.toString(sideMap);
         RenderLevelStageEvent.Stage stage = event.getStage();
@@ -177,8 +178,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.SOLID
-                );
+                        PreviewPass.SOLID);
                 return;
             }
 
@@ -190,8 +190,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.CUTOUT_MIPPED
-                );
+                        PreviewPass.CUTOUT_MIPPED);
                 return;
             }
 
@@ -203,8 +202,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.CUTOUT
-                );
+                        PreviewPass.CUTOUT);
                 return;
             }
 
@@ -214,8 +212,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         poseStack,
                         structure,
                         placementOrigin,
-                        event.getPartialTick()
-                );
+                        event.getPartialTick());
                 return;
             }
 
@@ -227,16 +224,14 @@ public class PortableSpatialStoragePreviewRenderer {
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.TRANSLUCENT
-                );
+                        PreviewPass.TRANSLUCENT);
 
                 renderLineBoxes(
                         minecraft,
                         poseStack,
                         structure,
                         placementOrigin,
-                        stack.getItem() instanceof PortableSpatialCloner
-                );
+                        stack.getItem() instanceof PortableSpatialCloner);
             }
 
             return;
@@ -259,8 +254,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         minecraft,
                         poseStack,
                         previewPos,
-                        previewPos
-                );
+                        previewPos);
             }
 
             return;
@@ -277,8 +271,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 BlockHitResult hit = StructureToolUtil.rayTrace(
                         minecraft.level,
                         minecraft.player,
-                        MAX_DISTANCE
-                );
+                        MAX_DISTANCE);
 
                 if (hit.getType() == HitResult.Type.BLOCK) {
                     previewB = hit.getBlockPos();
@@ -291,16 +284,14 @@ public class PortableSpatialStoragePreviewRenderer {
                     minecraft,
                     poseStack,
                     selectionA,
-                    previewB
-            );
+                    previewB);
         }
     }
 
     private static BlockPos resolvePreviewAnchor(Minecraft minecraft, ItemStack stack) {
         BlockPos anchored = StructureToolStackState.getAnchorIfValid(
                 stack,
-                minecraft.level.dimension()
-        );
+                minecraft.level.dimension());
 
         if (anchored != null) {
             return anchored;
@@ -309,8 +300,7 @@ public class PortableSpatialStoragePreviewRenderer {
         BlockHitResult hit = StructureToolUtil.rayTrace(
                 minecraft.level,
                 minecraft.player,
-                MAX_DISTANCE
-        );
+                MAX_DISTANCE);
 
         if (hit.getType() != HitResult.Type.BLOCK) {
             return null;
@@ -337,8 +327,7 @@ public class PortableSpatialStoragePreviewRenderer {
             BlockState state,
             BlockPos localPos,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         CompoundTag rawBeTag = previewBlock.blockEntityTag();
 
         for (BlockRenderExtension extension : BlockRenderExtensions.all()) {
@@ -355,8 +344,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     state,
                     localPos,
                     seed,
-                    modelData
-            );
+                    modelData);
 
             if (renderTypes != null) {
                 return renderTypes;
@@ -379,8 +367,7 @@ public class PortableSpatialStoragePreviewRenderer {
             VertexConsumer vertexConsumer,
             RenderType renderType,
             long seed,
-            ModelData modelData
-    ) {
+            ModelData modelData) {
         CompoundTag rawBeTag = previewBlock.blockEntityTag();
 
         for (BlockRenderExtension extension : BlockRenderExtensions.all()) {
@@ -401,8 +388,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     vertexConsumer,
                     renderType,
                     seed,
-                    modelData
-            )) {
+                    modelData)) {
                 return;
             }
         }
@@ -419,8 +405,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 seed,
                 OverlayTexture.NO_OVERLAY,
                 modelData,
-                renderType
-        );
+                renderType);
     }
 
     private void renderGhostModelsPass(
@@ -430,8 +415,7 @@ public class PortableSpatialStoragePreviewRenderer {
             BlockPos origin,
             int[] sideMap,
             String sideMapKey,
-            PreviewPass pass
-    ) {
+            PreviewPass pass) {
         String solidKey = sideMapKey + ":natural_v3:solid";
         String cutoutKey = sideMapKey + ":natural_v3:cutout";
         String cutoutMippedKey = sideMapKey + ":natural_v3:cutout_mipped";
@@ -449,8 +433,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     solidKey,
                     cutoutKey,
                     cutoutMippedKey,
-                    translucentKey
-            );
+                    translucentKey);
         }
 
         CachedPreviewBuffer buffer;
@@ -514,8 +497,7 @@ public class PortableSpatialStoragePreviewRenderer {
             emitPreviewGeometry(
                     buffer,
                     poseStack,
-                    bufferSource.getBuffer(renderType)
-            );
+                    bufferSource.getBuffer(renderType));
         } finally {
             bufferSource.endBatch(renderType);
             poseStack.popPose();
@@ -525,8 +507,7 @@ public class PortableSpatialStoragePreviewRenderer {
     private static void emitPreviewGeometry(
             CachedPreviewBuffer buffer,
             PoseStack poseStack,
-            VertexConsumer consumer
-    ) {
+            VertexConsumer consumer) {
         if (buffer == null || buffer.isEmpty()) {
             return;
         }
@@ -542,8 +523,7 @@ public class PortableSpatialStoragePreviewRenderer {
             String solidKey,
             String cutoutKey,
             String cutoutMippedKey,
-            String translucentKey
-    ) {
+            String translucentKey) {
         ClientLevel level = minecraft.level;
         var dispatcher = minecraft.getBlockRenderer();
         var modelRenderer = dispatcher.getModelRenderer();
@@ -551,8 +531,7 @@ public class PortableSpatialStoragePreviewRenderer {
         PreviewBlockAndTintGetter localLevel = new PreviewBlockAndTintGetter(
                 level,
                 structure,
-                BlockPos.ZERO
-        );
+                BlockPos.ZERO);
 
         CachedPreviewBuffer solidBuffer = new CachedPreviewBuffer();
         CachedPreviewBuffer cutoutBuffer = new CachedPreviewBuffer();
@@ -574,8 +553,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     sideMapKey,
                     level,
                     model,
-                    localLevel
-            );
+                    localLevel);
 
             ps.pushPose();
             ps.translate(localPos.getX(), localPos.getY(), localPos.getZ());
@@ -590,8 +568,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         state,
                         localPos,
                         seed,
-                        modelData
-                )) {
+                        modelData)) {
                     CachedPreviewBuffer target = switch (classifyRenderType(renderType)) {
                         case SOLID -> solidBuffer;
                         case CUTOUT -> cutoutBuffer;
@@ -612,16 +589,14 @@ public class PortableSpatialStoragePreviewRenderer {
                             target,
                             renderType,
                             seed,
-                            modelData
-                    );
+                            modelData);
                 }
             } catch (Throwable t) {
                 SpatialToolsCMP.getLOGGER().debug(
                         "Preview tesselation failed for {} at {}: {}",
                         state,
                         localPos,
-                        t.getMessage()
-                );
+                        t.getMessage());
             }
 
             ps.popPose();
@@ -674,8 +649,7 @@ public class PortableSpatialStoragePreviewRenderer {
             PoseStack poseStack,
             PreviewStructure structure,
             BlockPos origin,
-            float partialTick
-    ) {
+            float partialTick) {
         Map<BlockPos, BlockEntity> blockEntities = structure.blockEntities(minecraft.level);
 
         if (blockEntities.isEmpty()) {
@@ -726,8 +700,7 @@ public class PortableSpatialStoragePreviewRenderer {
                             poseStack,
                             previewSource,
                             LightTexture.FULL_BRIGHT,
-                            OverlayTexture.NO_OVERLAY
-                    );
+                            OverlayTexture.NO_OVERLAY);
                 } catch (Throwable t) {
                     SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
                 } finally {
@@ -761,8 +734,7 @@ public class PortableSpatialStoragePreviewRenderer {
             PoseStack poseStack,
             PreviewStructure structure,
             BlockPos origin,
-            boolean markSameBlocksAsBlue
-    ) {
+            boolean markSameBlocksAsBlue) {
         MultiBufferSource.BufferSource bufferSource = previewBufferSource();
         RenderType renderType = RenderType.translucent();
 
@@ -812,8 +784,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         red,
                         green,
                         blue,
-                        1.0f
-                );
+                        1.0f);
             }
         } finally {
             bufferSource.endBatch(renderType);
@@ -824,8 +795,7 @@ public class PortableSpatialStoragePreviewRenderer {
             Minecraft minecraft,
             PoseStack poseStack,
             BlockPos a,
-            BlockPos b
-    ) {
+            BlockPos b) {
         int minX = Math.min(a.getX(), b.getX());
         int minY = Math.min(a.getY(), b.getY());
         int minZ = Math.min(a.getZ(), b.getZ());
@@ -867,8 +837,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     0.20f,
                     0.85f,
                     1.00f,
-                    0.14f
-            );
+                    0.14f);
         } finally {
             bufferSource.endBatch(PreviewRenderTypes.SELECTION_FILL);
         }
@@ -904,8 +873,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     0.20f,
                     0.85f,
                     1.00f,
-                    1.00f
-            );
+                    1.00f);
 
             renderCornerMarker(
                     quads,
@@ -916,8 +884,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     1.00f,
                     0.10f,
                     0.10f,
-                    1.00f
-            );
+                    1.00f);
 
             if (!a.equals(b)) {
                 renderCornerMarker(
@@ -929,8 +896,7 @@ public class PortableSpatialStoragePreviewRenderer {
                         0.20f,
                         1.00f,
                         0.20f,
-                        1.00f
-                );
+                        1.00f);
             }
         } finally {
             bufferSource.endBatch(lineRenderType);
@@ -950,8 +916,7 @@ public class PortableSpatialStoragePreviewRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         Vec3 camera = minecraft.gameRenderer.getMainCamera().getPosition();
         Matrix4f matrix = poseStack.last().pose();
 
@@ -963,8 +928,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     minX, maxY, minZ,
                     minX, maxY, maxZ,
                     minX, minY, maxZ,
-                    red, green, blue, alpha
-            );
+                    red, green, blue, alpha);
         } else if (camera.x > maxX) {
             quadColor(
                     consumer,
@@ -973,8 +937,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     maxX, maxY, maxZ,
                     maxX, maxY, minZ,
                     maxX, minY, minZ,
-                    red, green, blue, alpha
-            );
+                    red, green, blue, alpha);
         }
 
         if (camera.y < minY) {
@@ -985,8 +948,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     maxX, minY, maxZ,
                     maxX, minY, minZ,
                     minX, minY, minZ,
-                    red, green, blue, alpha
-            );
+                    red, green, blue, alpha);
         } else if (camera.y > maxY) {
             quadColor(
                     consumer,
@@ -995,8 +957,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     maxX, maxY, minZ,
                     maxX, maxY, maxZ,
                     minX, maxY, maxZ,
-                    red, green, blue, alpha
-            );
+                    red, green, blue, alpha);
         }
 
         if (camera.z < minZ) {
@@ -1007,8 +968,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     maxX, maxY, minZ,
                     minX, maxY, minZ,
                     minX, minY, minZ,
-                    red, green, blue, alpha
-            );
+                    red, green, blue, alpha);
         } else if (camera.z > maxZ) {
             quadColor(
                     consumer,
@@ -1017,8 +977,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     minX, maxY, maxZ,
                     maxX, maxY, maxZ,
                     maxX, minY, maxZ,
-                    red, green, blue, alpha
-            );
+                    red, green, blue, alpha);
         }
     }
 
@@ -1040,8 +999,7 @@ public class PortableSpatialStoragePreviewRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         consumer.vertex(matrix, x1, y1, z1)
                 .color(red, green, blue, alpha)
                 .endVertex();
@@ -1068,8 +1026,7 @@ public class PortableSpatialStoragePreviewRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         float expand = 0.05f;
 
         float minX = pos.getX() - expand;
@@ -1095,8 +1052,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 red,
                 green,
                 blue,
-                alpha
-        );
+                alpha);
     }
 
     private static TextureAtlasSprite previewWhiteSprite(Minecraft minecraft) {
@@ -1120,8 +1076,7 @@ public class PortableSpatialStoragePreviewRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         billboardLine(consumer, matrix, camera, sprite, x1, y1, z1, x2, y1, z1, halfWidth, red, green, blue, alpha);
         billboardLine(consumer, matrix, camera, sprite, x2, y1, z1, x2, y1, z2, halfWidth, red, green, blue, alpha);
         billboardLine(consumer, matrix, camera, sprite, x2, y1, z2, x1, y1, z2, halfWidth, red, green, blue, alpha);
@@ -1153,13 +1108,11 @@ public class PortableSpatialStoragePreviewRenderer {
             float red,
             float green,
             float blue,
-            float alpha
-    ) {
+            float alpha) {
         Vector3f dir = new Vector3f(
                 x2 - x1,
                 y2 - y1,
-                z2 - z1
-        );
+                z2 - z1);
 
         if (dir.lengthSquared() < 1.0e-6f) {
             return;
@@ -1168,14 +1121,12 @@ public class PortableSpatialStoragePreviewRenderer {
         Vector3f mid = new Vector3f(
                 (x1 + x2) * 0.5f,
                 (y1 + y2) * 0.5f,
-                (z1 + z2) * 0.5f
-        );
+                (z1 + z2) * 0.5f);
 
         Vector3f toCamera = new Vector3f(
                 (float) camera.x - mid.x,
                 (float) camera.y - mid.y,
-                (float) camera.z - mid.z
-        );
+                (float) camera.z - mid.z);
 
         if (toCamera.lengthSquared() < 1.0e-6f) {
             toCamera.set(0.0f, 1.0f, 0.0f);
@@ -1213,8 +1164,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 blue,
                 alpha,
                 u0,
-                v0
-        );
+                v0);
 
         vertex(
                 consumer,
@@ -1227,8 +1177,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 blue,
                 alpha,
                 u0,
-                v1
-        );
+                v1);
 
         vertex(
                 consumer,
@@ -1241,8 +1190,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 blue,
                 alpha,
                 u1,
-                v1
-        );
+                v1);
 
         vertex(
                 consumer,
@@ -1255,8 +1203,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 blue,
                 alpha,
                 u1,
-                v0
-        );
+                v0);
     }
 
     private static void vertex(
@@ -1270,8 +1217,7 @@ public class PortableSpatialStoragePreviewRenderer {
             float blue,
             float alpha,
             float u,
-            float v
-    ) {
+            float v) {
         consumer.vertex(matrix, x, y, z)
                 .color(red, green, blue, alpha)
                 .uv(u, v)
@@ -1286,8 +1232,7 @@ public class PortableSpatialStoragePreviewRenderer {
 
     private static void resetPreviewRenderState(
             Minecraft minecraft,
-            boolean turnOffLightLayer
-    ) {
+            boolean turnOffLightLayer) {
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();

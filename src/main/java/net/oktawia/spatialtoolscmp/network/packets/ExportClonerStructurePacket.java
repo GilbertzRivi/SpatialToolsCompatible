@@ -1,15 +1,16 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.function.Supplier;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
+
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-
-import java.util.function.Supplier;
 
 public class ExportClonerStructurePacket {
 
@@ -31,8 +32,7 @@ public class ExportClonerStructurePacket {
     public static ExportClonerStructurePacket decode(FriendlyByteBuf buffer) {
         return new ExportClonerStructurePacket(
                 buffer.readVarInt(),
-                buffer.readUtf(32767)
-        );
+                buffer.readUtf(32767));
     }
 
     public static void handle(ExportClonerStructurePacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -54,8 +54,7 @@ public class ExportClonerStructurePacket {
                 CompoundTag tag = ClonerStructureLibraryStore.load(
                         player.server,
                         player.getUUID(),
-                        packet.id
-                );
+                        packet.id);
 
                 if (tag == null) {
                     return;
@@ -69,8 +68,7 @@ public class ExportClonerStructurePacket {
 
                 NetworkHandler.sendToPlayer(
                         player,
-                        new ExportClonerStructureResultPacket(packet.id, bytes)
-                );
+                        new ExportClonerStructureResultPacket(packet.id, bytes));
             } catch (Exception ignored) {
             }
         });

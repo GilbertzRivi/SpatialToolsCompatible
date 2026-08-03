@@ -1,5 +1,19 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.cyclops.integrateddynamics.api.part.IPartContainer;
+import org.cyclops.integrateddynamics.api.part.IPartState;
+import org.cyclops.integrateddynamics.api.part.IPartType;
+import org.cyclops.integrateddynamics.core.blockentity.BlockEntityMultipartTicking;
+import org.cyclops.integrateddynamics.core.helper.CableHelpers;
+import org.cyclops.integrateddynamics.core.part.PartTypes;
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -15,6 +29,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
@@ -22,19 +37,6 @@ import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
 import net.oktawia.spatialtoolscmp.logic.StructurePasteExtension;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
-import org.cyclops.integrateddynamics.api.part.IPartContainer;
-import org.cyclops.integrateddynamics.api.part.IPartState;
-import org.cyclops.integrateddynamics.api.part.IPartType;
-import org.cyclops.integrateddynamics.core.blockentity.BlockEntityMultipartTicking;
-import org.cyclops.integrateddynamics.core.helper.CableHelpers;
-import org.cyclops.integrateddynamics.core.part.PartTypes;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public final class IntegratedDynamicsClonerExtension implements StructureCloneExtension, StructurePasteExtension {
 
@@ -52,8 +54,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
     public void onBeforePaste(
             ServerLevel level,
             Player player,
-            List<TemplateUtil.BlockInfo> blocks
-    ) {
+            List<TemplateUtil.BlockInfo> blocks) {
         idRemapper.prepare(blocks);
     }
 
@@ -64,8 +65,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         CompoundTag tag = rawBeTag != null ? rawBeTag : saveCurrentTag(be);
 
         if (!isCable(level.getBlockState(pos), tag) || tag == null) {
@@ -96,8 +96,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (rawBeTag == null || !isCable(state, rawBeTag)) {
             return Optional.empty();
         }
@@ -167,8 +166,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (!(be instanceof BlockEntityMultipartTicking cable)) {
             return;
         }
@@ -236,8 +234,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag tag = saveCurrentTag(be);
 
         if (!isCable(state, tag) || tag == null) {
@@ -263,13 +260,12 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
         return true;
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
+    @SuppressWarnings({ "unchecked", "rawtypes" })
     private static void attachPart(
             IPartContainer container,
             Direction side,
             IPartType partType,
-            IPartState partState
-    ) {
+            IPartState partState) {
         container.setPart(side, partType, partState);
     }
 
@@ -284,7 +280,8 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
     }
 
     private static boolean isRealCable(CompoundTag tag) {
-        return !tag.contains(StructureToolKeys.INTDYN_KEY_REAL_CABLE) || tag.getBoolean(StructureToolKeys.INTDYN_KEY_REAL_CABLE);
+        return !tag.contains(StructureToolKeys.INTDYN_KEY_REAL_CABLE)
+                || tag.getBoolean(StructureToolKeys.INTDYN_KEY_REAL_CABLE);
     }
 
     private static ListTag partsList(CompoundTag beTag) {
@@ -452,8 +449,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
     private static boolean reserveAll(
             ClonerPasteContext ctx,
             Map<Item, Integer> reserved,
-            List<ItemStack> wanted
-    ) {
+            List<ItemStack> wanted) {
         Map<Item, Integer> trial = new LinkedHashMap<>(reserved);
 
         for (ItemStack stack : wanted) {

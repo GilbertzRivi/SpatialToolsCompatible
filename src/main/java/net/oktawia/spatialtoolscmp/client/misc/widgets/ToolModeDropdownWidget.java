@@ -1,15 +1,17 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.SwapSpatialToolPacket;
-import org.jetbrains.annotations.Nullable;
 
 public class ToolModeDropdownWidget {
 
@@ -88,16 +90,14 @@ public class ToolModeDropdownWidget {
                 this.y,
                 WIDTH,
                 ROW_HEIGHT,
-                this.open ? BORDER_SELECTED : BORDER
-        );
+                this.open ? BORDER_SELECTED : BORDER);
 
         graphics.drawCenteredString(
                 font,
                 modeName(this.currentMode),
                 this.x + WIDTH / 2,
                 this.y + 4,
-                this.currentMode == null ? TEXT_DIM : TEXT
-        );
+                this.currentMode == null ? TEXT_DIM : TEXT);
 
         graphics.drawString(
                 font,
@@ -105,8 +105,7 @@ public class ToolModeDropdownWidget {
                 this.x + WIDTH - 10,
                 this.y + 4,
                 TEXT_DIM,
-                false
-        );
+                false);
 
         if (!this.open) {
             return;
@@ -126,8 +125,7 @@ public class ToolModeDropdownWidget {
                     modeName(mode),
                     this.x + WIDTH / 2,
                     rowY + 4,
-                    active ? TEXT_SELECTED : TEXT
-            );
+                    active ? TEXT_SELECTED : TEXT);
 
             rowY += ROW_HEIGHT;
         }

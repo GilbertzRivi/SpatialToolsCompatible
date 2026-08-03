@@ -1,5 +1,13 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -16,17 +24,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.registries.ForgeRegistries;
+
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 public final class ProductiveBeesClonerExtension implements StructureCloneExtension {
 
@@ -51,8 +53,7 @@ public final class ProductiveBeesClonerExtension implements StructureCloneExtens
             BlockEntity be,
             @Nullable CompoundTag rawBeTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements,
-            CompoundTag blockEntry
-    ) {
+            CompoundTag blockEntry) {
         if (!isProductiveBeesBlock(level.getBlockState(pos), rawBeTag)) {
             return false;
         }
@@ -80,8 +81,7 @@ public final class ProductiveBeesClonerExtension implements StructureCloneExtens
             BlockState state,
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
-            ClonerPasteContext ctx
-    ) {
+            ClonerPasteContext ctx) {
         if (!isProductiveBeesBlock(state, rawBeTag) || rawBeTag == null) {
             return Optional.empty();
         }
@@ -152,8 +152,7 @@ public final class ProductiveBeesClonerExtension implements StructureCloneExtens
             ServerLevel level,
             BlockPos pos,
             @Nullable BlockEntity be,
-            @Nullable CompoundTag blockMetadata
-    ) {
+            @Nullable CompoundTag blockMetadata) {
         if (be == null || blockMetadata == null || !blockMetadata.contains(CLONE_KEY, Tag.TAG_COMPOUND)) {
             return;
         }
@@ -170,8 +169,7 @@ public final class ProductiveBeesClonerExtension implements StructureCloneExtens
             BlockPos pos,
             BlockState state,
             @Nullable BlockEntity be,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         CompoundTag currentTag = saveCurrentTag(be);
 
         if (!isProductiveBeesBlock(state, currentTag)) {
@@ -270,8 +268,7 @@ public final class ProductiveBeesClonerExtension implements StructureCloneExtens
     private static void addBaseBlockRequirement(
             ServerLevel level,
             BlockPos pos,
-            AbstractStructureCaptureToolItem.RequirementSink requirements
-    ) {
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
         ItemStack picked = pickBlock(level, pos);
 
         if (!picked.isEmpty()) {
@@ -282,8 +279,7 @@ public final class ProductiveBeesClonerExtension implements StructureCloneExtens
     private static void addBaseBlockRefund(
             ServerLevel level,
             BlockPos pos,
-            List<ItemStack> refunds
-    ) {
+            List<ItemStack> refunds) {
         ItemStack picked = pickBlock(level, pos);
 
         if (!picked.isEmpty()) {

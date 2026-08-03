@@ -1,12 +1,13 @@
 package net.oktawia.spatialtoolscmp.defs;
 
+import java.util.*;
+
+import org.jetbrains.annotations.Nullable;
+
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Blocks;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.*;
 
 public class SpatialItemRecipes {
 
@@ -16,8 +17,8 @@ public class SpatialItemRecipes {
             Map<Character, Item> keys,
             List<Item> shapelessIngredients,
             Item output,
-            int count
-    ) {}
+            int count) {
+    }
 
     private static final List<RecipeDef> RECIPES = new ArrayList<>();
 
@@ -88,7 +89,8 @@ public class SpatialItemRecipes {
         }
 
         public Builder shapeless(ItemLike... ingredients) {
-            for (var i : ingredients) shapelessIngredients.add(i.asItem());
+            for (var i : ingredients)
+                shapelessIngredients.add(i.asItem());
             return this;
         }
 
