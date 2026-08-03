@@ -8,8 +8,10 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialPiperMenu;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialReplacerMenu;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialStorageMenu;
+import net.oktawia.spatialtoolscmp.menus.PortableSpatialToolMenu;
 
 public class SpatialMenuRegistrar {
 
@@ -34,6 +36,12 @@ public class SpatialMenuRegistrar {
 
     public static final RegistryObject<MenuType<PortableSpatialReplacerMenu>> PORTABLE_SPATIAL_REPLACER_MENU =
             register("portable_spatial_replacer_menu", PortableSpatialReplacerMenu::new);
+
+    public static final RegistryObject<MenuType<PortableSpatialPiperMenu>> PORTABLE_SPATIAL_PIPER_MENU =
+            register("portable_spatial_piper_menu", PortableSpatialPiperMenu::new);
+
+    public static final RegistryObject<MenuType<PortableSpatialToolMenu>> PORTABLE_SPATIAL_TOOL_MENU =
+            register("portable_spatial_tool_menu", PortableSpatialToolMenu::new);
 
     private SpatialMenuRegistrar() {
     }

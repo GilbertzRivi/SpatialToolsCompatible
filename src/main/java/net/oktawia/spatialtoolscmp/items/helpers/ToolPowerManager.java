@@ -55,7 +55,10 @@ public final class ToolPowerManager {
     }
 
     public int getCapacity(ItemStack stack) {
-        int base = Math.max(0, this.basePowerCapacitySupplier.getAsInt());
+        int base = SpatialMultiTool.isMultiTool(stack)
+                ? SpatialMultiTool.getBasePowerCapacity()
+                : Math.max(0, this.basePowerCapacitySupplier.getAsInt());
+
         int upgrades = getInstalledUpgrades(stack);
 
         long capacity = base + (long) base * upgrades;

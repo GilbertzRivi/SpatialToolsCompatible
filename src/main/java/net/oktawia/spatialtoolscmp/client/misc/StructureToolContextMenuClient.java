@@ -14,6 +14,7 @@ import net.oktawia.spatialtoolscmp.client.screens.StructureToolContextMenuScreen
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialTool;
 import org.lwjgl.glfw.GLFW;
 
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT)
@@ -67,7 +68,8 @@ public final class StructureToolContextMenuClient {
 
         return !held.isEmpty()
                 && (held.getItem() instanceof AbstractStructureCaptureToolItem
-                    || held.getItem() instanceof PortableSpatialReplacer);
+                    || held.getItem() instanceof PortableSpatialReplacer
+                    || held.getItem() instanceof PortableSpatialTool);
     }
 
     @SubscribeEvent

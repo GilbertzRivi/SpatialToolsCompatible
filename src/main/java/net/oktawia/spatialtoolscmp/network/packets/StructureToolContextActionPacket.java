@@ -12,7 +12,9 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraftforge.network.NetworkEvent;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
@@ -65,6 +67,10 @@ public class StructureToolContextActionPacket {
     public static final int REPLACER_RADIUS_DOWN = 101;
     public static final int REPLACER_TOGGLE_CONNECTIVITY = 102;
     public static final int REPLACER_TOGGLE_BLOCKSTATE = 103;
+
+    public static final int PIPER_TOGGLE_FILL_MODE = 110;
+    public static final int PIPER_CLEAR_TARGET = 111;
+    public static final int PIPER_CYCLE_PIPE_DIRECTION = 112;
 
     private final int action;
     private final boolean aroundOrigin;
@@ -134,14 +140,45 @@ public class StructureToolContextActionPacket {
                 return;
             }
 
-            if (!(stack.getItem() instanceof PortableSpatialStorage)
-                    && !(stack.getItem() instanceof PortableSpatialCloner)) {
+            if (packet.action == PIPER_TOGGLE_FILL_MODE) {
+                if (stack.getItem() instanceof PortableSpatialPiper) {
+                    PortableSpatialPiper.cycleFillMode(stack);
+                    syncStack(player);
+                }
+
+                return;
+            }
+
+            if (packet.action == PIPER_CYCLE_PIPE_DIRECTION) {
+                if (stack.getItem() instanceof PortableSpatialPiper) {
+                    PortableSpatialPiper.cyclePipeDirectionMode(stack);
+                    syncStack(player);
+                }
+
+                return;
+            }
+
+            if (packet.action == PIPER_CLEAR_TARGET) {
+                if (stack.getItem() instanceof PortableSpatialPiper) {
+                    PortableSpatialPiper.setTargetBlock(stack, ItemStack.EMPTY);
+                    PortableSpatialPiper.clearRoute(stack);
+                    syncStack(player);
+                }
+
                 return;
             }
 
             if (packet.action == TOGGLE_SELECTION_MODE) {
-                StructureToolStackState.cycleSelectionMode(stack);
-                syncStack(player);
+                if (stack.getItem() instanceof AbstractStructureCaptureToolItem) {
+                    StructureToolStackState.cycleSelectionMode(stack);
+                    syncStack(player);
+                }
+
+                return;
+            }
+
+            if (!(stack.getItem() instanceof PortableSpatialStorage)
+                    && !(stack.getItem() instanceof PortableSpatialCloner)) {
                 return;
             }
 

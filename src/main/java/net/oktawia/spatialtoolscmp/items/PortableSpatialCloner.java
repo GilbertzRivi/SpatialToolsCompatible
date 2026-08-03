@@ -187,7 +187,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
     @Override
     protected double getEnergyCostMultiplier() {
-        return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
+        return SpatialConfig.energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER);
     }
 
     @Override
@@ -321,6 +321,13 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         BlockPos templateOffset = TemplateUtil.getTemplateOffset(savedTag);
         List<TemplateUtil.BlockInfo> rawBlocks = TemplateUtil.parseRawBlocksFromTag(savedTag);
         Map<BlockPos, CompoundTag> metadataByPos = parseMetadataByPos(savedTag);
+
+        for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
+            try {
+                extension.onBeforePaste(level, player, rawBlocks);
+            } catch (Throwable ignored) {
+            }
+        }
 
         List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoPlacedBlocks = new ArrayList<>();
 

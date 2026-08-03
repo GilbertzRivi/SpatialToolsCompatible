@@ -43,7 +43,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     private static final String CLONE_KEY_CAMO_TWO = "camo_two";
     private static final String CLONE_KEY_GLOWING = "glowing";
 
-    private static final String[][] CAMO_KEYS = {
+    static final String[][] CAMO_KEYS = {
             {NBT_CAMO, CLONE_KEY_CAMO},
             {NBT_CAMO_TWO, CLONE_KEY_CAMO_TWO}
     };
@@ -231,7 +231,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
         }
     }
 
-    private static ItemStack getCamoRequirement(CompoundTag camoTag) {
+    static ItemStack getCamoRequirement(CompoundTag camoTag) {
         if (!camoTag.contains(NBT_STATE, Tag.TAG_COMPOUND)) {
             return ItemStack.EMPTY;
         }
@@ -263,7 +263,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
         return new ItemStack(item);
     }
 
-    private static boolean isFramedBlock(BlockState state, @Nullable CompoundTag rawBeTag) {
+    static boolean isFramedBlock(BlockState state, @Nullable CompoundTag rawBeTag) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
 
         if (blockId != null && MOD_ID.equals(blockId.getNamespace())) {
@@ -362,7 +362,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     }
 
     @Nullable
-    private static CompoundTag saveCurrentTag(@Nullable BlockEntity be) {
+    static CompoundTag saveCurrentTag(@Nullable BlockEntity be) {
         if (be == null) {
             return null;
         }

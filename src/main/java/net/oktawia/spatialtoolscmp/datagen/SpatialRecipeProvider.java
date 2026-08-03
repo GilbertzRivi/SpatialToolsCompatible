@@ -7,6 +7,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.common.crafting.conditions.IConditionBuilder;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRecipes;
+import net.oktawia.spatialtoolscmp.recipes.SpatialRecipeSerializerRegistrar;
 
 import java.util.List;
 import java.util.Map;
@@ -25,6 +26,12 @@ public class SpatialRecipeProvider extends RecipeProvider implements IConditionB
         for (var recipe : SpatialItemRecipes.getRecipes()) {
             save(writer, recipe.id(), recipe.pattern(), recipe.keys(), recipe.shapelessIngredients(), recipe.output(), recipe.count());
         }
+
+        SpecialRecipeBuilder
+                .special(SpatialRecipeSerializerRegistrar.SPATIAL_TOOL_MERGE.get())
+                .save(writer, SpatialToolsCMP.makeId(
+                        SpatialRecipeSerializerRegistrar.SPATIAL_TOOL_MERGE_ID
+                ).toString());
     }
 
     private void save(Consumer<FinishedRecipe> writer, String id, String pattern,

@@ -2,6 +2,7 @@ package net.oktawia.spatialtoolscmp.util;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.Vec3i;
 import net.minecraft.nbt.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -920,11 +921,129 @@ public final class TemplateUtil {
             return transformMekanismSideKeys(tag, transform);
         }
 
+        if (StructureToolKeys.INTDYN_CABLE_BE_ID.equals(id)) {
+            return transformIntegratedDynamicsCableTag(tag, transform);
+        }
+
         if (isFramedCollapsibleBlockEntityTag(tag)) {
             return transformCollapsibleBlockEntityTag(tag, transform);
         }
 
         return tag.copy();
+    }
+
+    private static CompoundTag transformIntegratedDynamicsCableTag(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        for (String key : StructureToolKeys.INTDYN_SIDE_MAP_KEYS) {
+            if (!result.contains(key, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            result.put(key, transformIntegratedDynamicsSideMap(result.getCompound(key), transform));
+        }
+
+        if (!result.contains(StructureToolKeys.INTDYN_KEY_PART_CONTAINER, Tag.TAG_COMPOUND)) {
+            return result;
+        }
+
+        CompoundTag container = result.getCompound(StructureToolKeys.INTDYN_KEY_PART_CONTAINER).copy();
+        ListTag parts = container.getList(StructureToolKeys.INTDYN_KEY_PARTS, Tag.TAG_COMPOUND);
+        ListTag newParts = new ListTag();
+
+        for (int i = 0; i < parts.size(); i++) {
+            newParts.add(transformIntegratedDynamicsPartTag(parts.getCompound(i), transform));
+        }
+
+        container.put(StructureToolKeys.INTDYN_KEY_PARTS, newParts);
+        result.put(StructureToolKeys.INTDYN_KEY_PART_CONTAINER, container);
+
+        return result;
+    }
+
+    private static CompoundTag transformIntegratedDynamicsSideMap(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        if (!result.contains("map", Tag.TAG_LIST)) {
+            return result;
+        }
+
+        ListTag entries = result.getList("map", Tag.TAG_COMPOUND);
+        ListTag newEntries = new ListTag();
+
+        for (int i = 0; i < entries.size(); i++) {
+            CompoundTag entry = entries.getCompound(i).copy();
+            Direction side = directionFromOrdinal(entry.getInt("key"));
+
+            if (side != null) {
+                entry.putInt("key", mapCableBusSide(side, transform).ordinal());
+            }
+
+            newEntries.add(entry);
+        }
+
+        result.put("map", newEntries);
+
+        return result;
+    }
+
+    private static CompoundTag transformIntegratedDynamicsPartTag(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        Direction side = directionFromKey(result.getString(StructureToolKeys.INTDYN_KEY_PART_SIDE));
+
+        if (side != null) {
+            result.putString(
+                    StructureToolKeys.INTDYN_KEY_PART_SIDE,
+                    directionName(mapCableBusSide(side, transform))
+            );
+        }
+
+        if (result.contains(StructureToolKeys.INTDYN_KEY_TARGET_SIDE, Tag.TAG_ANY_NUMERIC)) {
+            Direction targetSide = directionFromOrdinal(result.getInt(StructureToolKeys.INTDYN_KEY_TARGET_SIDE));
+
+            if (targetSide != null) {
+                result.putInt(
+                        StructureToolKeys.INTDYN_KEY_TARGET_SIDE,
+                        mapCableBusSide(targetSide, transform).ordinal()
+                );
+            }
+        }
+
+        Vec3i offset = new Vec3i(
+                result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_X),
+                result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_Y),
+                result.getInt(StructureToolKeys.INTDYN_KEY_OFFSET_Z)
+        );
+
+        if (!offset.equals(Vec3i.ZERO)) {
+            Vec3i mapped = mapCableBusOffset(offset, transform);
+
+            result.putInt(StructureToolKeys.INTDYN_KEY_OFFSET_X, mapped.getX());
+            result.putInt(StructureToolKeys.INTDYN_KEY_OFFSET_Y, mapped.getY());
+            result.putInt(StructureToolKeys.INTDYN_KEY_OFFSET_Z, mapped.getZ());
+        }
+
+        return result;
+    }
+
+    private static Vec3i mapCableBusOffset(Vec3i offset, CableBusTransform transform) {
+        Vec3i x = mapCableBusSide(Direction.EAST, transform).getNormal().multiply(offset.getX());
+        Vec3i y = mapCableBusSide(Direction.UP, transform).getNormal().multiply(offset.getY());
+        Vec3i z = mapCableBusSide(Direction.SOUTH, transform).getNormal().multiply(offset.getZ());
+
+        return new Vec3i(
+                x.getX() + y.getX() + z.getX(),
+                x.getY() + y.getY() + z.getY(),
+                x.getZ() + y.getZ() + z.getZ()
+        );
+    }
+
+    @Nullable
+    private static Direction directionFromOrdinal(int ordinal) {
+        Direction[] directions = Direction.values();
+
+        return ordinal < 0 || ordinal >= directions.length ? null : directions[ordinal];
     }
 
     private static boolean hasMekanismConnectionKeys(CompoundTag tag) {

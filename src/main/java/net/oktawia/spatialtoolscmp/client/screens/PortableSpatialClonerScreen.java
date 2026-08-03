@@ -289,6 +289,10 @@ public class PortableSpatialClonerScreen
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (toolModeDropdownClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+
         if (this.nestedInventoryModeButton != null && this.nestedInventoryModeButton.mouseClicked(mouseX, mouseY, button)) {
             this.setFocused(this.nestedInventoryModeButton);
             return true;

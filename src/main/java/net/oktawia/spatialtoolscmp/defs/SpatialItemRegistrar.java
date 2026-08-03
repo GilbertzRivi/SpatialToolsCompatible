@@ -6,8 +6,10 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialTool;
 
 import java.util.List;
 
@@ -34,6 +36,14 @@ public class SpatialItemRegistrar {
     public static final RegistryObject<PortableSpatialReplacer> PORTABLE_SPATIAL_REPLACER =
             ITEMS.register("portable_spatial_replacer",
                     () -> new PortableSpatialReplacer(new Item.Properties()));
+
+    public static final RegistryObject<PortableSpatialPiper> PORTABLE_SPATIAL_PIPER =
+            ITEMS.register("portable_spatial_piper",
+                    () -> new PortableSpatialPiper(new Item.Properties()));
+
+    public static final RegistryObject<PortableSpatialTool> PORTABLE_SPATIAL_TOOL =
+            ITEMS.register("portable_spatial_tool",
+                    () -> new PortableSpatialTool(new Item.Properties()));
 
     private SpatialItemRegistrar() {}
 }

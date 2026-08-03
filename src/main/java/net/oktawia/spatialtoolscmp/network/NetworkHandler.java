@@ -1,7 +1,6 @@
 package net.oktawia.spatialtoolscmp.network;
 
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.NetworkRegistry;
 import net.minecraftforge.network.PacketDistributor;
@@ -117,6 +116,12 @@ public final class NetworkHandler {
                 .consumerMainThread(StructureToolContextActionPacket::handle)
                 .add();
 
+        CHANNEL.messageBuilder(SwapSpatialToolPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(SwapSpatialToolPacket::encode)
+                .decoder(SwapSpatialToolPacket::decode)
+                .consumerMainThread(SwapSpatialToolPacket::handle)
+                .add();
+
         CHANNEL.messageBuilder(CreateClonerFolderPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(CreateClonerFolderPacket::encode)
                 .decoder(CreateClonerFolderPacket::decode)
@@ -162,10 +167,6 @@ public final class NetworkHandler {
 
     public static void sendToPlayer(ServerPlayer player, Object packet) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
-    }
-
-    public static void sendToTrackingChunk(LevelChunk chunk, Object packet) {
-        CHANNEL.send(PacketDistributor.TRACKING_CHUNK.with(() -> chunk), packet);
     }
 
     public static void sendToServer(Object packet) {

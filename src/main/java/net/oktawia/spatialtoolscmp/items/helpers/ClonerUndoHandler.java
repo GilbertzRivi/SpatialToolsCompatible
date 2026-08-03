@@ -47,6 +47,7 @@ public final class ClonerUndoHandler {
 
     private static final String STATE_KEY = "state";
     private static final String REFUNDS_KEY = "refunds";
+    private static final String UNDO_REFUNDS_KEY = "undoRefunds";
     private static final String REFUND_STACK_KEY = "stack";
     private static final String REFUND_COUNT_KEY = "count";
 
@@ -59,8 +60,17 @@ public final class ClonerUndoHandler {
     public record ClonerUndoPlacedBlock(
             BlockPos pos,
             String stateSignature,
-            List<ItemStack> refundStacks
+            List<ItemStack> refundStacks,
+            List<ItemStack> undoRefundStacks
     ) {
+
+        public ClonerUndoPlacedBlock(
+                BlockPos pos,
+                String stateSignature,
+                List<ItemStack> refundStacks
+        ) {
+            this(pos, stateSignature, refundStacks, List.of());
+        }
     }
 
     public static void store(
@@ -177,6 +187,7 @@ public final class ClonerUndoHandler {
             }
 
             blockTag.put(REFUNDS_KEY, refundList);
+            blockTag.put(UNDO_REFUNDS_KEY, writeRefundList(placedBlock.undoRefundStacks()));
             blocksTag.add(blockTag);
         }
 
@@ -340,21 +351,6 @@ public final class ClonerUndoHandler {
         }
     }
 
-    public static void restoreBlocksWithPerPosTags(
-            ServerLevel level,
-            List<ClonerUndoPlacedBlock> undoBlocks,
-            CompoundTag originalStateNbt,
-            Map<BlockPos, CompoundTag> perPosBeTags
-    ) {
-        restoreBlocksWithPerPosStatesAndTags(
-                level,
-                undoBlocks,
-                originalStateNbt,
-                Map.of(),
-                perPosBeTags
-        );
-    }
-
     public static void restoreBlocks(
             ServerLevel level,
             List<ClonerUndoPlacedBlock> undoBlocks,
@@ -470,6 +466,53 @@ public final class ClonerUndoHandler {
         return undoTag.contains(UNDO_BLOCKS_KEY, Tag.TAG_LIST);
     }
 
+    private static ListTag writeRefundList(List<ItemStack> stacks) {
+        ListTag out = new ListTag();
+
+        for (ItemStack stack : stacks) {
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            CompoundTag entry = new CompoundTag();
+            ItemStack single = stack.copy();
+            int count = Math.max(1, stack.getCount());
+            single.setCount(1);
+
+            entry.put(REFUND_STACK_KEY, single.save(new CompoundTag()));
+            entry.putInt(REFUND_COUNT_KEY, count);
+            out.add(entry);
+        }
+
+        return out;
+    }
+
+    private static List<ItemStack> readRefundList(CompoundTag blockTag, String key) {
+        if (!blockTag.contains(key, Tag.TAG_LIST)) {
+            return List.of();
+        }
+
+        ListTag list = blockTag.getList(key, Tag.TAG_COMPOUND);
+        List<ItemStack> out = new ArrayList<>();
+
+        for (int i = 0; i < list.size(); i++) {
+            CompoundTag entry = list.getCompound(i);
+
+            if (!entry.contains(REFUND_STACK_KEY, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            ItemStack stack = ItemStack.of(entry.getCompound(REFUND_STACK_KEY));
+
+            if (!stack.isEmpty()) {
+                stack.setCount(Math.max(1, entry.getInt(REFUND_COUNT_KEY)));
+                out.add(stack);
+            }
+        }
+
+        return List.copyOf(out);
+    }
+
     public static List<ClonerUndoPlacedBlock> readBlocks(CompoundTag undoTag) {
         if (!undoTag.contains(UNDO_BLOCKS_KEY, Tag.TAG_LIST)) {
             return List.of();
@@ -487,33 +530,11 @@ public final class ClonerUndoHandler {
                     blockTag.getInt(POS_Z)
             );
 
-            String stateSignature = blockTag.getString(STATE_KEY);
-            List<ItemStack> refundStacks = new ArrayList<>();
-
-            if (blockTag.contains(REFUNDS_KEY, Tag.TAG_LIST)) {
-                ListTag refundList = blockTag.getList(REFUNDS_KEY, Tag.TAG_COMPOUND);
-
-                for (int j = 0; j < refundList.size(); j++) {
-                    CompoundTag refundEntry = refundList.getCompound(j);
-
-                    if (!refundEntry.contains(REFUND_STACK_KEY, Tag.TAG_COMPOUND)) {
-                        continue;
-                    }
-
-                    ItemStack stack = ItemStack.of(refundEntry.getCompound(REFUND_STACK_KEY));
-                    int count = Math.max(1, refundEntry.getInt(REFUND_COUNT_KEY));
-
-                    if (!stack.isEmpty()) {
-                        stack.setCount(count);
-                        refundStacks.add(stack);
-                    }
-                }
-            }
-
             out.add(new ClonerUndoPlacedBlock(
                     pos,
-                    stateSignature,
-                    List.copyOf(refundStacks)
+                    blockTag.getString(STATE_KEY),
+                    readRefundList(blockTag, REFUNDS_KEY),
+                    readRefundList(blockTag, UNDO_REFUNDS_KEY)
             ));
         }
 
@@ -593,6 +614,14 @@ public final class ClonerUndoHandler {
             BlockState state = level.getBlockState(pos);
 
             if (state.isAir()) {
+                continue;
+            }
+
+            if (!undoBlock.undoRefundStacks().isEmpty()) {
+                for (ItemStack stack : undoBlock.undoRefundStacks()) {
+                    out.add(stack.copy());
+                }
+
                 continue;
             }
 

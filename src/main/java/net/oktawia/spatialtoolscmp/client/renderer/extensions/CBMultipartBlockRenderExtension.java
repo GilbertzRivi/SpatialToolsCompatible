@@ -153,9 +153,18 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
     }
 
     @Nullable
-    private static TileMultipart createPreviewTile(
+    public static TileMultipart createPreviewTile(
             @Nullable CompoundTag rawBeTag,
             BlockPos localPos
+    ) {
+        return createPreviewTile(rawBeTag, localPos, Minecraft.getInstance().level);
+    }
+
+    @Nullable
+    public static TileMultipart createPreviewTile(
+            @Nullable CompoundTag rawBeTag,
+            BlockPos localPos,
+            @Nullable Level previewLevel
     ) {
         if (rawBeTag == null || !rawBeTag.contains(NBT_PARTS, Tag.TAG_LIST)) {
             return null;
@@ -179,11 +188,9 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
             return null;
         }
 
-        Level level = Minecraft.getInstance().level;
-
-        if (level != null) {
+        if (previewLevel != null) {
             try {
-                tile.setLevel(level);
+                tile.setLevel(previewLevel);
             } catch (Throwable ignored) {
             }
         }
@@ -201,7 +208,7 @@ public final class CBMultipartBlockRenderExtension implements BlockRenderExtensi
         return tile;
     }
 
-    private static void renderMultipartStatic(
+    public static void renderMultipartStatic(
             TileMultipart tile,
             PreviewBlockAndTintGetter localLevel,
             BlockPos localPos,

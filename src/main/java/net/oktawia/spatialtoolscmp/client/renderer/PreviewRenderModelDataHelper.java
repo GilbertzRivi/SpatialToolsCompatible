@@ -35,6 +35,31 @@ public final class PreviewRenderModelDataHelper {
             }
 
             BlockEntity blockEntity = structure.blockEntities(level).get(previewBlock.pos());
+
+            for (BlockRenderExtension extension : BlockRenderExtensions.all()) {
+                if (!extension.canRender(previewBlock.state(), previewBlock.blockEntityTag())) {
+                    continue;
+                }
+
+                ModelData extensionData;
+                try {
+                    extensionData = extension.getPreviewModelData(
+                            previewBlock,
+                            localLevel,
+                            model,
+                            previewBlock.state(),
+                            blockEntity
+                    );
+                } catch (Throwable t) {
+                    SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
+                    continue;
+                }
+
+                if (extensionData != null) {
+                    return extensionData;
+                }
+            }
+
             if (blockEntity == null) {
                 return baseData;
             }

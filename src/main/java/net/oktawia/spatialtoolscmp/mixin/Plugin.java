@@ -17,6 +17,7 @@ public class Plugin implements IMixinConfigPlugin {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     private boolean ae2Loaded;
+    private boolean cbMultipartLoaded;
 
     private static boolean isModLoaded(String modId) {
         try {
@@ -36,6 +37,7 @@ public class Plugin implements IMixinConfigPlugin {
     @Override
     public void onLoad(String mixinPackage) {
         this.ae2Loaded = isModLoaded("ae2");
+        this.cbMultipartLoaded = isModLoaded("cb_multipart");
     }
 
     @Override
@@ -49,6 +51,10 @@ public class Plugin implements IMixinConfigPlugin {
 
         if (mixinClassName.startsWith("net.oktawia.spatialtoolscmp.mixin.ae2.")) {
             doload = ae2Loaded;
+        }
+
+        if (mixinClassName.startsWith("net.oktawia.spatialtoolscmp.mixin.cbmultipart.")) {
+            doload = cbMultipartLoaded;
         }
 
         LOGGER.info("{} load status: {}", mixinClassName, doload);

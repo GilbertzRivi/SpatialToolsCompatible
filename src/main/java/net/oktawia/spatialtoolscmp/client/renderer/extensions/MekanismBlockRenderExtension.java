@@ -301,7 +301,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
         return RenderType.entityCutout(TextureAtlas.LOCATION_BLOCKS);
     }
 
-    private static boolean isMekanismTransmitter(BlockState state, @Nullable CompoundTag rawBeTag) {
+    public static boolean isMekanismTransmitter(BlockState state, @Nullable CompoundTag rawBeTag) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
 
         if (blockId != null
@@ -327,7 +327,7 @@ public final class MekanismBlockRenderExtension implements BlockRenderExtension 
                 && looksLikeTransmitterPath(beId.getPath());
     }
 
-    private static boolean isMekanismBlock(BlockState state, @Nullable CompoundTag rawBeTag) {
+    public static boolean isMekanismBlock(BlockState state, @Nullable CompoundTag rawBeTag) {
         ResourceLocation blockId = ForgeRegistries.BLOCKS.getKey(state.getBlock());
 
         if (blockId != null && MOD_ID.equals(blockId.getNamespace())) {

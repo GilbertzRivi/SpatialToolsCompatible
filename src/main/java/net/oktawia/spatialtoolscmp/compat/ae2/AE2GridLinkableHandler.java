@@ -16,7 +16,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
-import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import org.jetbrains.annotations.Nullable;
 
 public final class AE2GridLinkableHandler implements IGridLinkableHandler {
@@ -29,8 +28,7 @@ public final class AE2GridLinkableHandler implements IGridLinkableHandler {
 
     @Override
     public boolean canLink(ItemStack stack) {
-        return stack.getItem() instanceof PortableSpatialCloner
-                || stack.getItem() instanceof PortableSpatialReplacer;
+        return AE2Compat.isLinkable(stack);
     }
 
     @Override
@@ -54,11 +52,6 @@ public final class AE2GridLinkableHandler implements IGridLinkableHandler {
         if (tag != null) {
             tag.remove(NBT_KEY);
         }
-    }
-
-    public static boolean hasLink(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        return tag != null && tag.contains(NBT_KEY);
     }
 
     @Nullable

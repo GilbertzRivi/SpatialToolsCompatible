@@ -45,6 +45,30 @@ public final class StructureToolKeys {
             "connection", "mode"
     );
 
+    public static final String INTDYN_CABLE_BLOCK_ID = "integrateddynamics:cable";
+    public static final String INTDYN_CABLE_BE_ID    = "integrateddynamics:multipart_ticking";
+
+    public static final String INTDYN_KEY_PART_CONTAINER = "partContainer";
+    public static final String INTDYN_KEY_PARTS          = "parts";
+    public static final String INTDYN_KEY_PART_TYPE      = "__partType";
+    public static final String INTDYN_KEY_PART_SIDE      = "__side";
+    public static final String INTDYN_KEY_REAL_CABLE     = "realCable";
+    public static final String INTDYN_KEY_FACADE         = "facadeBlockTag";
+    public static final String INTDYN_KEY_TARGET_SIDE    = "targetSide";
+    public static final String INTDYN_KEY_OFFSET_X       = "offsetX";
+    public static final String INTDYN_KEY_OFFSET_Y       = "offsetY";
+    public static final String INTDYN_KEY_OFFSET_Z       = "offsetZ";
+
+    public static final List<String> INTDYN_SIDE_MAP_KEYS = List.of(
+            "connected",
+            "forceDisconnected",
+            "redstoneLevels",
+            "redstoneInputs",
+            "redstoneStrong",
+            "lastRedstonePulses",
+            "lightLevels"
+    );
+
     public static final String CHISELED_BE_ID     = "chiselsandbits:chiseled_block";
     public static final String CLONE_KEY_CHISELED = "chiseled";
     public static final String CHISELED_KEY_OPS   = "ops";

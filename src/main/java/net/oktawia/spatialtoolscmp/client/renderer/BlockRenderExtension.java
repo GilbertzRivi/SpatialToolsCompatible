@@ -9,6 +9,7 @@ import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import org.jetbrains.annotations.Nullable;
@@ -48,6 +49,17 @@ public interface BlockRenderExtension {
             long seed
     ) {
         return false;
+    }
+
+    @Nullable
+    default ModelData getPreviewModelData(
+            PreviewBlock previewBlock,
+            PreviewBlockAndTintGetter localLevel,
+            BakedModel model,
+            BlockState state,
+            @Nullable BlockEntity blockEntity
+    ) {
+        return null;
     }
 
     @Nullable

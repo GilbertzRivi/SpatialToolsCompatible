@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -26,6 +27,13 @@ public interface StructureCloneExtension {
     );
 
     boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag);
+
+    default void onBeforePaste(
+            ServerLevel level,
+            Player player,
+            List<TemplateUtil.BlockInfo> blocks
+    ) {
+    }
 
     Optional<PlacementPlan> buildPlacementPlan(
             ServerLevel level,

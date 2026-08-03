@@ -98,11 +98,20 @@ public final class ClonerBlockPlacer {
             BlockState stateToPlace,
             @Nullable CompoundTag rawBeTag
     ) {
-        BlockState oldState = level.getBlockState(worldPos);
-
-        if (hasCollision(oldState, stateToPlace)) {
+        if (hasCollision(level.getBlockState(worldPos), stateToPlace)) {
             return false;
         }
+
+        return replaceBlockAndLoadTag(level, worldPos, stateToPlace, rawBeTag);
+    }
+
+    public static boolean replaceBlockAndLoadTag(
+            ServerLevel level,
+            BlockPos worldPos,
+            BlockState stateToPlace,
+            @Nullable CompoundTag rawBeTag
+    ) {
+        BlockState oldState = level.getBlockState(worldPos);
 
         if (level.getBlockEntity(worldPos) != null) {
             level.removeBlockEntity(worldPos);

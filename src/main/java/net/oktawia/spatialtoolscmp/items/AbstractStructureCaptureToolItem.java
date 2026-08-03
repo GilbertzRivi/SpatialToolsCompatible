@@ -44,8 +44,11 @@ import net.minecraftforge.energy.IEnergyStorage;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.items.ItemStackHandler;
 import net.minecraftforge.network.NetworkHooks;
+import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
+import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
 import net.oktawia.spatialtoolscmp.items.helpers.ToolCaptureFilter;
 import net.oktawia.spatialtoolscmp.items.helpers.ToolPowerManager;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
@@ -171,7 +174,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     }
 
     protected boolean tryUsePower(Player player, ItemStack stack, double amount) {
-        return powerManager.tryUse(player, stack, amount);
+        return !SpatialConfig.usePower() || powerManager.tryUse(player, stack, amount);
     }
 
     protected int getInternalPowerCapacity(ItemStack stack) {
@@ -589,7 +592,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
                 && StructureToolStackState.getSelectionB(stack) == null;
     }
 
-    protected void openMenu(Player player, InteractionHand hand) {
+    public void openMenu(Player player, InteractionHand hand) {
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return;
         }
@@ -1216,9 +1219,27 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     }
 
     @Override
+    public Component getName(ItemStack stack) {
+        if (SpatialMultiTool.isMultiTool(stack)) {
+            return Component.translatable(
+                    SpatialItemRegistrar.PORTABLE_SPATIAL_TOOL.get().getDescriptionId()
+            );
+        }
+
+        return super.getName(stack);
+    }
+
+    @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         int stored = getInternalPowerStored(stack);
         int capacity = getInternalPowerCapacity(stack);
+
+        if (SpatialMultiTool.isMultiTool(stack)) {
+            tooltip.add(Component.translatable(
+                    LangDefs.MULTITOOL_ACTIVE_MODE.getTranslationKey(),
+                    Component.translatable(getDescriptionId()).withStyle(ChatFormatting.AQUA)
+            ).withStyle(ChatFormatting.GRAY));
+        }
 
         tooltip.add(Component.translatable(LangDefs.HOTKEY_TOOLTIP.getTranslationKey())
                 .copy().withStyle(ChatFormatting.GRAY)

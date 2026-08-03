@@ -4,10 +4,8 @@ import com.lowdragmc.lowdraglib.gui.widget.SceneWidget;
 import com.lowdragmc.lowdraglib.gui.widget.WidgetGroup;
 import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -16,11 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
-import net.oktawia.spatialtoolscmp.client.misc.widgets.PowerUpgradePanelWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.SpatialOffsetControlsWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.SpatialTransformationsWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.PortableSpatialStorageDummyWorld;
@@ -28,9 +22,7 @@ import net.oktawia.spatialtoolscmp.client.renderer.PortableSpatialStoragePreview
 import net.oktawia.spatialtoolscmp.client.misc.widgets.PortableSpatialStorageSceneWidget;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewStructure;
-import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
-import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.menus.AbstractPortableStructureToolMenu;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
@@ -41,7 +33,7 @@ import org.lwjgl.opengl.GL11;
 import java.util.*;
 
 public abstract class AbstractPortableStructureToolScreen<M extends AbstractPortableStructureToolMenu>
-        extends AbstractContainerScreen<M> {
+        extends AbstractSpatialToolScreen<M> {
 
     protected static final Direction[] DIRECTIONS = {
             Direction.NORTH,
@@ -57,10 +49,6 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
 
     protected static final ResourceLocation BACKGROUND = SpatialToolsCMP.makeId("textures/gui/background.png");
 
-    protected List<Component> compatibleUpgradeTooltip = List.of();
-    protected List<Component> compatibleCraftingUpgradeTooltip = List.of();
-
-    protected final PowerUpgradePanelWidget powerUpgradePanel = new PowerUpgradePanelWidget();
     protected SpatialTransformationsWidget transformationsWidget;
     protected SpatialOffsetControlsWidget offsetControls;
 
@@ -196,75 +184,6 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         }
     }
 
-    private void renderPowerUpgradeTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
-        if (getMenu().getPowerUpgradeSlotCount() <= 0) {
-            return;
-        }
-
-        this.powerUpgradePanel.setScreenPosition(this.leftPos, this.topPos);
-        this.powerUpgradePanel.setSlots(
-                getMenu().getPowerUpgradeSlotCount(),
-                getMenu().getMaxUpgradesCount()
-        );
-
-        boolean overPanel = this.powerUpgradePanel.isMouseOver(mouseX, mouseY);
-        boolean overPowerSlot = getMenu().isPowerUpgradeSlot(this.hoveredSlot);
-        boolean overCraftingSlot = getMenu().isCraftingUpgradeSlot(this.hoveredSlot);
-
-        if (!overPanel && !overPowerSlot && !overCraftingSlot) {
-            return;
-        }
-
-        if (this.hoveredSlot != null && !overPowerSlot && !overCraftingSlot) {
-            return;
-        }
-
-        if (this.hoveredSlot != null && this.hoveredSlot.hasItem()) {
-            return;
-        }
-
-        List<Component> lines = overCraftingSlot
-                ? this.compatibleCraftingUpgradeTooltip
-                : this.compatibleUpgradeTooltip;
-
-        if (lines.isEmpty()) {
-            return;
-        }
-
-        graphics.renderComponentTooltip(
-                this.font,
-                lines,
-                mouseX,
-                mouseY
-        );
-    }
-
-    static List<Component> buildCompatibleCraftingUpgradeTooltip() {
-        List<Component> lines = new ArrayList<>();
-
-        lines.add(Component.translatable(
-                LangDefs.CRAFTING_UPGRADE_SLOT_HINT.getTranslationKey()
-        ).withStyle(ChatFormatting.YELLOW));
-
-        lines.add(Component.translatable(
-                LangDefs.VALID_UPGRADES.getTranslationKey()
-        ).withStyle(ChatFormatting.WHITE));
-
-        if (IsModLoaded.AE2) {
-            lines.add(AE2Compat.modDisplayName().copy());
-            lines.add(AE2Compat.craftingUpgradeDisplayName().copy().withStyle(ChatFormatting.GRAY));
-        } else {
-            lines.add(Component.translatable(
-                    LangDefs.AE2_NOT_INSTALLED.getTranslationKey()
-            ).withStyle(ChatFormatting.RED));
-
-            lines.add(Component.translatable(
-                    LangDefs.NOT_AVAILABLE.getTranslationKey()
-            ).withStyle(ChatFormatting.GRAY));
-        }
-
-        return lines;
-    }
 
     protected boolean isShiftPhysicallyDown() {
         long window = Minecraft.getInstance().getWindow().getWindow();
@@ -311,7 +230,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        renderPowerUpgradePanelWidget(graphics);
+        renderPowerUpgradePanel(graphics);
     }
 
     @Override
@@ -374,6 +293,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         RenderSystem.disableDepthTest();
 
         renderExtraOverlays(graphics, mouseX, mouseY, partialTick);
+        renderToolModeDropdown(graphics, mouseX, mouseY);
         renderPowerUpgradeTooltip(graphics, mouseX, mouseY);
         this.renderTooltip(graphics, mouseX, mouseY);
     }
@@ -384,6 +304,10 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (toolModeDropdownClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+
         if (this.scene != null && insideScene(mouseX, mouseY) && button == 0) {
             this.rotating = true;
             this.lastMouseX = mouseX;
@@ -745,68 +669,6 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         this.directionCompassScene = null;
         this.directionCompassWorld = null;
         this.directionCompassCore = Collections.emptySet();
-    }
-
-    private void renderPowerUpgradePanelWidget(GuiGraphics graphics) {
-        this.powerUpgradePanel.setScreenPosition(this.leftPos, this.topPos);
-        this.powerUpgradePanel.setSlots(
-                getMenu().getPowerUpgradeSlotCount(),
-                getMenu().getMaxUpgradesCount()
-        );
-        this.powerUpgradePanel.renderBackground(graphics);
-        this.powerUpgradePanel.renderCraftingSlotBadge(
-                graphics,
-                getMenu().hasCraftingUpgradeInstalled()
-        );
-    }
-
-    static List<Component> buildCompatibleUpgradesTooltip() {
-        List<Component> lines = new ArrayList<>();
-
-        lines.add(Component.translatable(
-                LangDefs.VALID_UPGRADES.getTranslationKey()
-        ).withStyle(ChatFormatting.WHITE));
-
-        Map<String, List<ItemStack>> stacksByMod = new LinkedHashMap<>();
-
-        for (ItemStack stack : AbstractStructureCaptureToolItem.getConfiguredPowerUpgradeItemStacks()) {
-            ResourceLocation id = ForgeRegistries.ITEMS.getKey(stack.getItem());
-
-            if (id == null) {
-                continue;
-            }
-
-            stacksByMod
-                    .computeIfAbsent(id.getNamespace(), ignored -> new ArrayList<>())
-                    .add(stack);
-        }
-
-        if (stacksByMod.isEmpty()) {
-            lines.add(Component.literal("No valid energy upgrade items configured")
-                    .withStyle(ChatFormatting.RED));
-
-            lines.add(Component.literal("Edit: features.energyUpgrades.items")
-                    .withStyle(ChatFormatting.GRAY));
-
-            return lines;
-        }
-
-        for (Map.Entry<String, List<ItemStack>> entry : stacksByMod.entrySet()) {
-            lines.add(modDisplayName(entry.getKey()).copy().withStyle(ChatFormatting.WHITE));
-
-            for (ItemStack stack : entry.getValue()) {
-                lines.add(stack.getHoverName().copy().withStyle(ChatFormatting.GRAY));
-            }
-        }
-
-        return lines;
-    }
-
-    private static Component modDisplayName(String modId) {
-        return ModList.get()
-                .getModContainerById(modId)
-                .map(container -> Component.literal(container.getModInfo().getDisplayName()))
-                .orElse(Component.literal(modId));
     }
 
     protected Component getEmptyPreviewTitle(ItemStack stack) {

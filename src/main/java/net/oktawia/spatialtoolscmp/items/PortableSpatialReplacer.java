@@ -39,11 +39,13 @@ import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.items.helpers.ClonerInventoryAccess;
 import net.oktawia.spatialtoolscmp.items.helpers.ClonerUndoHandler;
+import net.oktawia.spatialtoolscmp.logic.ReplacerBlacklist;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtensions;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
+import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialReplacerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
@@ -52,12 +54,14 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
+import java.util.function.BiPredicate;
 
 public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
@@ -70,11 +74,13 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
     public static final int MIN_RADIUS = 1;
     public static final int MAX_RADIUS = 128;
 
+    public static final double POWER_COST_SCALE = 5.0D;
+
     private static final int HUD_DURATION = 100;
 
     public PortableSpatialReplacer(Item.Properties properties) {
         super(
-                SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY::get,
+                SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_BASE_INTERNAL_POWER_CAPACITY::get,
                 4,
                 4,
                 properties
@@ -103,12 +109,13 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
     @Override
     protected double getPowerPerBlockPaste() {
-        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get();
+        return SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_COST.get();
     }
 
     @Override
     protected double getEnergyCostMultiplier() {
-        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
+        return POWER_COST_SCALE
+                * SpatialConfig.energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_ENERGY_COST_MULTIPLIER);
     }
 
     @Override
@@ -260,18 +267,17 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
         if (player.isShiftKeyDown()) {
             if (!level.isClientSide()) {
-                BlockState clicked = level.getBlockState(pos);
-                Item blockItem = clicked.getBlock().asItem();
+                ItemStack picked = pickTargetItem((ServerLevel) level, pos);
 
-                if (blockItem != Blocks.AIR.asItem()) {
-                    setTargetBlock(stack, new ItemStack(blockItem));
+                if (!picked.isEmpty()) {
+                    setTargetBlock(stack, picked);
 
                     sendHud(
                             (ServerPlayer) player,
                             HUD_DURATION,
-                            cyan(Component.literal("Target: ").append(
-                                    Component.translatable(blockItem.getDescriptionId())
-                            ))
+                            cyan(Component.translatable(LangDefs.REPLACER_TARGET_LABEL.getTranslationKey())
+                                    .append(" ")
+                                    .append(picked.getHoverName()))
                     );
                 }
             }
@@ -289,6 +295,39 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         }
 
         return InteractionResult.sidedSuccess(level.isClientSide());
+    }
+
+    private static ItemStack singleTargetItem(ItemStack target) {
+        ItemStack single = target.copy();
+        single.setCount(1);
+
+        return single;
+    }
+
+    private static boolean needsReplacement(ServerLevel level, BlockPos pos, ItemStack target) {
+        for (ReplacerExtension ext : ReplacerExtensions.get()) {
+            if (ext.needsReplacement(level, pos, target)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static ItemStack pickTargetItem(ServerLevel level, BlockPos pos) {
+        BlockState clicked = level.getBlockState(pos);
+
+        for (ReplacerExtension ext : ReplacerExtensions.get()) {
+            ItemStack candidate = ext.pickTargetItem(level, pos, clicked);
+
+            if (candidate != null && !candidate.isEmpty()) {
+                return candidate;
+            }
+        }
+
+        Item blockItem = clicked.getBlock().asItem();
+
+        return blockItem != Blocks.AIR.asItem() ? new ItemStack(blockItem) : ItemStack.EMPTY;
     }
 
     private void performReplacement(
@@ -312,6 +351,29 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 ? ForgeRegistries.BLOCKS.getValue(ForgeRegistries.ITEMS.getKey(target.getItem()))
                 : null;
 
+        ReplacerExtension targetProvider = null;
+
+        if (targetBlock != null && targetBlock != Blocks.AIR) {
+            for (ReplacerExtension ext : ReplacerExtensions.get()) {
+                if (ext.isUnplaceableTarget(level, targetBlock, target)) {
+                    targetBlock = null;
+                    break;
+                }
+            }
+        }
+
+        if (targetBlock == null || targetBlock == Blocks.AIR) {
+            for (ReplacerExtension ext : ReplacerExtensions.get()) {
+                Block resolved = ext.resolveTargetBlock(level, target);
+
+                if (resolved != null && resolved != Blocks.AIR) {
+                    targetBlock = resolved;
+                    targetProvider = ext;
+                    break;
+                }
+            }
+        }
+
         if (targetBlock == null || targetBlock == Blocks.AIR) {
             sendHud(
                     player,
@@ -327,7 +389,17 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        if (sourceState.getBlock() == targetBlock) {
+        if (ReplacerBlacklist.isProtected(level, startPos, sourceState)) {
+            sendHud(
+                    player,
+                    HUD_DURATION,
+                    red(Component.translatable(LangDefs.REPLACER_BLACKLISTED.getTranslationKey()))
+            );
+            return;
+        }
+
+        if (sourceState.getBlock() == targetBlock
+                && !needsReplacement(level, startPos, target)) {
             sendHud(
                     player,
                     HUD_DURATION,
@@ -369,6 +441,8 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             positions = floodFill(level, startPos, sourceState, ctx);
         }
 
+        positions = filterProtected(level, positions);
+
         if (positions.isEmpty()) {
             sendHud(
                     player,
@@ -394,12 +468,14 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             }
         }
 
-        int replaceCount = countMatchingPositions(
+        Set<BlockPos> matchingPositions = collectMatchingPositions(
                 level,
                 positions,
                 sourceState,
                 strict
         );
+
+        int replaceCount = matchingPositions.size();
 
         if (replaceCount <= 0) {
             sendHud(
@@ -410,21 +486,25 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        if (!player.isCreative()) {
-            long available = ClonerInventoryAccess.countAvailableForPaste(
-                    level,
-                    player,
-                    toolStack,
-                    target
-            );
+        List<ItemStack> placementCost = ReplacerExtensions.placementCost(level, target);
 
-            if (available < replaceCount) {
-                sendHud(
+        if (!player.isCreative()) {
+            for (ItemStack cost : placementCost) {
+                long available = ClonerInventoryAccess.countAvailableForPaste(
+                        level,
                         player,
-                        HUD_DURATION,
-                        red(Component.translatable(LangDefs.REPLACER_NOT_ENOUGH_ITEMS.getTranslationKey()))
+                        toolStack,
+                        cost
                 );
-                return;
+
+                if (available < (long) replaceCount * cost.getCount()) {
+                    sendHud(
+                            player,
+                            HUD_DURATION,
+                            red(Component.translatable(LangDefs.REPLACER_NOT_ENOUGH_ITEMS.getTranslationKey()))
+                    );
+                    return;
+                }
             }
         }
 
@@ -441,6 +521,16 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                 BlockEntity be = level.getBlockEntity(pos);
                 List<ItemStack> posRefunds = new ArrayList<>();
                 boolean handled = false;
+
+                ItemStack swapped = targetProvider != null
+                        ? targetProvider.getInPlaceSwapItem(level, pos, target)
+                        : null;
+
+                if (swapped != null && !swapped.isEmpty()) {
+                    posRefunds.add(swapped);
+                    preCollectedRefunds.put(pos.immutable(), posRefunds);
+                    continue;
+                }
 
                 for (StructureCloneExtension ext : StructureToolExtensions.clonerExtensions()) {
                     if (ext.collectUndoRefunds(level, pos, s, be, posRefunds)) {
@@ -521,7 +611,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         }
 
         if (!player.isCreative()) {
-            double requiredPower = getReplacementPowerCost(replaceCount);
+            double requiredPower = getReplacementPowerCost(matchingPositions, startPos);
 
             if (requiredPower > 0.0D && !tryUsePower(player, toolStack, requiredPower)) {
                 showNotEnoughPower(player, toolStack, requiredPower);
@@ -537,6 +627,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         }
 
         int replaced = 0;
+        List<ItemStack> replacedSourceItems = new ArrayList<>();
 
         for (BlockPos pos : positions) {
             BlockState existing = level.getBlockState(pos);
@@ -549,34 +640,49 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     ? new ArrayList<>()
                     : preCollectedRefunds.getOrDefault(pos, new ArrayList<>());
 
-            level.setBlock(pos, newState, Block.UPDATE_ALL);
+            boolean inPlace = targetProvider != null
+                    && targetProvider.getInPlaceSwapItem(level, pos, target) != null;
+
+            if (targetProvider != null) {
+                if (!targetProvider.placeTarget(level, pos, target, player)) {
+                    continue;
+                }
+            } else {
+                level.setBlock(pos, newState, Block.UPDATE_ALL);
+            }
+
             replaced++;
+            replacedSourceItems.addAll(refunds);
+
+            List<ItemStack> undoRefunds = inPlace
+                    ? List.of(singleTargetItem(target))
+                    : List.of();
 
             undoBlocks.add(new ClonerUndoHandler.ClonerUndoPlacedBlock(
                     pos.immutable(),
                     ForgeRegistries.BLOCKS.getKey(targetBlock).toString(),
-                    refunds
+                    refunds,
+                    undoRefunds
             ));
         }
 
         if (!player.isCreative() && replaced > 0) {
-            ClonerInventoryAccess.consumeForPaste(
-                    level,
-                    player,
-                    toolStack,
-                    target,
-                    replaced
-            );
+            for (ItemStack cost : placementCost) {
+                ClonerInventoryAccess.consumeForPaste(
+                        level,
+                        player,
+                        toolStack,
+                        cost,
+                        replaced * cost.getCount()
+                );
+            }
 
-            List<ItemStack> allSourceItems = new ArrayList<>();
-            preCollectedRefunds.values().forEach(allSourceItems::addAll);
-
-            if (!allSourceItems.isEmpty()) {
+            if (!replacedSourceItems.isEmpty()) {
                 ClonerInventoryAccess.refundStacksToAeThenInventory(
                         level,
                         player,
                         toolStack,
-                        allSourceItems
+                        replacedSourceItems
                 );
             }
         }
@@ -629,31 +735,43 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         }
     }
 
-    private double getReplacementPowerCost(int blocks) {
-        if (blocks <= 0) {
-            return 0.0D;
-        }
-
-        return blocks * getPowerPerBlockPaste() * getEnergyCostMultiplier();
+    private double getReplacementPowerCost(Collection<BlockPos> positions, BlockPos origin) {
+        return SpatialPowerCost.cost(
+                positions,
+                origin,
+                getPowerPerBlockPaste() * getEnergyCostMultiplier()
+        );
     }
 
-    private int countMatchingPositions(
+    private Set<BlockPos> collectMatchingPositions(
             ServerLevel level,
             Set<BlockPos> positions,
             BlockState sourceState,
             boolean strict
     ) {
-        int count = 0;
+        Set<BlockPos> matching = new LinkedHashSet<>();
 
         for (BlockPos pos : positions) {
             BlockState state = level.getBlockState(pos);
 
             if (strict ? state.equals(sourceState) : state.getBlock() == sourceState.getBlock()) {
-                count++;
+                matching.add(pos.immutable());
             }
         }
 
-        return count;
+        return matching;
+    }
+
+    public static Set<BlockPos> filterProtected(BlockGetter level, Set<BlockPos> positions) {
+        Set<BlockPos> allowed = new LinkedHashSet<>(positions.size());
+
+        for (BlockPos pos : positions) {
+            if (!ReplacerBlacklist.isProtected(level, pos, level.getBlockState(pos))) {
+                allowed.add(pos);
+            }
+        }
+
+        return allowed;
     }
 
     public static Set<BlockPos> floodFill(
@@ -662,10 +780,26 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             BlockState sourceState,
             ReplacerContext ctx
     ) {
+        boolean strict = ctx.strictBlockstate();
+
+        return floodFill(level, startPos, ctx, (checkedLevel, pos) -> {
+            BlockState state = checkedLevel.getBlockState(pos);
+
+            return strict
+                    ? state.equals(sourceState)
+                    : state.getBlock() == sourceState.getBlock();
+        });
+    }
+
+    public static Set<BlockPos> floodFill(
+            BlockGetter level,
+            BlockPos startPos,
+            ReplacerContext ctx,
+            BiPredicate<BlockGetter, BlockPos> matcher
+    ) {
         int hardCap = ctx.hardCapMax();
         int radius = ctx.radius();
         boolean diagonal = ctx.connectivityMode() == ConnectivityMode.DIAGONAL;
-        boolean strict = ctx.strictBlockstate();
 
         Set<BlockPos> visited = new LinkedHashSet<>();
         Queue<BlockPos> queue = new ArrayDeque<>();
@@ -699,11 +833,7 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
                     }
                 }
 
-                BlockState neighborState = level.getBlockState(neighbor);
-
-                if (strict
-                        ? neighborState.equals(sourceState)
-                        : neighborState.getBlock() == sourceState.getBlock()) {
+                if (matcher.test(level, neighbor)) {
                     visited.add(neighbor);
                     queue.add(neighbor);
                 }
@@ -849,7 +979,13 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
         }
 
         if (!player.isCreative()) {
-            double requiredPower = getReplacementPowerCost(undoBlocks.size());
+            List<BlockPos> undoPositions = undoBlocks.stream()
+                    .map(ClonerUndoHandler.ClonerUndoPlacedBlock::pos)
+                    .toList();
+
+            double requiredPower = undoPositions.isEmpty()
+                    ? 0.0D
+                    : getReplacementPowerCost(undoPositions, undoPositions.get(0));
 
             if (requiredPower > 0.0D && !tryUsePower(player, toolStack, requiredPower)) {
                 showNotEnoughPower(player, toolStack, requiredPower);

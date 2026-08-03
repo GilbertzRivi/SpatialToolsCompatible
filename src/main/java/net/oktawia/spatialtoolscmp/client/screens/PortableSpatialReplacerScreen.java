@@ -4,7 +4,6 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -24,7 +23,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.List;
 
 public class PortableSpatialReplacerScreen
-        extends AbstractContainerScreen<PortableSpatialReplacerMenu> {
+        extends AbstractSpatialToolScreen<PortableSpatialReplacerMenu> {
 
     private static final ResourceLocation BACKGROUND =
             SpatialToolsCMP.makeId("textures/gui/background.png");
@@ -200,6 +199,7 @@ public class PortableSpatialReplacerScreen
                 256
         );
 
+        renderPowerUpgradePanel(graphics);
         renderReplacerPanels(graphics);
         renderTargetSection(graphics);
         renderRadiusSection(graphics);
@@ -441,7 +441,9 @@ public class PortableSpatialReplacerScreen
         this.renderBackground(graphics);
         super.render(graphics, mouseX, mouseY, partialTick);
 
+        renderToolModeDropdown(graphics, mouseX, mouseY);
         renderExtraTooltips(graphics, mouseX, mouseY);
+        renderPowerUpgradeTooltip(graphics, mouseX, mouseY);
         this.renderTooltip(graphics, mouseX, mouseY);
     }
 

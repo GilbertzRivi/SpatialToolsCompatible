@@ -10,8 +10,12 @@ import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.PowerUpgradePanelWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.SpatialOffsetControlsWidget;
 import net.oktawia.spatialtoolscmp.client.screens.AbstractPortableStructureToolScreen;
+import net.oktawia.spatialtoolscmp.client.screens.AbstractSpatialToolScreen;
 import net.oktawia.spatialtoolscmp.client.screens.PortableSpatialClonerScreen;
+import net.oktawia.spatialtoolscmp.client.screens.PortableSpatialPiperScreen;
+import net.oktawia.spatialtoolscmp.client.screens.PortableSpatialReplacerScreen;
 import net.oktawia.spatialtoolscmp.client.screens.PortableSpatialStorageScreen;
+import net.oktawia.spatialtoolscmp.client.screens.PortableSpatialToolScreen;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,6 +41,46 @@ public final class SpatialJeiPlugin implements IModPlugin {
                 PortableSpatialClonerScreen.class,
                 new StructureToolGuiHandler<>()
         );
+
+        registration.addGuiContainerHandler(
+                PortableSpatialReplacerScreen.class,
+                new UpgradePanelGuiHandler<>()
+        );
+
+        registration.addGuiContainerHandler(
+                PortableSpatialPiperScreen.class,
+                new UpgradePanelGuiHandler<>()
+        );
+
+        registration.addGuiContainerHandler(
+                PortableSpatialToolScreen.class,
+                new UpgradePanelGuiHandler<>()
+        );
+    }
+
+    private static List<Rect2i> commonExtraAreas(AbstractSpatialToolScreen<?> screen) {
+        List<Rect2i> areas = new ArrayList<>();
+
+        int upgradeSlots = screen.getMenu().getPowerUpgradeSlotCount();
+
+        if (upgradeSlots > 0) {
+            areas.add(PowerUpgradePanelWidget.getExtraArea(screen, upgradeSlots));
+        }
+
+        if (screen.hasToolModeDropdown()) {
+            areas.add(screen.getToolModeDropdownArea());
+        }
+
+        return areas;
+    }
+
+    private static final class UpgradePanelGuiHandler<T extends AbstractSpatialToolScreen<?>>
+            implements IGuiContainerHandler<T> {
+
+        @Override
+        public List<Rect2i> getGuiExtraAreas(T screen) {
+            return commonExtraAreas(screen);
+        }
     }
 
     private static final class StructureToolGuiHandler<T extends AbstractPortableStructureToolScreen<?>>
@@ -44,14 +88,9 @@ public final class SpatialJeiPlugin implements IModPlugin {
 
         @Override
         public List<Rect2i> getGuiExtraAreas(T screen) {
-            List<Rect2i> areas = new ArrayList<>();
+            List<Rect2i> areas = commonExtraAreas(screen);
 
             areas.add(SpatialOffsetControlsWidget.getExtraArea(screen));
-
-            int upgradeSlots = screen.getMenu().getPowerUpgradeSlotCount();
-            if (upgradeSlots > 0) {
-                areas.add(PowerUpgradePanelWidget.getExtraArea(screen, upgradeSlots));
-            }
 
             return areas;
         }

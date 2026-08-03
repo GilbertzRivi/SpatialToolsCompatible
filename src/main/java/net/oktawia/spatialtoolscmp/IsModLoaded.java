@@ -17,4 +17,6 @@ public class IsModLoaded {
     public static final boolean LOOTR = ModList.get().isLoaded("lootr");
     public static final boolean PRODUCTIVE_BEES = ModList.get().isLoaded("productivebees");
     public static final boolean CHISELS_BITS = ModList.get().isLoaded("chiselsandbits");
+    public static final boolean INTEGRATED_DYNAMICS = ModList.get().isLoaded("integrateddynamics");
+    public static final boolean CLOTH_CONFIG = ModList.get().isLoaded("cloth_config");
 }

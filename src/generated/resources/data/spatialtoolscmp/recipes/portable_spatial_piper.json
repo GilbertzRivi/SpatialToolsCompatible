@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "B": {
+      "item": "minecraft:blast_furnace"
+    },
+    "D": {
+      "item": "minecraft:diamond"
+    },
+    "L": {
+      "item": "minecraft:redstone_lamp"
+    },
+    "S": {
+      "item": "spatialtoolscmp:portable_spatial_storage"
+    }
+  },
+  "pattern": [
+    " L ",
+    "DSD",
+    "BBB"
+  ],
+  "result": {
+    "item": "spatialtoolscmp:portable_spatial_piper"
+  },
+  "show_notification": true
+}

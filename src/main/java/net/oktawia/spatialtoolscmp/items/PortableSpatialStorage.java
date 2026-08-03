@@ -876,6 +876,6 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     @Override
     protected double getEnergyCostMultiplier() {
-        return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
+        return SpatialConfig.energyCostMultiplier(SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER);
     }
 }

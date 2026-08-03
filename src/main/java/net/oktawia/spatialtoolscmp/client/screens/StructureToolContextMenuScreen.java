@@ -4,19 +4,24 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
+import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
+import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
+import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuPiperExtension;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.StructureToolContextActionPacket;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -61,8 +66,13 @@ public class StructureToolContextMenuScreen extends Screen {
     private static final int TEXT_DIM = 0xFFAAAAAA;
     private static final int TEXT_GREEN = 0xFF55FF55;
 
+    private static final int TOOL_DROPDOWN_TOP_OFFSET = 15;
+
     private static final int LOCAL_SELECT_RED = -1;
     private static final int LOCAL_SELECT_GREEN = -2;
+
+    private static final int PIPER_PANEL_WIDTH = 150;
+    private static final int PIPER_PANEL_HEIGHT = 62;
 
     private final List<ContextPanel> panels = new ArrayList<>();
     private final List<ContextButton> buttons = new ArrayList<>();
@@ -76,6 +86,12 @@ public class StructureToolContextMenuScreen extends Screen {
     private boolean lastHasSelectionB = false;
     private boolean lastAnchorEnabled = false;
     private boolean lastHoldingReplacer = false;
+    private boolean lastHoldingPiper = false;
+    private PortableSpatialPiper.FillMode lastPiperFillMode = PortableSpatialPiper.FillMode.PATH;
+    private boolean lastPiperHasTarget = false;
+    private PortableSpatialPiper.PipeDirectionMode lastPiperPipeDirection =
+            PortableSpatialPiper.PipeDirectionMode.OFF;
+    private boolean lastPiperTargetIsDirectionalPipe = false;
     private int lastReplacerRadius = PortableSpatialReplacer.DEFAULT_RADIUS;
     private ConnectivityMode lastReplacerConnectivity = ConnectivityMode.DIRECT;
     private boolean lastReplacerBlockstateMode = false;
@@ -87,6 +103,11 @@ public class StructureToolContextMenuScreen extends Screen {
             StructureToolStackState.SelectionMode.DEFAULT;
 
     private int topInfoY = 0;
+
+    private boolean lastMultiTool = false;
+    private @Nullable SpatialMultiTool.Mode lastMultiToolMode = null;
+
+    private final ToolModeDropdownWidget toolModeDropdown = new ToolModeDropdownWidget();
 
     public StructureToolContextMenuScreen() {
         super(Component.translatable(LangDefs.CONTEXT_MENU_TITLE.getTranslationKey()));
@@ -103,9 +124,20 @@ public class StructureToolContextMenuScreen extends Screen {
 
         ItemStack held = getHeldStack();
 
+        this.lastMultiTool = SpatialMultiTool.isMultiTool(held);
+        this.lastMultiToolMode = SpatialMultiTool.getMode(held);
+
         this.lastShiftDown = isShiftPhysicallyDown();
         this.lastHoldingCloner = isHoldingCloner();
         this.lastHoldingReplacer = !held.isEmpty() && held.getItem() instanceof PortableSpatialReplacer;
+        this.lastHoldingPiper = !held.isEmpty() && held.getItem() instanceof PortableSpatialPiper;
+
+        if (this.lastHoldingPiper) {
+            this.lastPiperFillMode = PortableSpatialPiper.getFillMode(held);
+            this.lastPiperHasTarget = !PortableSpatialPiper.getTargetBlock(held).isEmpty();
+            this.lastPiperPipeDirection = PortableSpatialPiper.getPipeDirectionMode(held);
+            this.lastPiperTargetIsDirectionalPipe = isDirectionalPipeTarget(held);
+        }
         this.lastHasStructure = hasStoredStructure();
         this.lastHasSelectionA = StructureToolStackState.getSelectionA(held) != null;
         this.lastHasSelectionB = StructureToolStackState.getSelectionB(held) != null;
@@ -139,6 +171,13 @@ public class StructureToolContextMenuScreen extends Screen {
         int topY = centerY - totalHeight / 2;
         this.topInfoY = topY - 44;
 
+        if (this.lastMultiToolMode == null) {
+            this.topInfoY = centerY
+                    - ToolModeDropdownWidget.ROW_HEIGHT * (SpatialMultiTool.MODES.size() + 2) / 2;
+            this.toolModeDropdown.setOpen(true);
+            return;
+        }
+
         int leftPanelX = centerX - PANEL_WIDTH - PANEL_GAP_X / 2;
         int rightPanelX = centerX + PANEL_GAP_X / 2;
 
@@ -148,6 +187,11 @@ public class StructureToolContextMenuScreen extends Screen {
 
         if (this.lastHoldingReplacer) {
             buildReplacerLayout(centerX, centerY);
+            return;
+        }
+
+        if (this.lastHoldingPiper) {
+            buildPiperLayout(centerX, centerY);
             return;
         }
 
@@ -257,6 +301,82 @@ public class StructureToolContextMenuScreen extends Screen {
                 LangDefs.REPLACER_BLOCKSTATE_TOGGLE_TOOLTIP,
                 this.lastReplacerBlockstateMode ? Icon.CHECK : Icon.CROSS,
                 rightX, toggleY);
+    }
+
+    private static boolean isDirectionalPipeTarget(ItemStack held) {
+        if (!IsModLoaded.GTCEU) {
+            return false;
+        }
+
+        ItemStack target = PortableSpatialPiper.getTargetBlock(held);
+
+        return !target.isEmpty() && GTCEuPiperExtension.supportsPipeDirection(target);
+    }
+
+    private static Icon iconForPipeDirection(PortableSpatialPiper.PipeDirectionMode mode) {
+        return switch (mode) {
+            case OFF -> Icon.CROSS;
+            case ALONG_PATH -> Icon.ARROW_FRONT;
+            case AGAINST_PATH -> Icon.ARROW_BACK;
+        };
+    }
+
+    private void buildPiperLayout(int centerX, int centerY) {
+        int panelX = centerX - PIPER_PANEL_WIDTH / 2;
+        int panelY = centerY - PIPER_PANEL_HEIGHT / 2;
+
+        addPanel(
+                panelX,
+                panelY,
+                PIPER_PANEL_WIDTH,
+                PIPER_PANEL_HEIGHT,
+                Component.translatable(LangDefs.CONTEXT_MENU_OPTIONS_GROUP.getTranslationKey()),
+                null
+        );
+
+        int rowWidth = BUTTON_SIZE * 4 + BUTTON_GAP * 3;
+        int buttonX = panelX + (PIPER_PANEL_WIDTH - rowWidth) / 2;
+        int buttonY = panelY + 30;
+
+        addButton(
+                StructureToolContextActionPacket.TOGGLE_SELECTION_MODE,
+                false,
+                LangDefs.CONTEXT_MENU_SELECTION_MODE,
+                iconForSelectionMode(this.lastSelectionMode),
+                buttonX,
+                buttonY
+        );
+
+        addButton(
+                StructureToolContextActionPacket.PIPER_TOGGLE_FILL_MODE,
+                false,
+                LangDefs.PIPER_FILL_MODE,
+                this.lastPiperFillMode == PortableSpatialPiper.FillMode.FILL ? Icon.CHECK : Icon.CROSS,
+                buttonX + BUTTON_SIZE + BUTTON_GAP,
+                buttonY
+        );
+
+        addButton(
+                StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION,
+                false,
+                LangDefs.PIPER_PIPE_DIRECTION,
+                iconForPipeDirection(this.lastPiperPipeDirection),
+                buttonX + (BUTTON_SIZE + BUTTON_GAP) * 2,
+                buttonY,
+                this.lastPiperTargetIsDirectionalPipe,
+                false
+        );
+
+        addButton(
+                StructureToolContextActionPacket.PIPER_CLEAR_TARGET,
+                false,
+                LangDefs.CONTEXT_MENU_CANCEL_SELECTION,
+                Icon.MINUS,
+                buttonX + (BUTTON_SIZE + BUTTON_GAP) * 3,
+                buttonY,
+                this.lastPiperHasTarget,
+                false
+        );
     }
 
     private void buildOffsetPanel(int panelX, int panelY) {
@@ -576,13 +696,38 @@ public class StructureToolContextMenuScreen extends Screen {
         StructureToolStackState.SelectionMode selectionMode = getSelectionMode();
 
         boolean holdingReplacer = !held.isEmpty() && held.getItem() instanceof PortableSpatialReplacer;
+        boolean holdingPiper = !held.isEmpty() && held.getItem() instanceof PortableSpatialPiper;
+
+        PortableSpatialPiper.FillMode piperFillMode = holdingPiper
+                ? PortableSpatialPiper.getFillMode(held)
+                : this.lastPiperFillMode;
+
+        boolean piperHasTarget = holdingPiper
+                ? !PortableSpatialPiper.getTargetBlock(held).isEmpty()
+                : this.lastPiperHasTarget;
+
+        PortableSpatialPiper.PipeDirectionMode piperPipeDirection = holdingPiper
+                ? PortableSpatialPiper.getPipeDirectionMode(held)
+                : this.lastPiperPipeDirection;
+
+        boolean piperDirectionalPipe = holdingPiper
+                ? isDirectionalPipeTarget(held)
+                : this.lastPiperTargetIsDirectionalPipe;
+
         int replacerRadius = holdingReplacer ? PortableSpatialReplacer.getRadius(held) : this.lastReplacerRadius;
         ConnectivityMode replacerConn = holdingReplacer ? PortableSpatialReplacer.getConnectivityMode(held) : this.lastReplacerConnectivity;
         boolean replacerBlockstate = holdingReplacer ? PortableSpatialReplacer.isSameBlockstate(held) : this.lastReplacerBlockstateMode;
 
-        if (shiftDown != this.lastShiftDown
+        if (SpatialMultiTool.isMultiTool(held) != this.lastMultiTool
+                || SpatialMultiTool.getMode(held) != this.lastMultiToolMode
+                || shiftDown != this.lastShiftDown
                 || holdingCloner != this.lastHoldingCloner
                 || holdingReplacer != this.lastHoldingReplacer
+                || holdingPiper != this.lastHoldingPiper
+                || piperFillMode != this.lastPiperFillMode
+                || piperHasTarget != this.lastPiperHasTarget
+                || piperPipeDirection != this.lastPiperPipeDirection
+                || piperDirectionalPipe != this.lastPiperTargetIsDirectionalPipe
                 || hasStructure != this.lastHasStructure
                 || hasSelectionA != this.lastHasSelectionA
                 || hasSelectionB != this.lastHasSelectionB
@@ -628,6 +773,10 @@ public class StructureToolContextMenuScreen extends Screen {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int mouseButton) {
         if (mouseButton != 0) {
+            return true;
+        }
+
+        if (layoutToolModeDropdown().mouseClicked(mouseX, mouseY)) {
             return true;
         }
 
@@ -684,6 +833,34 @@ public class StructureToolContextMenuScreen extends Screen {
             }
         }
 
+        if (hovered.action() == StructureToolContextActionPacket.PIPER_TOGGLE_FILL_MODE) {
+            ItemStack held = getHeldStack();
+
+            if (!held.isEmpty() && held.getItem() instanceof PortableSpatialPiper) {
+                PortableSpatialPiper.cycleFillMode(held);
+                rebuildLayout();
+            }
+        }
+
+        if (hovered.action() == StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION) {
+            ItemStack held = getHeldStack();
+
+            if (!held.isEmpty() && held.getItem() instanceof PortableSpatialPiper) {
+                PortableSpatialPiper.cyclePipeDirectionMode(held);
+                rebuildLayout();
+            }
+        }
+
+        if (hovered.action() == StructureToolContextActionPacket.PIPER_CLEAR_TARGET) {
+            ItemStack held = getHeldStack();
+
+            if (!held.isEmpty() && held.getItem() instanceof PortableSpatialPiper) {
+                PortableSpatialPiper.setTargetBlock(held, ItemStack.EMPTY);
+                PortableSpatialPiper.clearRoute(held);
+                rebuildLayout();
+            }
+        }
+
         if (hovered.action() == StructureToolContextActionPacket.CANCEL_SELECTION) {
             ItemStack held = getHeldStack();
 
@@ -719,7 +896,15 @@ public class StructureToolContextMenuScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, this.width, this.height, 0x12000000);
 
+        ToolModeDropdownWidget dropdown = layoutToolModeDropdown();
+
         renderTopInfo(graphics);
+
+        if (dropdown.isOpen()) {
+            dropdown.render(graphics, this.font, mouseX, mouseY);
+            return;
+        }
+
         renderPanels(graphics);
 
         ContextButton hovered = getHoveredButton(mouseX, mouseY);
@@ -727,6 +912,8 @@ public class StructureToolContextMenuScreen extends Screen {
         for (ContextButton button : this.buttons) {
             renderButton(graphics, button, button == hovered);
         }
+
+        dropdown.render(graphics, this.font, mouseX, mouseY);
 
         if (hovered != null) {
             graphics.renderComponentTooltip(
@@ -755,7 +942,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 TEXT_GREEN
         );
 
-        if (!toolName.getString().isBlank()) {
+        if (!this.lastMultiTool && !toolName.getString().isBlank()) {
             graphics.drawCenteredString(
                     this.font,
                     toolName,
@@ -765,15 +952,33 @@ public class StructureToolContextMenuScreen extends Screen {
             );
         }
 
-        if (!this.lastHoldingReplacer) {
+        if (this.lastMultiToolMode == null) {
+            return;
+        }
+
+        if (!this.lastHoldingReplacer && !this.lastHoldingPiper && !this.toolModeDropdown.isOpen()) {
+            int hintY = this.lastMultiTool
+                    ? y + TOOL_DROPDOWN_TOP_OFFSET + ToolModeDropdownWidget.ROW_HEIGHT + 2
+                    : y + 28;
+
             graphics.drawCenteredString(
                     this.font,
                     Component.translatable(LangDefs.CONTEXT_MENU_HOLD_SHIFT_ORIGIN.getTranslationKey()),
                     centerX,
-                    y + 28,
+                    hintY,
                     this.lastShiftDown ? TEXT_GREEN : TEXT_DIM
             );
         }
+    }
+
+    private ToolModeDropdownWidget layoutToolModeDropdown() {
+        this.toolModeDropdown.setToolStack(getHeldStack());
+        this.toolModeDropdown.setPosition(
+                this.width / 2 - ToolModeDropdownWidget.WIDTH / 2,
+                this.topInfoY + TOOL_DROPDOWN_TOP_OFFSET
+        );
+
+        return this.toolModeDropdown;
     }
 
     private void renderPanels(GuiGraphics graphics) {
@@ -900,6 +1105,40 @@ public class StructureToolContextMenuScreen extends Screen {
             addWrappedTooltipLines(lines, modeTooltip.copy().withStyle(ChatFormatting.GRAY));
         }
 
+        if (button.action() == StructureToolContextActionPacket.PIPER_TOGGLE_FILL_MODE) {
+            LangDefs desc = this.lastPiperFillMode == PortableSpatialPiper.FillMode.FILL
+                    ? LangDefs.PIPER_FILL_MODE_FILL
+                    : LangDefs.PIPER_FILL_MODE_PATH;
+
+            addWrappedTooltipLines(
+                    lines,
+                    Component.translatable(desc.getTranslationKey()).withStyle(ChatFormatting.GRAY)
+            );
+        }
+
+        if (button.action() == StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION) {
+            LangDefs desc;
+
+            if (!this.lastPiperTargetIsDirectionalPipe) {
+                desc = LangDefs.PIPER_PIPE_DIRECTION_UNSUPPORTED;
+            } else {
+                desc = switch (this.lastPiperPipeDirection) {
+                    case OFF -> LangDefs.PIPER_PIPE_DIRECTION_OFF;
+                    case ALONG_PATH -> LangDefs.PIPER_PIPE_DIRECTION_ALONG;
+                    case AGAINST_PATH -> LangDefs.PIPER_PIPE_DIRECTION_AGAINST;
+                };
+            }
+
+            addWrappedTooltipLines(
+                    lines,
+                    Component.translatable(desc.getTranslationKey()).withStyle(
+                            this.lastPiperTargetIsDirectionalPipe
+                                    ? ChatFormatting.GRAY
+                                    : ChatFormatting.RED
+                    )
+            );
+        }
+
         if (button.action() == StructureToolContextActionPacket.TOGGLE_ANCHOR) {
             Component anchorTooltip = this.lastAnchorEnabled
                     ? Component.translatable(LangDefs.CONTEXT_MENU_ANCHOR_ENABLED.getTranslationKey())
@@ -944,7 +1183,8 @@ public class StructureToolContextMenuScreen extends Screen {
             addWrappedTooltipLines(lines, modeTooltip.copy().withStyle(ChatFormatting.GRAY));
         }
 
-        if (!button.enabled()) {
+        if (!button.enabled()
+                && button.action() != StructureToolContextActionPacket.PIPER_CYCLE_PIPE_DIRECTION) {
             lines.add(Component.translatable(
                     LangDefs.CONTEXT_MENU_STRUCTURE_REQUIRED.getTranslationKey()
             ).withStyle(ChatFormatting.RED));

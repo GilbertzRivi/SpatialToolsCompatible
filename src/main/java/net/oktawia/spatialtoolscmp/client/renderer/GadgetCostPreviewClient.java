@@ -23,7 +23,10 @@ import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
+import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
+import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
@@ -83,6 +86,45 @@ public class GadgetCostPreviewClient {
         }
 
         long energy = getStoredEnergy(held);
+
+        if (held.getItem() instanceof PortableSpatialReplacer
+                || held.getItem() instanceof PortableSpatialPiper) {
+            resetCaches();
+
+            boolean replacer = held.getItem() instanceof PortableSpatialReplacer;
+
+            int blocks = replacer
+                    ? PortableSpatialReplacerPreviewRenderer.getPreviewBlocks()
+                    : PortableSpatialPiperPreviewRenderer.getPreviewBlocks();
+
+            if (blocks <= 0) {
+                return;
+            }
+
+            double distanceSum = replacer
+                    ? PortableSpatialReplacerPreviewRenderer.getPreviewDistanceSum()
+                    : PortableSpatialPiperPreviewRenderer.getPreviewDistanceSum();
+
+            long cost = ceilToLongClamped(
+                    SpatialPowerCost.fromDistanceSum(distanceSum, effectivePowerPerBlock)
+            );
+
+            if (cost <= 0) {
+                return;
+            }
+
+            LangDefs label = replacer
+                    ? LangDefs.REPLACER_COST_PREVIEW
+                    : LangDefs.PIPER_COST_PREVIEW;
+
+            currentText = Component.translatable(
+                    label.getTranslationKey(),
+                    String.format("%,d", cost)
+            );
+
+            currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
+            return;
+        }
 
         if (StructureToolStackState.hasStructure(held)) {
             CAPTURE_COST_CACHE.invalidate();
@@ -172,10 +214,16 @@ public class GadgetCostPreviewClient {
         }
 
         return stack.getItem() instanceof PortableSpatialStorage
-                || stack.getItem() instanceof PortableSpatialCloner;
+                || stack.getItem() instanceof PortableSpatialCloner
+                || stack.getItem() instanceof PortableSpatialReplacer
+                || stack.getItem() instanceof PortableSpatialPiper;
     }
 
     private static double getEffectivePowerPerBlock(ItemStack stack) {
+        if (!SpatialConfig.usePower()) {
+            return 0.0D;
+        }
+
         if (stack.getItem() instanceof PortableSpatialStorage) {
             return SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_COST.get()
                     * SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_ENERGY_COST_MULTIPLIER.get();
@@ -184,6 +232,18 @@ public class GadgetCostPreviewClient {
         if (stack.getItem() instanceof PortableSpatialCloner) {
             return SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_COST.get()
                     * SpatialConfig.COMMON.PORTABLE_SPATIAL_CLONER_ENERGY_COST_MULTIPLIER.get();
+        }
+
+        if (stack.getItem() instanceof PortableSpatialReplacer) {
+            return SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_COST.get()
+                    * SpatialConfig.COMMON.PORTABLE_SPATIAL_REPLACER_ENERGY_COST_MULTIPLIER.get()
+                    * PortableSpatialReplacer.POWER_COST_SCALE;
+        }
+
+        if (stack.getItem() instanceof PortableSpatialPiper) {
+            return SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_COST.get()
+                    * SpatialConfig.COMMON.PORTABLE_SPATIAL_PIPER_ENERGY_COST_MULTIPLIER.get()
+                    * PortableSpatialPiper.POWER_COST_SCALE;
         }
 
         return 0.0D;

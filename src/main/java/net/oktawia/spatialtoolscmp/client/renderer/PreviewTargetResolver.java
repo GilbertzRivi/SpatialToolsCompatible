@@ -1,0 +1,136 @@
+package net.oktawia.spatialtoolscmp.client.renderer;
+
+import com.gregtechceu.gtceu.api.block.PipeBlock;
+import com.gregtechceu.gtceu.client.model.GTModelProperties;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraftforge.client.model.data.ModelData;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.client.renderer.RenderType;
+import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
+import net.oktawia.spatialtoolscmp.logic.ClientPiperExtensions;
+import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
+import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtensions;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.Set;
+
+public final class PreviewTargetResolver {
+
+    private ItemStack targetItem = ItemStack.EMPTY;
+
+    @Nullable
+    public BlockState resolve(ItemStack targetItem) {
+        this.targetItem = targetItem;
+
+        for (ClientReplacerExtension ext : ClientReplacerExtensions.get()) {
+            BlockState resolved = ext.resolveTargetState(targetItem);
+
+            if (resolved != null && !resolved.isAir()) {
+                return resolved;
+            }
+        }
+
+        for (ClientPiperExtension ext : ClientPiperExtensions.get()) {
+            BlockState resolved = ext.resolveTargetState(targetItem);
+
+            if (resolved != null && !resolved.isAir()) {
+                return resolved;
+            }
+        }
+
+        ResourceLocation itemId = ForgeRegistries.ITEMS.getKey(targetItem.getItem());
+        Block targetBlock = itemId != null ? ForgeRegistries.BLOCKS.getValue(itemId) : null;
+
+        if (targetBlock != null && !targetBlock.defaultBlockState().isAir()) {
+            return targetBlock.defaultBlockState();
+        }
+
+        return null;
+    }
+
+    @Nullable
+    public Iterable<RenderType> previewRenderTypes(BlockState targetState) {
+        for (ClientReplacerExtension ext : ClientReplacerExtensions.get()) {
+            Iterable<RenderType> types = ext.getPreviewRenderTypes(targetState, this.targetItem);
+
+            if (types != null) {
+                return types;
+            }
+        }
+
+        for (ClientPiperExtension ext : ClientPiperExtensions.get()) {
+            Iterable<RenderType> types = ext.getPreviewRenderTypes(targetState, this.targetItem);
+
+            if (types != null) {
+                return types;
+            }
+        }
+
+        return null;
+    }
+
+    public boolean needsReplacement(ClientLevel level, BlockPos pos) {
+        for (ClientReplacerExtension ext : ClientReplacerExtensions.get()) {
+            if (ext.needsReplacement(level, pos, this.targetItem)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public ModelData buildModelData(
+            BlockState targetState,
+            BlockPos pos,
+            Set<BlockPos> allPositions
+    ) {
+        for (ClientReplacerExtension ext : ClientReplacerExtensions.get()) {
+            ModelData extensionData = ext.buildTargetModelData(
+                    targetState,
+                    this.targetItem,
+                    pos,
+                    allPositions
+            );
+
+            if (extensionData != null) {
+                return extensionData;
+            }
+        }
+
+        for (ClientPiperExtension ext : ClientPiperExtensions.get()) {
+            ModelData extensionData = ext.buildTargetModelData(
+                    targetState,
+                    this.targetItem,
+                    pos,
+                    allPositions
+            );
+
+            if (extensionData != null) {
+                return extensionData;
+            }
+        }
+
+        if (!(targetState.getBlock() instanceof PipeBlock<?, ?, ?>)) {
+            return ModelData.EMPTY;
+        }
+
+        int connections = 0;
+
+        for (Direction direction : Direction.values()) {
+            if (allPositions.contains(pos.relative(direction))) {
+                connections |= 1 << direction.ordinal();
+            }
+        }
+
+        return ModelData.builder()
+                .with(GTModelProperties.PIPE_CONNECTION_MASK, connections)
+                .with(GTModelProperties.PIPE_BLOCKED_MASK, 0)
+                .build();
+    }
+}

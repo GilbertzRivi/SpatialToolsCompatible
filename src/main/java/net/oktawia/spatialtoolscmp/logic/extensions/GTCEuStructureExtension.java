@@ -631,6 +631,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
             }
 
             copyGregMachineSideConfig(rawBeTag, machineTag);
+            copySensorHatchState(rawBeTag, machineTag);
 
             CompoundTag dataStick = collectGregDataStick(be);
 
@@ -1062,6 +1063,19 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         copyGregLockedFluidSettings(from, to);
     }
 
+    private static void copySensorHatchState(CompoundTag from, CompoundTag to) {
+        NbtUtil.copyByteIfPresent(from, to, "inverted");
+        NbtUtil.copyByteIfPresent(from, to, "usesPercent");
+
+        NbtUtil.copyIntIfPresent(from, to, "minPercent");
+        NbtUtil.copyIntIfPresent(from, to, "maxPercent");
+        NbtUtil.copyIntIfPresent(from, to, "minValue");
+        NbtUtil.copyIntIfPresent(from, to, "maxValue");
+
+        NbtUtil.copyStringIfPresent(from, to, "detectorColor");
+        NbtUtil.copyStringIfPresent(from, to, "detectorMicroverse");
+    }
+
     private static void copyGregLockedFluidSettings(CompoundTag from, CompoundTag to) {
         copyGregLockedFluidSettingsRecursive(from, to);
     }
@@ -1167,6 +1181,7 @@ public final class GTCEuStructureExtension implements StructureCloneExtension, S
         copyWorldAcceleratorState(machineData, out);
         copyEnergyConverterState(machineData, out);
         copyGregMachineSideConfig(machineData, out);
+        copySensorHatchState(machineData, out);
 
         if (machineData.contains(NBT_DATA_STICK, Tag.TAG_COMPOUND)) {
             out.put(NBT_DATA_STICK, machineData.getCompound(NBT_DATA_STICK).copy());

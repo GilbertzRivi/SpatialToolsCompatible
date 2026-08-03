@@ -3,10 +3,13 @@ package net.oktawia.spatialtoolscmp.logic;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
 import java.util.Set;
 
 public interface ReplacerExtension {
@@ -33,6 +36,43 @@ public interface ReplacerExtension {
     }
 
     default boolean canHandleTarget(ServerLevel level, Block targetBlock) {
+        return false;
+    }
+
+    @Nullable
+    default Block resolveTargetBlock(ServerLevel level, ItemStack target) {
+        return null;
+    }
+
+    @Nullable
+    default ItemStack pickTargetItem(ServerLevel level, BlockPos pos, BlockState state) {
+        return null;
+    }
+
+    default boolean isUnplaceableTarget(ServerLevel level, Block targetBlock, ItemStack target) {
+        return false;
+    }
+
+    default boolean needsReplacement(ServerLevel level, BlockPos pos, ItemStack target) {
+        return false;
+    }
+
+    @Nullable
+    default ItemStack getInPlaceSwapItem(ServerLevel level, BlockPos pos, ItemStack target) {
+        return null;
+    }
+
+    @Nullable
+    default List<ItemStack> getPlacementCost(ServerLevel level, ItemStack target) {
+        return null;
+    }
+
+    default boolean placeTarget(
+            ServerLevel level,
+            BlockPos pos,
+            ItemStack target,
+            @Nullable ServerPlayer player
+    ) {
         return false;
     }
 

@@ -2,7 +2,7 @@
 
 **Spatial Tools Compatible** lets you move, copy, preview, rotate, flip, paste, and replace blocks in entire builds easily!
 
-Whether you are relocating a base, duplicating a machine setup, sharing a blueprint, or adjusting a complex modded structure, this mod gives you tools that feel powerful, predictable, and safe to use. It works as a standalone structure tool, but becomes especially useful in technical modpacks where normal copy-paste tools often fail. With built-in support for **AE2**, **GTCEu**, **Mekanism**, **FramedBlocks**, **Sophisticated Storage**, **Curios**, **Project Red**, **LaserIO**, **Flux Networks**, **Extended AE** and more! it is designed to preserve not just the shape of your build, but the important details that make it actually work.
+Whether you are relocating a base, duplicating a machine setup, sharing a blueprint, or adjusting a complex modded structure, this mod gives you tools that feel powerful, predictable, and safe to use. It works as a standalone structure tool, but becomes especially useful in technical modpacks where normal copy-paste tools often fail. With built-in support for **AE2**, **GTCEu**, **Mekanism**, **FramedBlocks**, **Sophisticated Storage**, **Curios**, **Project Red**, **LaserIO**, **Flux Networks**, **Extended AE**, **Integrated Dynamics** and more! it is designed to preserve not just the shape of your build, but the important details that make it actually work.
 
 ***
 
@@ -160,6 +160,11 @@ The goal is to preserve as much of the structure’s real behavior and configura
 
 *   Proper support for multipart blocks
 *   Copies and pastes them correctly
+
+### Integrated Dynamics
+
+*   Proper support for cables and cable parts.
+*   Keeps part settings, and variable cards.
 
 ***
 
