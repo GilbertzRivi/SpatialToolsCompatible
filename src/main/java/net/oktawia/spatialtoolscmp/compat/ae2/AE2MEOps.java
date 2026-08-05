@@ -88,15 +88,6 @@ public final class AE2MEOps {
         return poweredExtraction(getEnergy(grid), storage, toKey(filter), amount, source(player));
     }
 
-    public static boolean canExtractAll(
-            ItemStack filter,
-            ItemStack linkedItem,
-            ServerLevel level,
-            long amount) {
-        var extracted = extract(filter, linkedItem, level, amount, true, null);
-        return extracted == amount;
-    }
-
     public static long insert(
             ItemStack toInsert,
             ItemStack linkedItem,
@@ -124,11 +115,6 @@ public final class AE2MEOps {
         }
 
         return amount - inserted;
-    }
-
-    public static boolean canInsertAll(ItemStack toInsert, ItemStack linkedItem, ServerLevel level) {
-        long overflow = insert(toInsert, linkedItem, level, true, null);
-        return overflow == 0;
     }
 
     public static boolean isCraftable(ItemStack filter, ItemStack linkedItem, ServerLevel level) {

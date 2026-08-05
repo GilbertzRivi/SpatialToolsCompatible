@@ -1,4 +1,4 @@
-package net.oktawia.spatialtoolscmp.logic.extensions;
+package net.oktawia.spatialtoolscmp.compat.gtceu.v7;
 
 import java.util.List;
 import java.util.Map;
@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuCompat;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
 import net.oktawia.spatialtoolscmp.logic.PiperRoute;
@@ -51,7 +52,7 @@ public final class GTCEuPiperExtension implements PiperExtension {
 
             CompoundTag hint = new CompoundTag();
             hint.putInt("connections", masks.getOrDefault(pos, 0));
-            hint.putInt("blockedConnections", blockedMask(steps.get(pos), directionMode));
+            hint.putInt("blockedConnections", GTCEuCompat.blockedMask(steps.get(pos), directionMode));
 
             GTCEuStructureExtension.scheduleReplacedPipeInit(level, pos, hint);
             applyBlockedFace(level, pos, steps.get(pos), directionMode);
@@ -68,34 +69,12 @@ public final class GTCEuPiperExtension implements PiperExtension {
         return block instanceof ItemPipeBlock || block instanceof FluidPipeBlock;
     }
 
-    public static int blockedMask(
-            Direction step,
-            PortableSpatialPiper.PipeDirectionMode directionMode) {
-        Direction blocked = blockedFace(step, directionMode);
-
-        return blocked == null ? 0 : 1 << blocked.ordinal();
-    }
-
-    private static Direction blockedFace(
-            Direction step,
-            PortableSpatialPiper.PipeDirectionMode directionMode) {
-        if (step == null) {
-            return null;
-        }
-
-        return switch (directionMode) {
-            case OFF -> null;
-            case ALONG_PATH -> step;
-            case AGAINST_PATH -> step.getOpposite();
-        };
-    }
-
     private static void applyBlockedFace(
             ServerLevel level,
             BlockPos pos,
             Direction step,
             PortableSpatialPiper.PipeDirectionMode directionMode) {
-        Direction blocked = blockedFace(step, directionMode);
+        Direction blocked = GTCEuCompat.blockedFace(step, directionMode);
 
         if (blocked == null) {
             return;

@@ -334,8 +334,6 @@ public final class BlockMatcher {
         }
     }
 
-    // Unguarded stack access is safe only because toRpn ran validateRpnStackDepth, which proves
-    // every operator has its operands and exactly one value is left at the end.
     private static boolean evalRpn(Token[] rpn, BlockKeys keys) {
         boolean[] stack = new boolean[rpn.length];
         int sp = 0;

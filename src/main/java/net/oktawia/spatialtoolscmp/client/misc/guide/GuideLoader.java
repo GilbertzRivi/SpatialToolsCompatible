@@ -33,10 +33,6 @@ public class GuideLoader implements ResourceManagerReloadListener {
         return CACHE.computeIfAbsent(itemId, GuideLoader::load);
     }
 
-    public static boolean hasGuide(Item item) {
-        return !get(item).isEmpty();
-    }
-
     private static List<GuideBlock> load(ResourceLocation itemId) {
         String language = Minecraft.getInstance().getLanguageManager().getSelected();
 

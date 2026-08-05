@@ -1,4 +1,4 @@
-package net.oktawia.spatialtoolscmp.compat;
+package net.oktawia.spatialtoolscmp.compat.gtceu.v7;
 
 import java.util.EnumSet;
 

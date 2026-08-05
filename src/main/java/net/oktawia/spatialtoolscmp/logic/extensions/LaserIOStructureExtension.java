@@ -43,14 +43,11 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             "Inventory3", "Inventory4", "Inventory5"
     };
 
-    // Relative BlockPos offsets to connected nodes, stored as [{pos:{X,Y,Z}}, ...]
     private static final String NBT_CONNECTION_OFFSETS = "connectionOffsets";
     private static final long NEXT_TICK_DELAY = 1L;
 
     private static final List<PendingConnectionInit> PENDING = new ArrayList<>();
     private static boolean registered = false;
-
-    // --- StructureCloneExtension ---
 
     @Override
     public boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag) {
@@ -91,8 +88,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             }
         }
 
-        // The raw "connections" list stores relative offsets (BlockPos from this node's pos)
-        // as [{pos: {X,Y,Z}}, ...]. Copy as-is — they are the offsets we need for paste linking.
         ListTag rawConnections = rawBeTag.getList("connections", Tag.TAG_COMPOUND);
         if (!rawConnections.isEmpty()) {
             laserData.put(NBT_CONNECTION_OFFSETS, rawConnections.copy());
@@ -151,7 +146,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         NbtUtil.copyIntIfPresent(laserData, filteredData, "laserColor");
         NbtUtil.copyByteIfPresent(laserData, filteredData, "showParticles");
         NbtUtil.copyIntIfPresent(laserData, filteredData, "wrenchAlpha");
-        // Pass connection offsets through so onBlockPlaced can schedule linking.
         NbtUtil.copyTagIfPresent(laserData, filteredData, NBT_CONNECTION_OFFSETS);
 
         for (String invKey : SIDE_INVENTORY_KEYS) {
@@ -225,8 +219,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         return true;
     }
 
-    // --- Pending connection system ---
-
     private static void ensureRegistered() {
         if (!registered) {
             MinecraftForge.EVENT_BUS.register(LaserIOStructureExtension.class);
@@ -295,7 +287,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             BlockEntity targetBe = level.getBlockEntity(targetPos);
 
             if (!(targetBe instanceof BaseLaserBE targetNode)) {
-                // No node at the offset position — skip (don't link).
                 continue;
             }
 
@@ -317,8 +308,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             long runAtGameTime) {
     }
 
-    // --- Survival-mode inventory filtering ---
-
     private static CompoundTag filterInvForPaste(
             CompoundTag inv,
             Map<Item, Integer> reserved,
@@ -333,7 +322,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         for (int i = 0; i < originalItems.size(); i++) {
             CompoundTag slot = originalItems.getCompound(i);
 
-            // Probe with a copy — a failed slot must not consume budget from reserved.
             if (canAffordSlot(slot, new LinkedHashMap<>(reserved), ctx)) {
                 reserveSlotCosts(slot, reserved, costs, ctx);
                 filteredItems.add(slot.copy());
@@ -365,9 +353,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         return canAffordCardInv(slot.getCompound("tag"), probe, ctx);
     }
 
-    // Checks items directly in a card's inv (e.g. filter card, overclocker cards).
-    // Does NOT recurse further — items inside a filter card's inv are filter templates
-    // (configuration only), not physical items the player needs to provide.
     private static boolean canAffordCardInv(
             CompoundTag cardTag,
             Map<Item, Integer> probe,
@@ -414,7 +399,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         }
     }
 
-    // Reserves costs for items directly in a card's inv. Does NOT recurse further.
     private static void reserveCardInvCosts(
             CompoundTag cardTag,
             Map<Item, Integer> reserved,
@@ -440,8 +424,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         }
     }
 
-    // --- Requirements / refund collection ---
-
     private static void collectInvRequirements(CompoundTag inv, Consumer<ItemStack> sink) {
         ListTag items = getItems(inv);
 
@@ -464,8 +446,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         }
     }
 
-    // Collects requirements for items directly in a card's inv. Does NOT recurse further —
-    // items inside a filter card's inv are filter templates, not physical cost items.
     private static void collectCardInvRequirements(CompoundTag cardTag, Consumer<ItemStack> sink) {
         if (!cardTag.contains("inv", Tag.TAG_COMPOUND)) {
             return;
@@ -485,8 +465,6 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
         }
     }
 
-    // --- Tag building ---
-
     private static CompoundTag buildBeTag(@Nullable CompoundTag rawBeTag, CompoundTag laserData) {
         CompoundTag out = new CompoundTag();
 
@@ -504,13 +482,8 @@ public final class LaserIOStructureExtension implements StructureCloneExtension 
             }
         }
 
-        // Intentionally exclude: connections, renderedConnections, myWorldPos.
-        // Connections are established via deferred post-placement linking.
-
         return out;
     }
-
-    // --- Small helpers ---
 
     private static CompoundTag getLaserData(@Nullable CompoundTag blockMetadata) {
         if (blockMetadata == null

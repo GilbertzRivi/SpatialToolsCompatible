@@ -1,9 +1,5 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 
@@ -11,12 +7,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.renderer.Rect2i;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 
-import lombok.Getter;
 import lombok.Setter;
 
 public class SimpleTextFieldWidget extends EditBox {
@@ -49,9 +42,6 @@ public class SimpleTextFieldWidget extends EditBox {
     private int placeholderColor = DEFAULT_PLACEHOLDER_COLOR;
 
     private boolean editable = true;
-
-    @Getter
-    private List<Component> tooltipMessage = Collections.emptyList();
 
     @Nullable
     private Component placeholder;
@@ -87,10 +77,6 @@ public class SimpleTextFieldWidget extends EditBox {
         super.setEditable(editable);
     }
 
-    public boolean isTextEditable() {
-        return this.editable;
-    }
-
     public void move(int x, int y) {
         super.setX(x + PADDING);
         super.setY(y + PADDING);
@@ -106,55 +92,7 @@ public class SimpleTextFieldWidget extends EditBox {
         resize(width, height);
     }
 
-    public void selectAll() {
-        this.moveCursorTo(0);
-        this.setHighlightPos(this.getValue().length());
-    }
-
-    public void setPlaceholder(@Nullable Component placeholder) {
-        this.placeholder = placeholder;
-    }
-
     @Nullable
-    public Component getPlaceholder() {
-        return this.placeholder;
-    }
-
-    public void setBackgroundColors(int normal, int focused, int disabled) {
-        this.backgroundColor = normal;
-        this.backgroundFocusedColor = focused;
-        this.backgroundDisabledColor = disabled;
-    }
-
-    public void setBorderColors(int normal, int focused, int disabled) {
-        this.borderColor = normal;
-        this.borderFocusedColor = focused;
-        this.borderDisabledColor = disabled;
-    }
-
-    public void setTooltipMessage(List<Component> tooltipMessage) {
-        this.tooltipMessage = Objects.requireNonNullElse(tooltipMessage, Collections.emptyList());
-
-        if (this.tooltipMessage.isEmpty()) {
-            this.setTooltip(null);
-        } else {
-            this.setTooltip(Tooltip.create(this.tooltipMessage.get(0)));
-        }
-    }
-
-    public Rect2i getTooltipArea() {
-        VisualBounds bounds = getVisualBounds();
-
-        return new Rect2i(
-                bounds.left(),
-                bounds.top(),
-                bounds.right() - bounds.left(),
-                bounds.bottom() - bounds.top());
-    }
-
-    public boolean isTooltipAreaVisible() {
-        return this.visible;
-    }
 
     @Override
     public boolean isMouseOver(double mouseX, double mouseY) {

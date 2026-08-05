@@ -48,8 +48,6 @@ public final class AE2CraftingBufferOps {
         if (freeBuffer == null)
             return hasAny ? ALL_BUSY : NO_BUFFER;
 
-        // Only craftable items that are actually missing — non-craftable or already-available items
-        // are excluded to prevent the crafting plan from failing.
         GenericStack[] toRequest = entries.stream()
                 .filter(e -> e.craftable() && e.required() > e.available())
                 .map(e -> new GenericStack(AEItemKey.of(e.stack()), e.required()))

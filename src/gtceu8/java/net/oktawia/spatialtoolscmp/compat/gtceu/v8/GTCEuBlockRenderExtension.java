@@ -1,4 +1,4 @@
-package net.oktawia.spatialtoolscmp.client.renderer.extensions;
+package net.oktawia.spatialtoolscmp.compat.gtceu.v8;
 
 import java.util.LinkedHashSet;
 import java.util.Set;

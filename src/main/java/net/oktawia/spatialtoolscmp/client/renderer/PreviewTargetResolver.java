@@ -2,9 +2,6 @@ package net.oktawia.spatialtoolscmp.client.renderer;
 
 import java.util.Set;
 
-import com.gregtechceu.gtceu.api.block.PipeBlock;
-import com.gregtechceu.gtceu.client.model.GTModelProperties;
-
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -18,6 +15,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuClientCompat;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtensions;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
@@ -116,7 +114,7 @@ public final class PreviewTargetResolver {
             }
         }
 
-        if (!(targetState.getBlock() instanceof PipeBlock<?, ?, ?>)) {
+        if (!GTCEuClientCompat.isPipe(targetState)) {
             return ModelData.EMPTY;
         }
 
@@ -128,9 +126,6 @@ public final class PreviewTargetResolver {
             }
         }
 
-        return ModelData.builder()
-                .with(GTModelProperties.PIPE_CONNECTION_MASK, connections)
-                .with(GTModelProperties.PIPE_BLOCKED_MASK, 0)
-                .build();
+        return GTCEuClientCompat.pipeModelData(connections, 0);
     }
 }

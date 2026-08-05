@@ -86,8 +86,6 @@ public final class ToolCaptureFilter {
         return filtered;
     }
 
-    // Doors, tall plants and beds break when only one of their halves is captured: the cut leaves a
-    // dangling half behind and the paste places a half that pops off on the first block update.
     public static CompoundTag filterIncompleteMultiBlocksFromTemplate(CompoundTag templateTag) {
         CompoundTag filtered = templateTag.copy();
         List<TemplateUtil.BlockInfo> parsedBlocks = TemplateUtil.parseRawBlocksFromTag(filtered);

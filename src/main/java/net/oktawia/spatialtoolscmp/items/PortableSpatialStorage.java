@@ -122,7 +122,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        if (hand == InteractionHand.OFF_HAND && isToolEnabled()) {
+        if (hand == InteractionHand.OFF_HAND) {
             if (!level.isClientSide()) {
                 undoLastStorageAction((ServerLevel) level, player, stack);
             }
@@ -138,7 +138,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         Level level = context.getLevel();
         Player player = context.getPlayer();
 
-        if (context.getHand() == InteractionHand.OFF_HAND && isToolEnabled() && player != null) {
+        if (context.getHand() == InteractionHand.OFF_HAND && player != null) {
             if (!level.isClientSide()) {
                 undoLastStorageAction((ServerLevel) level, player, context.getItemInHand());
             }

@@ -60,9 +60,6 @@ public final class PreviewBlockAndTintGetter implements BlockAndTintGetter {
         return blockEntities.get(pos);
     }
 
-    // Preview geometry is baked in structure local space, so anything outside the structure has to
-    // read as air. Falling back to the world would sample blocks around world origin and bake their
-    // ambient occlusion into the preview.
     @Override
     public BlockState getBlockState(BlockPos pos) {
         BlockState previewState = states.get(pos);

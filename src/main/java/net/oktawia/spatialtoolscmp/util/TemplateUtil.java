@@ -22,6 +22,9 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
+import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
+
 public final class TemplateUtil {
 
     public record BlockInfo(BlockPos pos, BlockState state, @Nullable CompoundTag blockEntityTag) {
@@ -70,9 +73,6 @@ public final class TemplateUtil {
 
     public static final String ENERGY_ORIGIN_KEY = "energyOrigin";
 
-    /*
-     * Kopia CodeChickenLib Rotation.sideRotMap / rotSideMap. Dzięki temu TemplateUtil nie musi importować CCL.
-     */
     private static final int[] CCL_SIDE_ROT_MAP = {
             3, 4, 2, 5,
             3, 5, 2, 4,
@@ -224,6 +224,53 @@ public final class TemplateUtil {
         }
 
         return out;
+    }
+
+    public static boolean sanitizeCapturedBlockEntityTags(@Nullable CompoundTag tag) {
+        if (tag == null) {
+            return false;
+        }
+
+        ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
+        List<BlockState> palette = new ArrayList<>(paletteTag.size());
+
+        for (int i = 0; i < paletteTag.size(); i++) {
+            palette.add(parseBlockStateFromTag(paletteTag.getCompound(i)));
+        }
+
+        ListTag blocksTag = tag.getList("blocks", Tag.TAG_COMPOUND);
+        boolean changed = false;
+
+        for (int i = 0; i < blocksTag.size(); i++) {
+            CompoundTag blockTag = blocksTag.getCompound(i);
+
+            if (!blockTag.contains("nbt", Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            int stateIdx = blockTag.getInt("state");
+
+            if (stateIdx < 0 || stateIdx >= palette.size()) {
+                continue;
+            }
+
+            BlockState state = palette.get(stateIdx);
+
+            if (state == null) {
+                continue;
+            }
+
+            CompoundTag blockEntityTag = blockTag.getCompound("nbt");
+
+            for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
+                try {
+                    changed |= extension.sanitizeCapturedBlockEntityTag(state, blockEntityTag);
+                } catch (Throwable ignored) {
+                }
+            }
+        }
+
+        return changed;
     }
 
     public static CompoundTag stripAirFromTag(CompoundTag tag) {
@@ -1322,10 +1369,6 @@ public final class TemplateUtil {
 
         int result = connMap;
 
-        /*
-         * ProjectRed face connMap: bits 0..3 corner bits 4..7 straight bits 8..11 internal bits 12..15 open bit 16
-         * center bits 20..23 render corner
-         */
         result &= ~0x0000000F;
         result &= ~0x000000F0;
         result &= ~0x00000F00;
@@ -1369,9 +1412,6 @@ public final class TemplateUtil {
     private static int remapProjectRedCenterConnMap(
             int connMap,
             CableBusTransform transform) {
-        /*
-         * ProjectRed center connMap: bits 0..5 external straight bits 6..11 internal bits 12..17 open
-         */
         return remapSixDirectionBitGroups(
                 connMap,
                 transform,

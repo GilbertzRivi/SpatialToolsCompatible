@@ -1,8 +1,10 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,6 +25,7 @@ import net.minecraft.client.renderer.block.BlockRenderDispatcher;
 import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderDispatcher;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -34,6 +37,7 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -57,11 +61,20 @@ public class PortableSpatialStoragePreviewRenderer {
     private final MultiBufferSource.BufferSource previewBufferSource = MultiBufferSource
             .immediate(previewBufferBuilder);
 
-    private enum PreviewPass {
-        SOLID,
-        CUTOUT,
-        CUTOUT_MIPPED,
-        TRANSLUCENT
+    private static final long LINE_BOX_RESCAN_TICKS = 10L;
+
+    private final List<LineBox> lineBoxCache = new ArrayList<>();
+
+    private long anchorFrameTick = Long.MIN_VALUE;
+    private float anchorFramePartialTick = Float.NaN;
+    private BlockPos anchorForFrame;
+
+    private PreviewStructure lineBoxStructure;
+    private BlockPos lineBoxOrigin;
+    private boolean lineBoxBlueMarks;
+    private long lineBoxScanTick = Long.MIN_VALUE;
+
+    private record LineBox(BlockPos pos, boolean sameBlock) {
     }
 
     public PortableSpatialStoragePreviewRenderer() {
@@ -91,6 +104,7 @@ public class PortableSpatialStoragePreviewRenderer {
 
         PoseStack poseStack = event.getPoseStack();
         Vec3 camera = event.getCamera().getPosition();
+        Matrix4f levelModelView = new Matrix4f(poseStack.last().pose());
 
         poseStack.pushPose();
         poseStack.translate(-camera.x, -camera.y, -camera.z);
@@ -100,6 +114,7 @@ public class PortableSpatialStoragePreviewRenderer {
                     minecraft,
                     event,
                     poseStack,
+                    levelModelView,
                     stack);
         } finally {
             poseStack.popPose();
@@ -142,6 +157,7 @@ public class PortableSpatialStoragePreviewRenderer {
             Minecraft minecraft,
             RenderLevelStageEvent event,
             PoseStack poseStack,
+            Matrix4f levelModelView,
             ItemStack stack) {
         int[] sideMap = StructureToolStackState.getPreviewSideMap(stack);
         String sideMapKey = Arrays.toString(sideMap);
@@ -160,7 +176,7 @@ public class PortableSpatialStoragePreviewRenderer {
                 return;
             }
 
-            BlockPos anchor = resolvePreviewAnchor(minecraft, stack);
+            BlockPos anchor = anchorForFrame(minecraft, stack, event.getPartialTick());
 
             if (anchor == null) {
                 return;
@@ -169,40 +185,56 @@ public class PortableSpatialStoragePreviewRenderer {
             CompoundTag stackTag = stack.getTag();
             BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(stackTag);
             BlockPos placementOrigin = anchor.subtract(energyOrigin);
+            BlockPos size = structure.size();
+
+            AABB structureBounds = new AABB(
+                    placementOrigin.getX(),
+                    placementOrigin.getY(),
+                    placementOrigin.getZ(),
+                    placementOrigin.getX() + size.getX(),
+                    placementOrigin.getY() + size.getY(),
+                    placementOrigin.getZ() + size.getZ());
+
+            if (!event.getFrustum().isVisible(structureBounds)) {
+                return;
+            }
 
             if (isSolidStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
-                        poseStack,
+                        levelModelView,
+                        event.getProjectionMatrix(),
                         structure,
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.SOLID);
+                        RenderType.solid());
                 return;
             }
 
             if (isCutoutMippedStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
-                        poseStack,
+                        levelModelView,
+                        event.getProjectionMatrix(),
                         structure,
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.CUTOUT_MIPPED);
+                        RenderType.cutoutMipped());
                 return;
             }
 
             if (isCutoutStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
-                        poseStack,
+                        levelModelView,
+                        event.getProjectionMatrix(),
                         structure,
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.CUTOUT);
+                        RenderType.cutout());
                 return;
             }
 
@@ -212,26 +244,29 @@ public class PortableSpatialStoragePreviewRenderer {
                         poseStack,
                         structure,
                         placementOrigin,
-                        event.getPartialTick());
+                        event.getPartialTick(),
+                        event.getFrustum());
                 return;
             }
 
             if (isTripwireStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
-                        poseStack,
+                        levelModelView,
+                        event.getProjectionMatrix(),
                         structure,
                         placementOrigin,
                         sideMap,
                         sideMapKey,
-                        PreviewPass.TRANSLUCENT);
+                        RenderType.translucent());
 
                 renderLineBoxes(
                         minecraft,
                         poseStack,
                         structure,
                         placementOrigin,
-                        stack.getItem() instanceof PortableSpatialCloner);
+                        stack.getItem() instanceof PortableSpatialCloner,
+                        event.getFrustum());
             }
 
             return;
@@ -286,6 +321,18 @@ public class PortableSpatialStoragePreviewRenderer {
                     selectionA,
                     previewB);
         }
+    }
+
+    private BlockPos anchorForFrame(Minecraft minecraft, ItemStack stack, float partialTick) {
+        long gameTime = minecraft.level.getGameTime();
+
+        if (gameTime != this.anchorFrameTick || partialTick != this.anchorFramePartialTick) {
+            this.anchorFrameTick = gameTime;
+            this.anchorFramePartialTick = partialTick;
+            this.anchorForFrame = resolvePreviewAnchor(minecraft, stack);
+        }
+
+        return this.anchorForFrame;
     }
 
     private static BlockPos resolvePreviewAnchor(Minecraft minecraft, ItemStack stack) {
@@ -410,120 +457,32 @@ public class PortableSpatialStoragePreviewRenderer {
 
     private void renderGhostModelsPass(
             Minecraft minecraft,
-            PoseStack poseStack,
+            Matrix4f modelViewMatrix,
+            Matrix4f projectionMatrix,
             PreviewStructure structure,
             BlockPos origin,
             int[] sideMap,
             String sideMapKey,
-            PreviewPass pass) {
-        String solidKey = sideMapKey + ":natural_v3:solid";
-        String cutoutKey = sideMapKey + ":natural_v3:cutout";
-        String cutoutMippedKey = sideMapKey + ":natural_v3:cutout_mipped";
-        String translucentKey = sideMapKey + ":natural_v3:translucent";
+            RenderType layer) {
+        PreviewChunkGeometry geometry = structure.getPreviewGeometry(sideMapKey);
 
-        if (!structure.hasPreviewGeometry(solidKey)
-                || !structure.hasPreviewGeometry(cutoutKey)
-                || !structure.hasPreviewGeometry(cutoutMippedKey)
-                || !structure.hasPreviewGeometry(translucentKey)) {
-            buildAndStorePreviewGeometry(
-                    minecraft,
-                    structure,
-                    sideMap,
-                    sideMapKey,
-                    solidKey,
-                    cutoutKey,
-                    cutoutMippedKey,
-                    translucentKey);
+        if (geometry == null) {
+            geometry = buildAndStorePreviewGeometry(minecraft, structure, sideMap, sideMapKey, origin);
         }
 
-        CachedPreviewBuffer buffer;
-        RenderType renderType;
-
-        switch (pass) {
-            case SOLID -> {
-                buffer = structure.getPreviewGeometry(solidKey);
-                renderType = RenderType.solid();
-
-                RenderSystem.disableBlend();
-                RenderSystem.depthMask(true);
-                RenderSystem.enableCull();
-            }
-            case CUTOUT -> {
-                buffer = structure.getPreviewGeometry(cutoutKey);
-                renderType = RenderType.cutout();
-
-                RenderSystem.disableBlend();
-                RenderSystem.depthMask(true);
-                RenderSystem.enableCull();
-            }
-            case CUTOUT_MIPPED -> {
-                buffer = structure.getPreviewGeometry(cutoutMippedKey);
-                renderType = RenderType.cutoutMipped();
-
-                RenderSystem.disableBlend();
-                RenderSystem.depthMask(true);
-                RenderSystem.enableCull();
-            }
-            case TRANSLUCENT -> {
-                buffer = structure.getPreviewGeometry(translucentKey);
-                renderType = RenderType.translucent();
-
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-                RenderSystem.depthMask(false);
-                RenderSystem.disableCull();
-            }
-            default -> {
-                return;
-            }
-        }
-
-        if (buffer == null || buffer.isEmpty()) {
+        if (geometry.isEmpty(layer)) {
             return;
         }
 
-        MultiBufferSource.BufferSource bufferSource = previewBufferSource();
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
-        RenderSystem.setShaderTexture(0, TextureAtlas.LOCATION_BLOCKS);
-
-        minecraft.gameRenderer.lightTexture().turnOnLightLayer();
-
-        poseStack.pushPose();
-        poseStack.translate(origin.getX(), origin.getY(), origin.getZ());
-
-        try {
-            emitPreviewGeometry(
-                    buffer,
-                    poseStack,
-                    bufferSource.getBuffer(renderType));
-        } finally {
-            bufferSource.endBatch(renderType);
-            poseStack.popPose();
-        }
+        geometry.draw(layer, modelViewMatrix, projectionMatrix, cameraPosition(minecraft), origin);
     }
 
-    private static void emitPreviewGeometry(
-            CachedPreviewBuffer buffer,
-            PoseStack poseStack,
-            VertexConsumer consumer) {
-        if (buffer == null || buffer.isEmpty()) {
-            return;
-        }
-
-        buffer.emitBlock(poseStack.last(), consumer);
-    }
-
-    private void buildAndStorePreviewGeometry(
+    private PreviewChunkGeometry buildAndStorePreviewGeometry(
             Minecraft minecraft,
             PreviewStructure structure,
             int[] sideMap,
             String sideMapKey,
-            String solidKey,
-            String cutoutKey,
-            String cutoutMippedKey,
-            String translucentKey) {
+            BlockPos origin) {
         ClientLevel level = minecraft.level;
         var dispatcher = minecraft.getBlockRenderer();
         var modelRenderer = dispatcher.getModelRenderer();
@@ -533,115 +492,70 @@ public class PortableSpatialStoragePreviewRenderer {
                 structure,
                 BlockPos.ZERO);
 
-        CachedPreviewBuffer solidBuffer = new CachedPreviewBuffer();
-        CachedPreviewBuffer cutoutBuffer = new CachedPreviewBuffer();
-        CachedPreviewBuffer cutoutMippedBuffer = new CachedPreviewBuffer();
-        CachedPreviewBuffer translucentBuffer = new CachedPreviewBuffer();
+        Vec3 localCamera = cameraPosition(minecraft)
+                .subtract(origin.getX(), origin.getY(), origin.getZ());
 
-        PoseStack ps = new PoseStack();
+        PreviewChunkGeometry geometry = PreviewChunkGeometry.compile(sink -> {
+            PoseStack ps = new PoseStack();
 
-        for (PreviewBlock previewBlock : structure.surfaceBlocks()) {
-            BlockPos localPos = previewBlock.pos();
-            BlockState state = previewBlock.state();
-            BakedModel model = dispatcher.getBlockModel(state);
-            long seed = state.getSeed(localPos);
+            for (PreviewBlock previewBlock : structure.surfaceBlocks()) {
+                BlockPos localPos = previewBlock.pos();
+                BlockState state = previewBlock.state();
+                BakedModel model = dispatcher.getBlockModel(state);
+                long seed = state.getSeed(localPos);
 
-            ModelData modelData = PreviewRenderModelDataHelper.getPreviewModelData(
-                    structure,
-                    previewBlock,
-                    sideMap,
-                    sideMapKey,
-                    level,
-                    model,
-                    localLevel);
-
-            ps.pushPose();
-            ps.translate(localPos.getX(), localPos.getY(), localPos.getZ());
-
-            try {
-                for (RenderType renderType : getPreviewRenderTypes(
+                ModelData modelData = PreviewRenderModelDataHelper.getPreviewModelData(
+                        structure,
                         previewBlock,
                         sideMap,
-                        dispatcher,
-                        localLevel,
+                        sideMapKey,
+                        level,
                         model,
-                        state,
-                        localPos,
-                        seed,
-                        modelData)) {
-                    CachedPreviewBuffer target = switch (classifyRenderType(renderType)) {
-                        case SOLID -> solidBuffer;
-                        case CUTOUT -> cutoutBuffer;
-                        case CUTOUT_MIPPED -> cutoutMippedBuffer;
-                        case TRANSLUCENT -> translucentBuffer;
-                    };
+                        localLevel);
 
-                    tesselatePreviewBlockForRenderType(
+                ps.pushPose();
+                ps.translate(localPos.getX(), localPos.getY(), localPos.getZ());
+
+                try {
+                    for (RenderType renderType : getPreviewRenderTypes(
                             previewBlock,
                             sideMap,
                             dispatcher,
-                            modelRenderer,
                             localLevel,
                             model,
                             state,
                             localPos,
-                            ps,
-                            target,
-                            renderType,
                             seed,
-                            modelData);
+                            modelData)) {
+                        tesselatePreviewBlockForRenderType(
+                                previewBlock,
+                                sideMap,
+                                dispatcher,
+                                modelRenderer,
+                                localLevel,
+                                model,
+                                state,
+                                localPos,
+                                ps,
+                                sink.get(renderType),
+                                renderType,
+                                seed,
+                                modelData);
+                    }
+                } catch (Throwable t) {
+                    SpatialToolsCMP.getLOGGER().debug(
+                            "Preview tesselation failed for {} at {}: {}",
+                            state,
+                            localPos,
+                            t.getMessage());
                 }
-            } catch (Throwable t) {
-                SpatialToolsCMP.getLOGGER().debug(
-                        "Preview tesselation failed for {} at {}: {}",
-                        state,
-                        localPos,
-                        t.getMessage());
+
+                ps.popPose();
             }
+        }, localCamera);
 
-            ps.popPose();
-        }
-
-        structure.storePreviewGeometry(solidKey, solidBuffer);
-        structure.storePreviewGeometry(cutoutKey, cutoutBuffer);
-        structure.storePreviewGeometry(cutoutMippedKey, cutoutMippedBuffer);
-        structure.storePreviewGeometry(translucentKey, translucentBuffer);
-    }
-
-    private static PreviewPass classifyRenderType(RenderType rt) {
-        if (rt == RenderType.translucent()
-                || rt == RenderType.translucentMovingBlock()
-                || rt == RenderType.tripwire()) {
-            return PreviewPass.TRANSLUCENT;
-        }
-
-        if (rt == RenderType.cutoutMipped()) {
-            return PreviewPass.CUTOUT_MIPPED;
-        }
-
-        if (rt == RenderType.cutout()) {
-            return PreviewPass.CUTOUT;
-        }
-
-        if (rt == RenderType.solid()) {
-            return PreviewPass.SOLID;
-        }
-
-        String s = rt.toString().toLowerCase();
-
-        if (s.contains("translucent") || s.contains("tripwire")) {
-            return PreviewPass.TRANSLUCENT;
-        }
-
-        if (s.contains("cutout_mipped") || s.contains("cutoutmipped")) {
-            return PreviewPass.CUTOUT_MIPPED;
-        }
-
-        if (s.contains("cutout")) {
-            return PreviewPass.CUTOUT;
-        }
-
-        return PreviewPass.SOLID;
+        structure.storePreviewGeometry(sideMapKey, geometry);
+        return geometry;
     }
 
     private void renderBlockEntityRenderers(
@@ -649,7 +563,8 @@ public class PortableSpatialStoragePreviewRenderer {
             PoseStack poseStack,
             PreviewStructure structure,
             BlockPos origin,
-            float partialTick) {
+            float partialTick,
+            Frustum frustum) {
         Map<BlockPos, BlockEntity> blockEntities = structure.blockEntities(minecraft.level);
 
         if (blockEntities.isEmpty()) {
@@ -658,6 +573,7 @@ public class PortableSpatialStoragePreviewRenderer {
 
         BlockEntityRenderDispatcher beDispatcher = minecraft.getBlockEntityRenderDispatcher();
         MultiBufferSource.BufferSource bufferSource = previewBufferSource();
+        Vec3 cameraPos = cameraPosition(minecraft);
 
         Set<RenderType> usedRenderTypes = Collections.newSetFromMap(new IdentityHashMap<>());
 
@@ -689,6 +605,15 @@ public class PortableSpatialStoragePreviewRenderer {
                 }
 
                 BlockPos worldPos = origin.offset(previewBlock.pos());
+                double viewDistance = renderer.getViewDistance();
+
+                if (Vec3.atCenterOf(worldPos).distanceToSqr(cameraPos) > viewDistance * viewDistance) {
+                    continue;
+                }
+
+                if (!frustum.isVisible(renderBounds(be, origin))) {
+                    continue;
+                }
 
                 poseStack.pushPose();
                 poseStack.translate(worldPos.getX(), worldPos.getY(), worldPos.getZ());
@@ -734,7 +659,14 @@ public class PortableSpatialStoragePreviewRenderer {
             PoseStack poseStack,
             PreviewStructure structure,
             BlockPos origin,
-            boolean markSameBlocksAsBlue) {
+            boolean markSameBlocksAsBlue,
+            Frustum frustum) {
+        refreshLineBoxCache(minecraft, structure, origin, markSameBlocksAsBlue);
+
+        if (this.lineBoxCache.isEmpty()) {
+            return;
+        }
+
         MultiBufferSource.BufferSource bufferSource = previewBufferSource();
         RenderType renderType = RenderType.translucent();
 
@@ -752,18 +684,14 @@ public class PortableSpatialStoragePreviewRenderer {
         TextureAtlasSprite sprite = previewWhiteSprite(minecraft);
 
         try {
-            for (PreviewBlock previewBlock : structure.blocks()) {
-                BlockPos worldPos = origin.offset(previewBlock.pos());
-                BlockState currentState = minecraft.level.getBlockState(worldPos);
+            for (LineBox box : this.lineBoxCache) {
+                BlockPos worldPos = box.pos();
 
-                if (currentState.canBeReplaced() || currentState.isAir()) {
+                if (!frustum.isVisible(new AABB(worldPos))) {
                     continue;
                 }
 
-                BlockState previewState = previewBlock.state();
-
-                boolean sameBlock = currentState.equals(previewState);
-                boolean blueInfoBox = markSameBlocksAsBlue && sameBlock;
+                boolean blueInfoBox = markSameBlocksAsBlue && box.sameBlock();
 
                 float red = blueInfoBox ? 0.20f : 1.00f;
                 float green = blueInfoBox ? 0.85f : 0.00f;
@@ -788,6 +716,53 @@ public class PortableSpatialStoragePreviewRenderer {
             }
         } finally {
             bufferSource.endBatch(renderType);
+        }
+    }
+
+    private static Vec3 cameraPosition(Minecraft minecraft) {
+        return minecraft.gameRenderer.getMainCamera().getPosition();
+    }
+
+    private static AABB renderBounds(BlockEntity blockEntity, BlockPos origin) {
+        try {
+            return blockEntity.getRenderBoundingBox().move(origin.getX(), origin.getY(), origin.getZ());
+        } catch (Throwable ignored) {
+            return new AABB(origin.offset(blockEntity.getBlockPos())).inflate(1.0);
+        }
+    }
+
+    private void refreshLineBoxCache(
+            Minecraft minecraft,
+            PreviewStructure structure,
+            BlockPos origin,
+            boolean markSameBlocksAsBlue) {
+        long gameTime = minecraft.level.getGameTime();
+
+        boolean stale = this.lineBoxStructure != structure
+                || !origin.equals(this.lineBoxOrigin)
+                || this.lineBoxBlueMarks != markSameBlocksAsBlue
+                || gameTime - this.lineBoxScanTick >= LINE_BOX_RESCAN_TICKS
+                || gameTime < this.lineBoxScanTick;
+
+        if (!stale) {
+            return;
+        }
+
+        this.lineBoxStructure = structure;
+        this.lineBoxOrigin = origin;
+        this.lineBoxBlueMarks = markSameBlocksAsBlue;
+        this.lineBoxScanTick = gameTime;
+        this.lineBoxCache.clear();
+
+        for (PreviewBlock previewBlock : structure.blocks()) {
+            BlockPos worldPos = origin.offset(previewBlock.pos());
+            BlockState currentState = minecraft.level.getBlockState(worldPos);
+
+            if (currentState.canBeReplaced() || currentState.isAir()) {
+                continue;
+            }
+
+            this.lineBoxCache.add(new LineBox(worldPos, currentState.equals(previewBlock.state())));
         }
     }
 

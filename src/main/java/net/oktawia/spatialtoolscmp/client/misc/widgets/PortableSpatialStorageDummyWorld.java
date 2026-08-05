@@ -3,8 +3,6 @@ package net.oktawia.spatialtoolscmp.client.misc.widgets;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
-
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.client.Minecraft;
@@ -17,10 +15,15 @@ import net.minecraft.world.phys.Vec3;
 
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewBlock;
 import net.oktawia.spatialtoolscmp.client.renderer.PreviewStructure;
+import net.oktawia.spatialtoolscmp.client.scene.PreviewLevel;
 
-public class PortableSpatialStorageDummyWorld extends TrackedDummyWorld {
+public class PortableSpatialStorageDummyWorld extends PreviewLevel {
 
     private final Map<BlockPos, BlockEntity> previewBlockEntities = new HashMap<>();
+
+    public PortableSpatialStorageDummyWorld() {
+        super(Minecraft.getInstance().level);
+    }
 
     public void loadPreviewStructure(@Nullable PreviewStructure structure) {
         this.clear();

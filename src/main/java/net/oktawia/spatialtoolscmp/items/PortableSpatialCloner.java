@@ -194,7 +194,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        if (hand == InteractionHand.OFF_HAND && isToolEnabled()) {
+        if (hand == InteractionHand.OFF_HAND) {
             if (!level.isClientSide()) {
                 undoLastClonerPaste((ServerLevel) level, player, stack);
             }
@@ -210,7 +210,7 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         Level level = context.getLevel();
         Player player = context.getPlayer();
 
-        if (context.getHand() == InteractionHand.OFF_HAND && isToolEnabled() && player != null) {
+        if (context.getHand() == InteractionHand.OFF_HAND && player != null) {
             if (player.isShiftKeyDown()) {
                 if (!level.isClientSide()) {
                     tryLinkItemHandlerStorage(

@@ -1,4 +1,4 @@
-package net.oktawia.spatialtoolscmp.logic.extensions;
+package net.oktawia.spatialtoolscmp.compat.gtceu.v8;
 
 import java.util.ArrayDeque;
 import java.util.LinkedHashSet;

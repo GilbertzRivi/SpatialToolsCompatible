@@ -30,7 +30,7 @@ public final class PreviewStructure {
     private @Nullable Map<BlockPos, BlockEntity> cachedBlockEntities;
 
     private final Map<String, Map<BlockPos, ModelData>> modelDataCache = new HashMap<>();
-    private final Map<String, CachedPreviewBuffer> previewGeometryCache = new HashMap<>();
+    private final Map<String, PreviewChunkGeometry> previewGeometryCache = new HashMap<>();
 
     private PreviewStructure(
             BlockPos size,
@@ -70,25 +70,21 @@ public final class PreviewStructure {
                 .computeIfAbsent(localPos, k -> compute.get());
     }
 
-    public boolean hasPreviewGeometry(String sideMapKey) {
-        return previewGeometryCache.containsKey(sideMapKey);
-    }
-
-    public @Nullable CachedPreviewBuffer getPreviewGeometry(String sideMapKey) {
+    public @Nullable PreviewChunkGeometry getPreviewGeometry(String sideMapKey) {
         return previewGeometryCache.get(sideMapKey);
     }
 
-    public void storePreviewGeometry(String sideMapKey, CachedPreviewBuffer buffer) {
-        CachedPreviewBuffer old = previewGeometryCache.put(sideMapKey, buffer);
+    public void storePreviewGeometry(String sideMapKey, PreviewChunkGeometry geometry) {
+        PreviewChunkGeometry old = previewGeometryCache.put(sideMapKey, geometry);
 
         if (old != null) {
-            old.clear();
+            old.close();
         }
     }
 
     public void close() {
-        for (CachedPreviewBuffer buffer : previewGeometryCache.values()) {
-            buffer.clear();
+        for (PreviewChunkGeometry geometry : previewGeometryCache.values()) {
+            geometry.close();
         }
 
         previewGeometryCache.clear();
@@ -316,8 +312,6 @@ public final class PreviewStructure {
         return result;
     }
 
-    // A block only counts as cover when it renders as a full opaque cube. Torches, leaves, glass,
-    // slabs and the like leave the blocks behind them visible, so the preview has to keep them.
     private static boolean hidesBlocksBehind(BlockState state) {
         return state.canOcclude()
                 && Block.isShapeFullBlock(state.getOcclusionShape(EmptyBlockGetter.INSTANCE, BlockPos.ZERO));

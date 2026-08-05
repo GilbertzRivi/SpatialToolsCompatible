@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import org.jetbrains.annotations.Nullable;
@@ -33,12 +32,12 @@ import codechicken.multipart.api.part.MultiPart;
 import codechicken.multipart.block.TileMultipart;
 
 import net.oktawia.spatialtoolscmp.client.renderer.extensions.CBMultipartBlockRenderExtension;
+import net.oktawia.spatialtoolscmp.client.scene.PreviewLevel;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
-import net.oktawia.spatialtoolscmp.mixin.LevelClientSideAccessor;
 
 public final class CBMultipartClientExtension
         implements ClientReplacerExtension, ClientPiperExtension {
@@ -235,15 +234,15 @@ public final class CBMultipartClientExtension
         }
     }
 
-    private static final class PreviewMultipartLevel extends TrackedDummyWorld {
+    private static final class PreviewMultipartLevel extends PreviewLevel {
 
         private final Map<BlockPos, BlockEntity> tiles = new HashMap<>();
         private final BlockState multipartState;
 
         private PreviewMultipartLevel(BlockState multipartState) {
-            this.multipartState = multipartState;
+            super(Minecraft.getInstance().level, false);
 
-            ((LevelClientSideAccessor) (Object) this).setClientSide(false);
+            this.multipartState = multipartState;
         }
 
         private void addTile(BlockPos pos, BlockEntity tile) {

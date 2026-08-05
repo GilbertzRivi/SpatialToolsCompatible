@@ -137,10 +137,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
     protected abstract Component getStoredStructureActionNotImplementedMessage();
 
-    protected boolean isToolEnabled() {
-        return true;
-    }
-
     protected int getMaxStructureSize() {
         return -1;
     }
@@ -186,16 +182,8 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         return powerManager.getStored(stack);
     }
 
-    protected int extractInternalPower(ItemStack stack, double amount, boolean simulate) {
-        return powerManager.extract(stack, amount, simulate);
-    }
-
     protected int receiveInternalPower(ItemStack stack, double amount, boolean simulate) {
         return powerManager.receive(stack, amount, simulate);
-    }
-
-    protected int getInstalledPowerUpgrades(ItemStack stack) {
-        return powerManager.getInstalledUpgrades(stack);
     }
 
     public static boolean isValidPowerUpgradeItem(ItemStack stack) {
@@ -397,10 +385,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
 
-        if (!isToolEnabled()) {
-            return InteractionResultHolder.success(stack);
-        }
-
         if (!level.isClientSide()) {
             if (!ensureSelectionDimensionOrClear(level, player, stack, true)) {
                 return InteractionResultHolder.success(stack);
@@ -458,10 +442,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
     @Override
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
-
-        if (!isToolEnabled()) {
-            return InteractionResult.sidedSuccess(level.isClientSide());
-        }
 
         Player player = context.getPlayer();
 
@@ -558,7 +538,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
         if (selectionB == null) {
             StructureToolStackState.setSelectionB(stack, pos.immutable());
-            StructureToolStackState.setSourceFacing(stack, player.getDirection());
             showHud(player, Component.translatable(LangDefs.CORNER_B_SELECTED.getTranslationKey()));
             return;
         }
@@ -635,7 +614,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         }
 
         StructureToolStackState.setSelectionB(stack, pos);
-        StructureToolStackState.setSourceFacing(stack, player.getDirection());
 
         showHud(player, Component.translatable(LangDefs.CORNER_B_SELECTED.getTranslationKey()));
     }
@@ -708,6 +686,7 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         savedTag = TemplateUtil.stripAirFromTag(savedTag);
         savedTag = ToolCaptureFilter.filterIncompleteMultiBlocksFromTemplate(savedTag);
         TemplateUtil.setTemplateOffset(savedTag, BlockPos.ZERO);
+        TemplateUtil.sanitizeCapturedBlockEntityTags(savedTag);
 
         if (isTemplateEmpty(savedTag)) {
             clearSelectionState(stack);
@@ -1185,8 +1164,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
         }
     }
 
-    // --- Structure save / tooltip / bar ---
-
     protected String saveCapturedStructure(
             ServerLevel level,
             Player player,
@@ -1287,8 +1264,6 @@ public abstract class AbstractStructureCaptureToolItem extends Item {
 
         return Mth.hsvToRgb(ratio / 3.0F, 1.0F, 1.0F);
     }
-
-    // --- Capability provider ---
 
     private final class ToolCapabilityProvider implements ICapabilityProvider {
 

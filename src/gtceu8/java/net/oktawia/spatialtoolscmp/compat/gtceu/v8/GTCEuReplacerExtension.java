@@ -1,4 +1,4 @@
-package net.oktawia.spatialtoolscmp.logic.extensions;
+package net.oktawia.spatialtoolscmp.compat.gtceu.v8;
 
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -6,11 +6,11 @@ import java.util.Map;
 import java.util.Set;
 
 import com.gregtechceu.gtceu.api.block.PipeBlock;
-import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
-import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
-import com.gregtechceu.gtceu.api.pattern.MultiblockState;
-import com.gregtechceu.gtceu.api.pattern.MultiblockWorldSavedData;
+import com.gregtechceu.gtceu.api.machine.MetaMachine;
+import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
+import com.gregtechceu.gtceu.api.multiblock.MultiblockWorldSavedData;
+import com.gregtechceu.gtceu.api.multiblock.pattern.PatternState;
 import com.gregtechceu.gtceu.api.pipenet.LevelPipeNet;
 import com.gregtechceu.gtceu.api.pipenet.PipeNet;
 
@@ -149,11 +149,11 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
             Set<BlockPos> positions,
             Map<BlockPos, MachineFacing> out) {
         for (BlockPos pos : positions) {
-            if (!(level.getBlockEntity(pos) instanceof MetaMachineBlockEntity mmbe)) {
+            if (!(level.getBlockEntity(pos) instanceof MetaMachine mmbe)) {
                 continue;
             }
 
-            var machine = mmbe.getMetaMachine();
+            var machine = mmbe;
 
             if (!machine.hasFrontFacing()) {
                 continue;
@@ -165,12 +165,12 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
     }
 
     private static void restoreMachineFacing(ServerLevel level, BlockPos pos, MachineFacing facing) {
-        if (!(level.getBlockEntity(pos) instanceof MetaMachineBlockEntity mmbe)) {
+        if (!(level.getBlockEntity(pos) instanceof MetaMachine mmbe)) {
             return;
         }
 
         try {
-            var machine = mmbe.getMetaMachine();
+            var machine = mmbe;
 
             machine.setFrontFacing(facing.front());
 
@@ -184,11 +184,19 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
     private static void collectAffectedControllers(ServerLevel level, Set<BlockPos> positions, Set<BlockPos> out) {
         MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(level);
 
-        for (MultiblockState state : mwsd.mapping.values()) {
-            for (BlockPos pos : positions) {
-                if (state.isPosInCache(pos)) {
-                    out.add(state.controllerPos.immutable());
-                    break;
+        for (Set<PatternState> states : mwsd.mapping.values()) {
+            for (PatternState state : states) {
+                BlockPos controllerPos = state.getControllerPos();
+
+                if (controllerPos == null) {
+                    continue;
+                }
+
+                for (BlockPos pos : positions) {
+                    if (state.getCache().containsKey(pos.asLong())) {
+                        out.add(controllerPos.immutable());
+                        break;
+                    }
                 }
             }
         }
@@ -198,24 +206,18 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
         try {
             BlockEntity be = level.getBlockEntity(controllerPos);
 
-            if (!(be instanceof MetaMachineBlockEntity mmbe)
-                    || !(mmbe.getMetaMachine() instanceof IMultiController controller)) {
+            if (!(be instanceof MultiblockControllerMachine controller)) {
                 return;
             }
 
-            MultiblockState state = controller.getMultiblockState();
+            GTCEuStructureExtension.resetPatternStates(mwsd, controller);
+            controller.checkAndFormStructure();
 
-            controller.onStructureInvalid();
-
-            if (controller.checkPatternWithLock()) {
-                controller.self().setFlipped(state.isNeededFlip());
-                controller.onStructureFormed();
-                mwsd.addMapping(state);
-                controller.self().notifyBlockUpdate();
-                controller.self().markDirty();
+            if (controller.isFormed()) {
+                controller.notifyBlockUpdate();
+                be.setChanged();
             } else {
-                mwsd.removeMapping(state);
-                mwsd.addAsyncLogic(controller);
+                GTCEuStructureExtension.scheduleStructureCheck(level, controller);
             }
         } catch (Throwable ignored) {
         }

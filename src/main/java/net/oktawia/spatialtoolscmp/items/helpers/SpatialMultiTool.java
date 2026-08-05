@@ -302,8 +302,6 @@ public final class SpatialMultiTool {
         return state;
     }
 
-    // PowerUpgradeItemHandler.saveToStack rewrites the whole inventory from the item's own slot
-    // count, so a crafting card left at slot 4 would be silently dropped on any 4-slot tool.
     private static void moveCraftingUpgrade(CompoundTag tag, AbstractStructureCaptureToolItem target) {
         int targetSlot = target.getCraftingUpgradeSlotIndex();
 

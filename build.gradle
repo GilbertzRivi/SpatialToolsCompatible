@@ -34,6 +34,12 @@ base {
     archivesName = mod_id
 }
 
+static String gtceuAliasDir(String version) {
+    def matcher = version =~ /^(.*)-\d{8}\.\d{6}-\d+$/
+
+    return matcher ? matcher[0][1] + '-SNAPSHOT' : version
+}
+
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(17)
 }
@@ -87,8 +93,30 @@ mixin {
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
+sourceSets {
+    gtceu7 {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+    }
+    gtceu8 {
+        compileClasspath += sourceSets.main.compileClasspath + sourceSets.main.output
+    }
+}
+
+sourceSets.main.runtimeClasspath += sourceSets.gtceu7.output + sourceSets.gtceu8.output
+
+minecraft.runs.configureEach {
+    mods.named(mod_id) {
+        source sourceSets.gtceu7
+        source sourceSets.gtceu8
+    }
+}
+
 repositories {
-    mavenLocal()
+    mavenLocal {
+        content {
+            includeGroup 'net.oktawia'
+        }
+    }
     mavenCentral()
     maven {
         name = 'GTCEu Maven'
@@ -96,6 +124,19 @@ repositories {
         content {
             includeGroup 'com.gregtechceu.gtceu'
             includeGroup 'appeng'
+        }
+    }
+    ivy {
+        name = 'GTCEu Maven (source set aliases)'
+        url = 'https://maven.gtceu.com'
+        patternLayout {
+            artifact "/com/gregtechceu/gtceu/[module]/${gtceuAliasDir(gtceu7_version)}/[module]-[revision].jar"
+            artifact "/com/gregtechceu/gtceu/[module]/${gtceuAliasDir(gtceu8_version)}/[module]-[revision].jar"
+        }
+        metadataSources { artifact() }
+        content {
+            includeGroup 'gtceu7'
+            includeGroup 'gtceu8'
         }
     }
     maven {
@@ -155,13 +196,11 @@ dependencies {
     compileOnly "org.projectlombok:lombok:1.18.44"
     annotationProcessor "org.projectlombok:lombok:1.18.44"
 
-    // LDLib
-    compileOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    // Compat
+    gtceu7CompileOnly fg.deobf("gtceu7:gtceu-1.20.1:${gtceu7_version}") { transitive = false }
+    gtceu8CompileOnly fg.deobf("gtceu8:gtceu-1.20.1:${gtceu8_version}") { transitive = false }
+
     compileOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
     compileOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    compileOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.5.2") { transitive = false }
     compileOnly fg.deobf("curse.maven:mekanism-268560:6552911")
     compileOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
     compileOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
@@ -187,18 +226,13 @@ dependencies {
     compileOnly fg.deobf("curse.maven:integrated-tunnels-251389:7245766")
     compileOnly fg.deobf("curse.maven:integrated-terminals-295910:7738431")
     compileOnly fg.deobf("curse.maven:cloth-config-348521:5729105")
-    // JEI/EMI
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:6420945")
 
-    // Runtime
-
-//    runtimeOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10-cosmolite.36")
-//    compileOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10-cosmolite.36")
     runtimeOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
     runtimeOnly fg.deobf("curse.maven:guideme-1173950:6489464")
     runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:7.5.2") { transitive = false }
+    runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:${gtceu_runtime_version}") { transitive = false }
     runtimeOnly fg.deobf("curse.maven:framedblocks-441647:7386520")
     runtimeOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
     runtimeOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
@@ -210,7 +244,6 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:cb-multipart-258426:7845318")
     runtimeOnly fg.deobf("curse.maven:codechicken-lib-1-8-242818:5753868")
     runtimeOnly fg.deobf("curse.maven:laserio-uel-1168178:6773950")
-    runtimeOnly fg.deobf("curse.maven:flux-networks-248020:5234697")
     runtimeOnly fg.deobf("curse.maven:ex-pattern-provider-892005:7986603")
     runtimeOnly fg.deobf("curse.maven:glodium-957920:5226922")
     runtimeOnly fg.deobf("curse.maven:lootr-361276:7263076")
@@ -222,10 +255,8 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:integrated-tunnels-251389:7245766")
     runtimeOnly fg.deobf("curse.maven:integrated-terminals-295910:7738431")
     runtimeOnly fg.deobf("curse.maven:cloth-config-348521:5729105")
-//    runtimeOnly fg.deobf("curse.maven:chisels-bits-231095:7620767") // does not work with gregtech
-//    runtimeOnly fg.deobf("curse.maven:productivebees-377897:5566102") // does not work with gregtech
+    runtimeOnly fg.deobf("curse.maven:flux-networks-248020:5234697")
 
-    // Runtime utils
     runtimeOnly fg.deobf("curse.maven:jade-324717:6106101")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     runtimeOnly fg.deobf("curse.maven:emi-580555:6420945")
@@ -253,19 +284,26 @@ tasks.named('processResources', ProcessResources).configure {
     }
 }
 
-// Example for how to get properties into the manifest for reading at runtime.
 tasks.named('jar', Jar).configure {
     manifest {
         attributes(["Specification-Title"     : mod_id,
                     "Specification-Vendor"    : mod_authors,
-                    "Specification-Version"   : "1", // We are version 1 of ourselves
+                    "Specification-Version"   : "1",
                     "Implementation-Title"    : project.name,
                     "Implementation-Version"  : project.jar.archiveVersion,
                     "Implementation-Vendor"   : mod_authors,
                     "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")])
     }
 
+    from sourceSets.gtceu7.output
+    from sourceSets.gtceu8.output
+
     finalizedBy 'reobfJar'
+}
+
+tasks.matching { it.name == 'reobfJar' }.configureEach {
+    libraries.from sourceSets.gtceu7.compileClasspath
+    libraries.from sourceSets.gtceu8.compileClasspath
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -274,7 +312,7 @@ tasks.withType(JavaCompile).configureEach {
 
 spotless {
     java {
-        target 'src/main/java/**/*.java'
+        target 'src/main/java/**/*.java', 'src/gtceu7/java/**/*.java', 'src/gtceu8/java/**/*.java'
 
         endWithNewline()
         indentWithSpaces()

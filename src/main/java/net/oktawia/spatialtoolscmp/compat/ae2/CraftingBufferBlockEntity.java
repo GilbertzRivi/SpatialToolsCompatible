@@ -163,14 +163,6 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         return displayHasError;
     }
 
-    public GenericStack[] getBufferedStacks() {
-        return buffer.getItemsAsStacks();
-    }
-
-    public GenericStack[] getRequestedStacks() {
-        return copyStacks(requestedStacks);
-    }
-
     public List<DisplayEntry> getDisplayEntries() {
         Map<AEItemKey, long[]> amountsByKey = new LinkedHashMap<>();
 

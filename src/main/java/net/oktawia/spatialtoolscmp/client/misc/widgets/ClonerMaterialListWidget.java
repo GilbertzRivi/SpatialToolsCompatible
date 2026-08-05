@@ -15,7 +15,6 @@ import net.minecraft.world.item.ItemStack;
 import lombok.Setter;
 
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
-import net.oktawia.spatialtoolscmp.defs.LangDefs;
 
 public class ClonerMaterialListWidget extends AbstractWidget {
 
@@ -125,16 +124,6 @@ public class ClonerMaterialListWidget extends AbstractWidget {
         }
 
         return isCraftButtonHoverAreaAt(index, mouseX, mouseY);
-    }
-
-    public Component getHoveredCraftButtonTooltip(double mouseX, double mouseY) {
-        int index = getEntryIndexAt(mouseX, mouseY);
-
-        if (index < 0 || !isCraftButtonClickAreaAt(index, mouseX, mouseY)) {
-            return null;
-        }
-
-        return Component.translatable(LangDefs.CRAFT_REQUEST_MISSING.getTranslationKey());
     }
 
     public void move(int x, int y) {

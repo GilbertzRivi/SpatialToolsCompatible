@@ -75,14 +75,6 @@ public final class StructureToolStackState {
         setPos(stack, TAG_SEL_B, pos);
     }
 
-    public static void setOrigin(ItemStack stack, @Nullable BlockPos pos) {
-        setPos(stack, TAG_ORIGIN, pos);
-    }
-
-    public static void setSourceFacing(ItemStack stack, Direction direction) {
-        stack.getOrCreateTag().putString(TAG_SRC_FACING, direction.getName());
-    }
-
     public static void setStructureId(ItemStack stack, @Nullable String id) {
         CompoundTag tag = stack.getOrCreateTag();
 
@@ -129,21 +121,6 @@ public final class StructureToolStackState {
 
     public static BlockPos getSelectionB(ItemStack stack) {
         return getPos(stack, TAG_SEL_B);
-    }
-
-    public static BlockPos getOrigin(ItemStack stack) {
-        return getPos(stack, TAG_ORIGIN);
-    }
-
-    public static Direction getSourceFacing(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-
-        if (tag == null || !tag.contains(TAG_SRC_FACING)) {
-            return Direction.NORTH;
-        }
-
-        Direction direction = Direction.byName(tag.getString(TAG_SRC_FACING));
-        return direction != null && direction.getAxis().isHorizontal() ? direction : Direction.NORTH;
     }
 
     public static String getStructureId(ItemStack stack) {
@@ -402,14 +379,6 @@ public final class StructureToolStackState {
 
     public static boolean hasAnySelection(ItemStack stack) {
         return getSelectionA(stack) != null || getSelectionB(stack) != null;
-    }
-
-    public static boolean hasSelectionA(ItemStack stack) {
-        return getSelectionA(stack) != null;
-    }
-
-    public static boolean hasSelectionB(ItemStack stack) {
-        return getSelectionB(stack) != null;
     }
 
     public static void moveSelectionA(ItemStack stack, int dx, int dy, int dz) {

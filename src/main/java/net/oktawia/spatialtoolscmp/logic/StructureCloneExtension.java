@@ -29,6 +29,10 @@ public interface StructureCloneExtension {
 
     boolean handlesRequirements(BlockState state, @Nullable CompoundTag rawBeTag);
 
+    default boolean sanitizeCapturedBlockEntityTag(BlockState state, CompoundTag rawBeTag) {
+        return false;
+    }
+
     default void onBeforePaste(
             ServerLevel level,
             Player player,

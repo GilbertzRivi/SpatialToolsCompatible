@@ -344,20 +344,6 @@ public final class ClonerStructureLibraryStore {
         return legacyTag;
     }
 
-    public static byte[] exportBytes(MinecraftServer server, UUID owner, String id) throws IOException {
-        if (!isValidId(id)) {
-            return new byte[0];
-        }
-
-        CompoundTag tag = load(server, owner, id);
-
-        if (tag == null) {
-            return new byte[0];
-        }
-
-        return TemplateUtil.compressNbt(tag);
-    }
-
     private static final long IMPORT_SIZE_LIMIT = 64L * 1024 * 1024;
 
     public static Entry importBytes(

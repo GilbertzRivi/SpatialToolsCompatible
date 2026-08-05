@@ -1,10 +1,11 @@
-package net.oktawia.spatialtoolscmp.logic.extensions;
+package net.oktawia.spatialtoolscmp.compat.gtceu.v7;
 
 import java.util.*;
 
 import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
+import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
@@ -13,7 +14,9 @@ import com.gregtechceu.gtceu.api.machine.trait.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.pattern.MultiblockState;
 import com.gregtechceu.gtceu.api.pattern.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.pipenet.PipeCoverContainer;
+import com.gregtechceu.gtceu.client.model.machine.MachineRenderState;
 import com.gregtechceu.gtceu.common.machine.electric.TransformerMachine;
+import com.gregtechceu.gtceu.common.machine.electric.WorldAcceleratorMachine;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -35,6 +38,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.MinecraftForge;
@@ -46,7 +50,6 @@ import net.minecraftforge.registries.ForgeRegistries;
 
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
-import net.oktawia.spatialtoolscmp.compat.GTCEuAE2PostPasteOps;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
@@ -86,6 +89,18 @@ public final class GTCEuStructureExtension
             "gtceu:ender_item_link",
             "gtceu:ender_fluid_link",
             "gtceu:ender_redstone_link");
+
+    private static final Set<String> RUNTIME_RENDER_PROPERTIES = Set.of(
+            "active",
+            "recipe_logic_status",
+            "is_formed",
+            "is_painted",
+            "taped",
+            "charger_state",
+            "hpca_part_damaged",
+            "has_rotor",
+            "rotor_spinning",
+            "emissive_rotor");
 
     private static final List<PendingInit> PENDING = new ArrayList<>();
     private static boolean registered = false;
@@ -213,6 +228,7 @@ public final class GTCEuStructureExtension
 
         reapplyFluidTankLockFilters(be);
         reapplyPaintingColor(be);
+        applyStoredRenderState(be, machineData);
         reinitMachineCovers(be);
 
         if (be instanceof MetaMachineBlockEntity
@@ -305,9 +321,6 @@ public final class GTCEuStructureExtension
             MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(level);
             MultiblockState state = controller.getMultiblockState();
 
-            // isFormed is @Persisted, so a pasted controller wakes up already "formed" with an empty part list.
-            // GTCEu gates asyncCheckPattern on hasError() || !isFormed, so the stale flag stops it from ever
-            // running onStructureFormed again. Clearing it hands the whole lifecycle back to GTCEu.
             controller.onStructureInvalid();
             mwsd.removeMapping(state);
             state.setError(MultiblockState.UNINIT_ERROR);
@@ -603,18 +616,12 @@ public final class GTCEuStructureExtension
             NbtUtil.copyTagIfPresent(rawBeTag, machineTag, "circuitInventory");
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "activeRecipeType");
 
-            if (isGregTransformerTag(rawBeTag)) {
-                copyGregTransformerState(rawBeTag, machineTag);
-            }
+            copyGregTransformerState(rawBeTag, machineTag);
+            copyWorldAcceleratorState(rawBeTag, machineTag);
 
-            if (isWorldAcceleratorTag(rawBeTag)) {
-                copyWorldAcceleratorState(rawBeTag, machineTag);
-            }
+            copyEnergyConverterState(rawBeTag, machineTag);
 
-            if (isEnergyConverterTag(rawBeTag)) {
-                copyEnergyConverterState(rawBeTag, machineTag);
-            }
-
+            copyMachineRenderState(rawBeTag, machineTag);
             copyGregMachineSideConfig(rawBeTag, machineTag);
             copySensorHatchState(rawBeTag, machineTag);
 
@@ -1093,6 +1100,42 @@ public final class GTCEuStructureExtension
                 || normalized.equals("fluidfilter");
     }
 
+    private static final String[] ENDER_LINK_PAYLOAD_KEYS = { "storage", "visualTank" };
+
+    @Override
+    public boolean sanitizeCapturedBlockEntityTag(BlockState state, CompoundTag rawBeTag) {
+        if (!rawBeTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        CompoundTag coverTag = rawBeTag.getCompound(NBT_COVER);
+        boolean changed = false;
+
+        for (String sideKey : coverTag.getAllKeys()) {
+            if (!(coverTag.get(sideKey) instanceof CompoundTag sideTag)
+                    || !sideTag.contains("payload", Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            CompoundTag payload = sideTag.getCompound("payload");
+
+            if (!payload.contains("d", Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            CompoundTag data = payload.getCompound("d");
+
+            for (String key : ENDER_LINK_PAYLOAD_KEYS) {
+                if (data.contains(key)) {
+                    data.remove(key);
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
+    }
+
     private static void collectGregCoverRequirements(
             CompoundTag coverTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements) {
@@ -1152,7 +1195,9 @@ public final class GTCEuStructureExtension
         copyGregTransformerState(machineData, out);
         copyWorldAcceleratorState(machineData, out);
         copyEnergyConverterState(machineData, out);
+        copyMachineRenderState(machineData, out);
         copyGregMachineSideConfig(machineData, out);
+
         copySensorHatchState(machineData, out);
 
         if (machineData.contains(NBT_DATA_STICK, Tag.TAG_COMPOUND)) {
@@ -1166,81 +1211,8 @@ public final class GTCEuStructureExtension
         return out;
     }
 
-    private static boolean isGregTransformerTag(@Nullable CompoundTag tag) {
-        if (tag == null) {
-            return false;
-        }
-
-        String id = tag.getString(NBT_ID).toLowerCase(Locale.ROOT);
-
-        if (id.contains("transformer")) {
-            return true;
-        }
-
-        if (tag.contains(NBT_TRANSFORM_UP, Tag.TAG_BYTE)) {
-            return true;
-        }
-
-        if (!tag.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
-            return false;
-        }
-
-        CompoundTag renderState = tag.getCompound(NBT_RENDER_STATE);
-
-        String renderName = renderState.getString(NBT_RENDER_STATE_NAME).toLowerCase(Locale.ROOT);
-
-        if (renderName.contains("transformer")) {
-            return true;
-        }
-
-        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
-            return false;
-        }
-
-        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
-
-        return properties.contains(NBT_RENDER_TRANSFORM_UP, Tag.TAG_STRING);
-    }
-
     private static void copyGregTransformerState(CompoundTag from, CompoundTag to) {
         NbtUtil.copyByteIfPresent(from, to, NBT_TRANSFORM_UP);
-
-        CompoundTag renderState = copyGregTransformerRenderState(from);
-
-        if (!renderState.isEmpty()) {
-            to.put(NBT_RENDER_STATE, renderState);
-        }
-    }
-
-    private static CompoundTag copyGregTransformerRenderState(CompoundTag from) {
-        CompoundTag out = new CompoundTag();
-
-        if (!from.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
-            return out;
-        }
-
-        CompoundTag renderState = from.getCompound(NBT_RENDER_STATE);
-
-        if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
-            return out;
-        }
-
-        CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
-
-        if (!properties.contains(NBT_RENDER_TRANSFORM_UP, Tag.TAG_STRING)) {
-            return out;
-        }
-
-        NbtUtil.copyStringIfPresent(renderState, out, NBT_RENDER_STATE_NAME);
-
-        CompoundTag outProperties = new CompoundTag();
-        NbtUtil.copyStringIfPresent(properties, outProperties, NBT_RENDER_TRANSFORM_UP);
-
-        if (!outProperties.isEmpty()) {
-            out.put(NBT_RENDER_PROPERTIES, outProperties);
-        }
-
-        return out;
     }
 
     private static boolean hasStoredGregTransformerState(CompoundTag machineData) {
@@ -1293,98 +1265,94 @@ public final class GTCEuStructureExtension
         return Boolean.parseBoolean(properties.getString(NBT_RENDER_TRANSFORM_UP));
     }
 
-    private static boolean isWorldAcceleratorTag(@Nullable CompoundTag tag) {
-        if (tag == null) {
-            return false;
-        }
-
-        String id = getMachineId(tag).toLowerCase(Locale.ROOT);
-
-        if (id.contains("world_accelerator")) {
-            return true;
-        }
-
-        return tag.contains(NBT_IS_RANDOM_TICK_MODE, Tag.TAG_BYTE);
-    }
-
-    private static boolean isEnergyConverterTag(@Nullable CompoundTag tag) {
-        if (tag == null) {
-            return false;
-        }
-
-        String id = getMachineId(tag).toLowerCase(Locale.ROOT);
-
-        if (id.contains("energy_converter")) {
-            return true;
-        }
-
-        if (!tag.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)) {
-            return false;
-        }
-
-        return tag.getCompound(NBT_ENERGY_CONTAINER).contains(NBT_FE_TO_EU, Tag.TAG_BYTE);
-    }
-
-    private static CompoundTag extractRenderStateWithProperty(CompoundTag from, String propertyKey) {
-        CompoundTag out = new CompoundTag();
-
+    private static void copyMachineRenderState(CompoundTag from, CompoundTag to) {
         if (!from.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
-            return out;
+            return;
         }
 
         CompoundTag renderState = from.getCompound(NBT_RENDER_STATE);
 
         if (!renderState.contains(NBT_RENDER_PROPERTIES, Tag.TAG_COMPOUND)) {
-            return out;
+            return;
         }
 
         CompoundTag properties = renderState.getCompound(NBT_RENDER_PROPERTIES);
+        CompoundTag keptProperties = new CompoundTag();
 
-        if (!properties.contains(propertyKey, Tag.TAG_STRING)) {
-            return out;
+        for (String key : properties.getAllKeys()) {
+            if (RUNTIME_RENDER_PROPERTIES.contains(key)) {
+                continue;
+            }
+
+            NbtUtil.copyStringIfPresent(properties, keptProperties, key);
         }
+
+        if (keptProperties.isEmpty()) {
+            return;
+        }
+
+        CompoundTag out = new CompoundTag();
 
         NbtUtil.copyStringIfPresent(renderState, out, NBT_RENDER_STATE_NAME);
-
-        CompoundTag outProperties = new CompoundTag();
-        NbtUtil.copyStringIfPresent(properties, outProperties, propertyKey);
-
-        if (!outProperties.isEmpty()) {
-            out.put(NBT_RENDER_PROPERTIES, outProperties);
-        }
-
-        return out;
+        out.put(NBT_RENDER_PROPERTIES, keptProperties);
+        to.put(NBT_RENDER_STATE, out);
     }
 
     private static void copyWorldAcceleratorState(CompoundTag from, CompoundTag to) {
         NbtUtil.copyByteIfPresent(from, to, NBT_IS_RANDOM_TICK_MODE);
-
-        CompoundTag renderState = extractRenderStateWithProperty(from, NBT_RENDER_RANDOM_TICK_MODE);
-
-        if (!renderState.isEmpty()) {
-            to.put(NBT_RENDER_STATE, renderState);
-        }
     }
 
     private static void copyEnergyConverterState(CompoundTag from, CompoundTag to) {
-        if (from.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)) {
-            CompoundTag ec = from.getCompound(NBT_ENERGY_CONTAINER);
+        if (!from.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)) {
+            return;
+        }
 
-            if (ec.contains(NBT_FE_TO_EU, Tag.TAG_BYTE)) {
-                CompoundTag savedEc = to.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)
-                        ? to.getCompound(NBT_ENERGY_CONTAINER).copy()
-                        : new CompoundTag();
+        CompoundTag ec = from.getCompound(NBT_ENERGY_CONTAINER);
 
-                savedEc.putBoolean(NBT_FE_TO_EU, ec.getBoolean(NBT_FE_TO_EU));
-                to.put(NBT_ENERGY_CONTAINER, savedEc);
+        if (!ec.contains(NBT_FE_TO_EU, Tag.TAG_BYTE)) {
+            return;
+        }
+
+        CompoundTag savedEc = to.contains(NBT_ENERGY_CONTAINER, Tag.TAG_COMPOUND)
+                ? to.getCompound(NBT_ENERGY_CONTAINER).copy()
+                : new CompoundTag();
+
+        savedEc.putBoolean(NBT_FE_TO_EU, ec.getBoolean(NBT_FE_TO_EU));
+        to.put(NBT_ENERGY_CONTAINER, savedEc);
+    }
+
+    private static void applyStoredRenderState(@Nullable BlockEntity be, CompoundTag machineData) {
+        if (!(be instanceof MetaMachineBlockEntity mmbe)
+                || !machineData.contains(NBT_RENDER_STATE, Tag.TAG_COMPOUND)) {
+            return;
+        }
+
+        CompoundTag properties = machineData.getCompound(NBT_RENDER_STATE).getCompound(NBT_RENDER_PROPERTIES);
+
+        if (properties.isEmpty()) {
+            return;
+        }
+
+        MetaMachine machine = mmbe.getMetaMachine();
+        MachineRenderState updated = machine.getRenderState();
+
+        for (Property<?> property : updated.getProperties()) {
+            if (RUNTIME_RENDER_PROPERTIES.contains(property.getName())
+                    || !properties.contains(property.getName(), Tag.TAG_STRING)) {
+                continue;
             }
+
+            updated = withRenderProperty(updated, property, properties.getString(property.getName()));
         }
 
-        CompoundTag renderState = extractRenderStateWithProperty(from, NBT_RENDER_FE_TO_EU);
+        machine.setRenderState(updated);
+    }
 
-        if (!renderState.isEmpty()) {
-            to.put(NBT_RENDER_STATE, renderState);
-        }
+    private static <T extends Comparable<T>> MachineRenderState withRenderProperty(
+            MachineRenderState state,
+            Property<T> property,
+            String value) {
+        return property.getValue(value).map(parsed -> state.setValue(property, parsed)).orElse(state);
     }
 
     private static boolean hasStoredWorldAcceleratorMode(CompoundTag machineData) {
@@ -1543,40 +1511,36 @@ public final class GTCEuStructureExtension
             BlockPos pos,
             BlockEntity blockEntity,
             CompoundTag machineData) {
-        if (!(blockEntity instanceof MetaMachineBlockEntity)) {
+        if (!(blockEntity instanceof MetaMachineBlockEntity mmbe)
+                || !(mmbe.getMetaMachine() instanceof WorldAcceleratorMachine accelerator)) {
             return false;
         }
 
-        CompoundTag currentTag = saveCurrentTag(blockEntity);
+        boolean desiredMode = readStoredRandomTickMode(machineData, accelerator.isRandomTickMode());
 
-        if (currentTag == null) {
-            return false;
+        if (accelerator.isRandomTickMode() != desiredMode) {
+            CompoundTag currentTag = saveCurrentTag(blockEntity);
+
+            if (currentTag == null) {
+                return false;
+            }
+
+            currentTag.putBoolean(NBT_IS_RANDOM_TICK_MODE, desiredMode);
+            currentTag.putInt("x", pos.getX());
+            currentTag.putInt("y", pos.getY());
+            currentTag.putInt("z", pos.getZ());
+
+            try {
+                blockEntity.load(currentTag);
+                blockEntity.clearRemoved();
+            } catch (Throwable ignored) {
+                return false;
+            }
         }
 
-        if (!getMachineId(currentTag).toLowerCase(Locale.ROOT).contains("world_accelerator")) {
-            return false;
-        }
-
-        boolean currentMode = currentTag.getBoolean(NBT_IS_RANDOM_TICK_MODE);
-        boolean desiredMode = readStoredRandomTickMode(machineData, currentMode);
-
-        if (currentMode == desiredMode) {
-            return false;
-        }
-
-        currentTag.putBoolean(NBT_IS_RANDOM_TICK_MODE, desiredMode);
-        currentTag.putInt("x", pos.getX());
-        currentTag.putInt("y", pos.getY());
-        currentTag.putInt("z", pos.getZ());
-
-        try {
-            blockEntity.load(currentTag);
-            blockEntity.clearRemoved();
-            blockEntity.setChanged();
-            return true;
-        } catch (Throwable ignored) {
-            return false;
-        }
+        applyStoredRenderState(blockEntity, machineData);
+        blockEntity.setChanged();
+        return true;
     }
 
     private static boolean refreshEnergyConverterDirection(

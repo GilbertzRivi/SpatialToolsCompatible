@@ -3,8 +3,6 @@ package net.oktawia.spatialtoolscmp.client.renderer;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.jetbrains.annotations.Nullable;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
@@ -31,7 +29,6 @@ public final class PortableSpatialStoragePreviewSync {
 
     private static final StringBuilder BUFFER = new StringBuilder();
     private static final Map<String, PreviewStructure> STRUCTURE_CACHE = new HashMap<>();
-    private static final Map<String, CompoundTag> RAW_TAG_CACHE = new HashMap<>();
 
     private static boolean receiving = false;
     private static String receivingStructureId = "";
@@ -71,14 +68,11 @@ public final class PortableSpatialStoragePreviewSync {
         if (old != null) {
             old.close();
         }
-
-        RAW_TAG_CACHE.remove(structureId);
     }
 
     static void cacheClearAll() {
         STRUCTURE_CACHE.values().forEach(PreviewStructure::close);
         STRUCTURE_CACHE.clear();
-        RAW_TAG_CACHE.clear();
     }
 
     @SubscribeEvent
@@ -86,11 +80,6 @@ public final class PortableSpatialStoragePreviewSync {
         if (event.phase == TickEvent.Phase.END) {
             clientTick();
         }
-    }
-
-    public static @Nullable CompoundTag cacheGetRawTag(String structureId) {
-        CompoundTag tag = RAW_TAG_CACHE.get(structureId);
-        return tag == null ? null : tag.copy();
     }
 
     @SubscribeEvent
@@ -177,8 +166,6 @@ public final class PortableSpatialStoragePreviewSync {
             CompoundTag tag = TemplateUtil.decompressNbt(bytes);
 
             syncActiveStackTransformFromTag(tag);
-
-            RAW_TAG_CACHE.put(structureId, tag.copy());
 
             PreviewStructure structure = PreviewStructure.fromTemplateTag(tag);
             cachePut(structureId, structure);

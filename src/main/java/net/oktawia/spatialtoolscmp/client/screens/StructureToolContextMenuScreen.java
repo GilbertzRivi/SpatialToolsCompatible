@@ -15,11 +15,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
 
-import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.DirectionStarWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuCompat;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
@@ -27,7 +27,6 @@ import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.items.helpers.SpatialMultiTool;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext.ConnectivityMode;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
-import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuPiperExtension;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.StructureToolContextActionPacket;
 
@@ -296,13 +295,7 @@ public class StructureToolContextMenuScreen extends Screen {
     }
 
     private static boolean isDirectionalPipeTarget(ItemStack held) {
-        if (!IsModLoaded.GTCEU) {
-            return false;
-        }
-
-        ItemStack target = PortableSpatialPiper.getTargetBlock(held);
-
-        return !target.isEmpty() && GTCEuPiperExtension.supportsPipeDirection(target);
+        return GTCEuCompat.supportsPipeDirection(PortableSpatialPiper.getTargetBlock(held));
     }
 
     private static Icon iconForPipeDirection(PortableSpatialPiper.PipeDirectionMode mode) {

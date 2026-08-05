@@ -20,12 +20,6 @@ versionRange = "${minecraft_version_range}"
 ordering = "NONE"
 side = "BOTH"
 [[dependencies."${mod_id}"]]
-modId = "ldlib"
-mandatory = true
-versionRange = "[*,)"
-ordering = "NONE"
-side = "CLIENT"
-[[dependencies."${mod_id}"]]
 modId = "ae2"
 mandatory = false
 versionRange = "[*,)"

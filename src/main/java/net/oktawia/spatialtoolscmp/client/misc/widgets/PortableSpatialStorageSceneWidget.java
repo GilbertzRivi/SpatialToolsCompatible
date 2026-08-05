@@ -4,8 +4,6 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import com.lowdragmc.lowdraglib.gui.widget.SceneWidget;
-import com.lowdragmc.lowdraglib.utils.TrackedDummyWorld;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 
@@ -25,8 +23,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 
 import net.oktawia.spatialtoolscmp.client.renderer.*;
+import net.oktawia.spatialtoolscmp.client.scene.PreviewLevel;
+import net.oktawia.spatialtoolscmp.client.scene.SpatialSceneWidget;
 
-public class PortableSpatialStorageSceneWidget extends SceneWidget {
+public class PortableSpatialStorageSceneWidget extends SpatialSceneWidget {
 
     private static final BlockState FLOOR_A = Blocks.SMOOTH_STONE.defaultBlockState();
     private static final BlockState FLOOR_B = Blocks.POLISHED_ANDESITE.defaultBlockState();
@@ -39,7 +39,6 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
     protected String sideMapKey = Arrays.toString(sideMap);
 
     protected final Set<BlockPos> extensionBlocks = new HashSet<>();
-    protected final Set<BlockPos> specialBlocks = new HashSet<>();
     protected final Set<BlockPos> normalBlocks = new HashSet<>();
 
     protected BlockPos originMarkerPos = BlockPos.ZERO;
@@ -56,7 +55,6 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             PortableSpatialStorageDummyWorld world) {
         super(x, y, width, height, world);
         this.previewWorld = world;
-        this.useCacheBuffer(false);
     }
 
     public void setPreview(
@@ -73,12 +71,10 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
 
         this.extensionBlocks.clear();
         this.normalBlocks.clear();
-        this.specialBlocks.clear();
         this.hasFloor = false;
 
         if (structure == null || structure.blocks().isEmpty()) {
             setRenderedCore(Set.of());
-            needCompileCache();
             return;
         }
 
@@ -99,10 +95,6 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
             maxX = Math.max(maxX, pos.getX());
             maxY = Math.max(maxY, pos.getY());
             maxZ = Math.max(maxZ, pos.getZ());
-
-            if (classifySpecialBlock(block, pos, state, renderedSurface)) {
-                continue;
-            }
 
             if (isExtensionRenderedBlock(block, state)) {
                 extensionBlocks.add(pos);
@@ -125,25 +117,6 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
         this.hasFloor = true;
 
         setRenderedCore(normalBlocks);
-        needCompileCache();
-    }
-
-    protected boolean classifySpecialBlock(PreviewBlock block, BlockPos pos, BlockState state,
-            Set<BlockPos> renderedSurface) {
-        return false;
-    }
-
-    protected boolean renderSpecialBlock(
-            PreviewBlock previewBlock,
-            BlockRenderDispatcher dispatcher,
-            PreviewBlockAndTintGetter localLevel,
-            BlockState state,
-            BakedModel model,
-            BlockPos localPos,
-            PoseStack poseStack,
-            MultiBufferSource bufferSource,
-            long seed) {
-        return false;
     }
 
     private boolean isExtensionRenderedBlock(PreviewBlock previewBlock, BlockState state) {
@@ -173,7 +146,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
         renderFloor(bufferSource, minecraft);
         renderOriginMarker(bufferSource);
 
-        if (extensionBlocks.isEmpty() && specialBlocks.isEmpty()) {
+        if (extensionBlocks.isEmpty()) {
             return;
         }
 
@@ -186,7 +159,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
         for (PreviewBlock previewBlock : previewStructure.blocks()) {
             BlockPos localPos = previewBlock.pos();
 
-            if (!extensionBlocks.contains(localPos) && !specialBlocks.contains(localPos)) {
+            if (!extensionBlocks.contains(localPos)) {
                 continue;
             }
 
@@ -216,17 +189,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                         localPos,
                         poseStack,
                         bufferSource,
-                        seed)
-                        && !renderSpecialBlock(
-                                previewBlock,
-                                dispatcher,
-                                localLevel,
-                                state,
-                                model,
-                                localPos,
-                                poseStack,
-                                bufferSource,
-                                seed)) {
+                        seed)) {
                     renderStandardBlock(
                             dispatcher,
                             localLevel,
@@ -369,7 +332,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
                 1.0F, 0.1F, 0.1F, 1.0F);
     }
 
-    public static Set<BlockPos> buildDirectionCompassStructure(TrackedDummyWorld world) {
+    public static Set<BlockPos> buildDirectionCompassStructure(PreviewLevel world) {
         Set<BlockPos> core = new HashSet<>();
 
         BlockState center = Blocks.LIGHT_BLUE_CONCRETE.defaultBlockState();
@@ -477,7 +440,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
     }
 
     private static void placeCompassGlyph(
-            TrackedDummyWorld world,
+            PreviewLevel world,
             Set<BlockPos> core,
             int startX,
             int startZ,
@@ -495,7 +458,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
     }
 
     private static void placeCompassPillar(
-            TrackedDummyWorld world,
+            PreviewLevel world,
             Set<BlockPos> core,
             int x,
             int z,
@@ -505,7 +468,7 @@ public class PortableSpatialStorageSceneWidget extends SceneWidget {
     }
 
     private static void placeCompassBlock(
-            TrackedDummyWorld world,
+            PreviewLevel world,
             Set<BlockPos> core,
             BlockPos pos,
             BlockState state) {

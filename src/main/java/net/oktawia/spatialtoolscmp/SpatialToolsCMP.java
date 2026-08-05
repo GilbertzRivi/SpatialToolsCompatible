@@ -37,6 +37,8 @@ import net.oktawia.spatialtoolscmp.client.screens.CraftingBufferScreen;
 import net.oktawia.spatialtoolscmp.client.screens.SpatialConfigScreen;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2BlockRegistrar;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2Compat;
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuClientCompat;
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuCompat;
 import net.oktawia.spatialtoolscmp.defs.SpatialCreativeTabRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialItemRegistrar;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
@@ -94,14 +96,7 @@ public class SpatialToolsCMP {
                 ReplacerExtensions.register(new AE2ReplacerExtension());
                 PiperExtensions.register(new AE2PiperExtension());
             }
-            if (IsModLoaded.GTCEU) {
-                GTCEuStructureExtension gtceuExtension = new GTCEuStructureExtension();
-                StructureToolExtensions.registerClonerExtension(gtceuExtension);
-                StructureToolExtensions.registerPasteExtension(gtceuExtension);
-                StructureToolExtensions.registerRemoveExtension(gtceuExtension);
-                ReplacerExtensions.register(new GTCEuReplacerExtension());
-                PiperExtensions.register(new GTCEuPiperExtension());
-            }
+            GTCEuCompat.registerCommon();
             if (IsModLoaded.FRAMED_BLOCKS) {
                 StructureToolExtensions.registerClonerExtension(new FramedBlocksClonerExtension());
                 ReplacerExtensions.register(new FramedBlocksReplacerExtension());
@@ -203,10 +198,7 @@ public class SpatialToolsCMP {
                     ClientPiperExtensions.register(new AE2ClientPiperExtension());
                     MenuScreens.register(AE2BlockRegistrar.CRAFTING_BUFFER_MENU_TYPE.get(), CraftingBufferScreen::new);
                 }
-                if (IsModLoaded.GTCEU) {
-                    BlockRenderExtensions.register(new GTCEuBlockRenderExtension());
-                    ClientReplacerExtensions.register(new GTCEuClientReplacerExtension());
-                }
+                GTCEuClientCompat.register();
                 if (IsModLoaded.FRAMED_BLOCKS) {
                     BlockRenderExtensions.register(new FramedBlocksRenderExtension());
 

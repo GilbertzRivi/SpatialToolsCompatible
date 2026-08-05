@@ -479,8 +479,6 @@ public class ManagedBuffer {
             ItemStack patternSlot = ItemStack.of(tag.getCompound("patternSlot"));
             if (!patternSlot.isEmpty()) {
                 logic.getPatternInv().setItemDirect(0, patternSlot);
-                // updatePatterns() nie wołamy tu, bo level może być jeszcze null.
-                // Zostanie zrobione w onLoad().
             }
         }
     }

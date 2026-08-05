@@ -4,7 +4,6 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 
-import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import net.minecraft.client.Minecraft;
@@ -19,6 +18,7 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import net.oktawia.spatialtoolscmp.SpatialConfig;
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuClientCompat;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialReplacer;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientReplacerExtensions;
@@ -127,7 +127,7 @@ public class PortableSpatialReplacerPreviewRenderer {
                         0.00F,
                         1.00F);
 
-                if (targetState.getBlock() instanceof PipeBlock<?, ?, ?>) {
+                if (GTCEuClientCompat.isPipe(targetState)) {
                     this.ghostRenderer.renderPipeConnectionLines(
                             mc,
                             poseStack,

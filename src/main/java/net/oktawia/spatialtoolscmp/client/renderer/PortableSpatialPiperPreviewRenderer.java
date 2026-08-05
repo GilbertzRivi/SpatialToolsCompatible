@@ -9,8 +9,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-import com.gregtechceu.gtceu.api.block.PipeBlock;
-import com.gregtechceu.gtceu.client.model.GTModelProperties;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import org.jetbrains.annotations.Nullable;
@@ -29,14 +27,14 @@ import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 
-import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuClientCompat;
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuCompat;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialPiper;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtension;
 import net.oktawia.spatialtoolscmp.logic.ClientPiperExtensions;
 import net.oktawia.spatialtoolscmp.logic.PiperExtension;
 import net.oktawia.spatialtoolscmp.logic.PiperRoute;
 import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
-import net.oktawia.spatialtoolscmp.logic.extensions.GTCEuPiperExtension;
 
 public class PortableSpatialPiperPreviewRenderer {
 
@@ -178,7 +176,7 @@ public class PortableSpatialPiperPreviewRenderer {
                         0.15F,
                         1.00F);
 
-                if (targetState.getBlock() instanceof PipeBlock<?, ?, ?>) {
+                if (GTCEuClientCompat.isPipe(targetState)) {
                     this.ghostRenderer.renderPipeConnectionLines(
                             mc,
                             poseStack,
@@ -201,13 +199,10 @@ public class PortableSpatialPiperPreviewRenderer {
             Set<BlockPos> allPositions) {
         Integer pathMask = this.cachedPathMasks.get(pos);
 
-        if (pathMask != null && targetState.getBlock() instanceof PipeBlock<?, ?, ?>) {
-            return ModelData.builder()
-                    .with(GTModelProperties.PIPE_CONNECTION_MASK, pathMask)
-                    .with(
-                            GTModelProperties.PIPE_BLOCKED_MASK,
-                            this.cachedPipeBlockedMasks.getOrDefault(pos, 0))
-                    .build();
+        if (pathMask != null && GTCEuClientCompat.isPipe(targetState)) {
+            return GTCEuClientCompat.pipeModelData(
+                    pathMask,
+                    this.cachedPipeBlockedMasks.getOrDefault(pos, 0));
         }
 
         return this.targetResolver.buildModelData(targetState, pos, allPositions);
@@ -378,16 +373,14 @@ public class PortableSpatialPiperPreviewRenderer {
         PortableSpatialPiper.PipeDirectionMode mode = PortableSpatialPiper.getPipeDirectionMode(stack);
 
         if (mode == PortableSpatialPiper.PipeDirectionMode.OFF
-                || target.isEmpty()
-                || !IsModLoaded.GTCEU
-                || !GTCEuPiperExtension.supportsPipeDirection(target)) {
+                || !GTCEuCompat.supportsPipeDirection(target)) {
             return Map.of();
         }
 
         Map<BlockPos, Integer> masks = new HashMap<>();
 
         PiperRoute.pathStepDirections(orderedPath).forEach(
-                (pos, step) -> masks.put(pos, GTCEuPiperExtension.blockedMask(step, mode)));
+                (pos, step) -> masks.put(pos, GTCEuCompat.blockedMask(step, mode)));
 
         return masks;
     }

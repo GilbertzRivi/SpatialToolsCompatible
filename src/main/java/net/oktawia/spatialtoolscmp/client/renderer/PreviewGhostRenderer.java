@@ -6,7 +6,6 @@ import java.util.IdentityHashMap;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.gregtechceu.gtceu.client.model.GTModelProperties;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -41,6 +40,8 @@ import net.minecraft.world.level.material.Fluids;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.model.data.ModelData;
+
+import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuClientCompat;
 
 public final class PreviewGhostRenderer {
 
@@ -298,9 +299,7 @@ public final class PreviewGhostRenderer {
             for (BlockPos pos : positions) {
                 ModelData modelData = modelDataProvider.apply(pos);
 
-                int connections = modelData.has(GTModelProperties.PIPE_CONNECTION_MASK)
-                        ? modelData.get(GTModelProperties.PIPE_CONNECTION_MASK)
-                        : 0;
+                int connections = GTCEuClientCompat.connectionMask(modelData);
 
                 float cx = pos.getX() + 0.5F;
                 float cy = pos.getY() + 0.5F;

@@ -49,14 +49,6 @@ public final class ClonerStructureLibraryClientCache {
         return folders;
     }
 
-    public static boolean isSelected(String id) {
-        if (id == null) {
-            return selectedId.isBlank();
-        }
-
-        return selectedId.equals(id);
-    }
-
     public static List<Entry> filtered(String query) {
         return filtered(query, null);
     }
