@@ -40,6 +40,8 @@ static String gtceuAliasDir(String version) {
     return matcher ? matcher[0][1] + '-SNAPSHOT' : version
 }
 
+int gtceuRuntimeMajor = gtceu_runtime_version.tokenize('.')[0] as int
+
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(17)
 }
@@ -227,12 +229,14 @@ dependencies {
     compileOnly fg.deobf("curse.maven:integrated-terminals-295910:7738431")
     compileOnly fg.deobf("curse.maven:cloth-config-348521:5729105")
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
-    compileOnly fg.deobf("curse.maven:emi-580555:6420945")
+    compileOnly fg.deobf("curse.maven:emi-580555:8081375")
 
     runtimeOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
     runtimeOnly fg.deobf("curse.maven:guideme-1173950:6489464")
-    runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
-    runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:${gtceu_runtime_version}") { transitive = false }
+    if (gtceuRuntimeMajor < 8) {
+        runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
+    }
+    runtimeOnly fg.deobf("com.gregtechceu.gtceu:gtceu-1.20.1:${gtceu_runtime_version}")
     runtimeOnly fg.deobf("curse.maven:framedblocks-441647:7386520")
     runtimeOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
     runtimeOnly fg.deobf("curse.maven:sophisticated-storage-619320:8007560")
@@ -259,7 +263,7 @@ dependencies {
 
     runtimeOnly fg.deobf("curse.maven:jade-324717:6106101")
     runtimeOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
-    runtimeOnly fg.deobf("curse.maven:emi-580555:6420945")
+    runtimeOnly fg.deobf("curse.maven:emi-580555:8081375")
     runtimeOnly fg.deobf("curse.maven:mekanism-268560:6552911")
     runtimeOnly fg.deobf("curse.maven:mekanism-generators-268566:6552914")
     runtimeOnly fg.deobf("curse.maven:journeymap-32274:5789363")

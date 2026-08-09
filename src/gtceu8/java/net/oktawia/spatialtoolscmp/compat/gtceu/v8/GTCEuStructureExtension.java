@@ -2,6 +2,7 @@ package net.oktawia.spatialtoolscmp.compat.gtceu.v8;
 
 import java.util.*;
 
+import com.gregtechceu.gtceu.api.blockentity.IGregtechBlockEntity;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
 import com.gregtechceu.gtceu.api.cover.CoverBehavior;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
@@ -13,6 +14,7 @@ import com.gregtechceu.gtceu.api.machine.trait.notifiable.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.multiblock.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.multiblock.pattern.PatternState;
 import com.gregtechceu.gtceu.api.pipenet.PipeCoverContainer;
+import com.gregtechceu.gtceu.api.sync_system.managed.ISyncManaged;
 import com.gregtechceu.gtceu.client.model.machine.MachineRenderState;
 import com.gregtechceu.gtceu.common.machine.electric.TransformerMachine;
 import com.gregtechceu.gtceu.common.machine.electric.WorldAcceleratorMachine;
@@ -24,11 +26,9 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
-import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -243,14 +243,12 @@ public final class GTCEuStructureExtension
         applyStoredRenderState(be, machineData);
         reinitMachineCovers(be);
 
-        if (be instanceof MetaMachine machine) {
-            machine.getSyncDataHolder().resyncAllFields();
-        }
-
         if (be instanceof MetaMachine
                 && hasAnyCover(gregMeta.getCompound(StructureToolKeys.CLONE_KEY_GREG_COVER))) {
             scheduleSingleMachineCoverReinit(level, pos);
         }
+
+        syncGregBlockEntity(level, pos, be);
     }
 
     private static void reinitMachineCovers(@Nullable BlockEntity be) {
@@ -933,7 +931,7 @@ public final class GTCEuStructureExtension
                     InteractionResult result = interactable.onDataStickUse(
                             FakePlayerFactory.getMinecraft(level), stick);
                     if (result.consumesAction() || result == InteractionResult.SUCCESS) {
-                        syncGenericGregBlockEntityNoLoad(level, pastedProxyPos, be);
+                        syncGregBlockEntity(level, pastedProxyPos, be);
                         return true;
                     }
                 } catch (Throwable ignored) {
@@ -958,7 +956,7 @@ public final class GTCEuStructureExtension
             return false;
         }
 
-        syncGenericGregBlockEntityNoLoad(level, pastedProxyPos, be);
+        syncGregBlockEntity(level, pastedProxyPos, be);
         return true;
     }
 
@@ -2229,7 +2227,6 @@ public final class GTCEuStructureExtension
                         pendingBlock.payload());
 
                 if (changed) {
-                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
 
@@ -2240,7 +2237,6 @@ public final class GTCEuStructureExtension
                 boolean changed = applyDataStickTag(level, blockEntity, pendingBlock.payload());
 
                 if (changed) {
-                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
 
@@ -2269,7 +2265,6 @@ public final class GTCEuStructureExtension
                         pendingBlock.payload());
 
                 if (changed) {
-                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
 
@@ -2284,7 +2279,6 @@ public final class GTCEuStructureExtension
                         pendingBlock.payload());
 
                 if (changed) {
-                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
 
@@ -2295,7 +2289,6 @@ public final class GTCEuStructureExtension
                 boolean changed = reinitMachineCoversDeferred(blockEntity);
 
                 if (changed) {
-                    syncGenericGregBlockEntityNoLoad(level, worldPos, blockEntity);
                     refreshedPositions.add(worldPos);
                 }
 
@@ -2304,10 +2297,12 @@ public final class GTCEuStructureExtension
 
             if (pendingBlock.mode() == PendingMode.MULTIBLOCK_REVALIDATE) {
                 reformMultiblock(level, blockEntity);
+                refreshedPositions.add(worldPos);
             }
         }
 
         for (BlockPos pos : refreshedPositions) {
+            syncGregBlockEntity(level, pos, level.getBlockEntity(pos));
             notifyPostPlacedNeighborhood(level, pos);
         }
 
@@ -2383,35 +2378,10 @@ public final class GTCEuStructureExtension
             cover.getSyncDataHolder().resyncAllFields();
         }
 
-        pipe.getSyncDataHolder().resyncAllFields();
         coverContainer.getSyncDataHolder().resyncAllFields();
-
         coverContainer.scheduleNeighborShapeUpdate();
-        coverContainer.notifyBlockUpdate();
-        coverContainer.scheduleRenderUpdate();
-        coverContainer.markAsChanged();
 
-        pipe.notifyBlockUpdate();
-        pipe.scheduleRenderUpdate();
-        pipe.setChanged();
-
-        BlockState state = level.getBlockState(pos);
-
-        level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
-        level.getChunkSource().blockChanged(pos);
-
-        for (Direction side : Direction.values()) {
-            BlockPos neighborPos = pos.relative(side);
-            BlockState neighborState = level.getBlockState(neighborPos);
-
-            level.sendBlockUpdated(neighborPos, neighborState, neighborState, Block.UPDATE_ALL);
-        }
-
-        ClientboundBlockEntityDataPacket packet = ClientboundBlockEntityDataPacket.create(pipe);
-
-        for (ServerPlayer player : level.players()) {
-            player.connection.send(packet);
-        }
+        syncGregBlockEntity(level, pos, pipe);
     }
 
     private static boolean refreshTransformerRuntimeState(
@@ -2436,26 +2406,6 @@ public final class GTCEuStructureExtension
                 transformer.setTransformUp(desiredTransformUp);
             } else {
                 transformer.updateEnergyContainer(desiredTransformUp);
-            }
-
-            try {
-                transformer.getSyncDataHolder().resyncAllFields();
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                transformer.notifyBlockUpdate();
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                transformer.scheduleRenderUpdate();
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                transformer.markAsChanged();
-            } catch (Throwable ignored) {
             }
 
             blockEntity.setChanged();
@@ -2499,34 +2449,29 @@ public final class GTCEuStructureExtension
         return false;
     }
 
-    private static void syncGenericGregBlockEntityNoLoad(
-            ServerLevel level,
-            BlockPos pos,
-            BlockEntity blockEntity) {
-        if (blockEntity instanceof MetaMachine mmbe) {
-            try {
-                mmbe.getSyncDataHolder().resyncAllFields();
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                mmbe.notifyBlockUpdate();
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                mmbe.scheduleRenderUpdate();
-            } catch (Throwable ignored) {
-            }
-
-            try {
-                mmbe.markAsChanged();
-            } catch (Throwable ignored) {
-            }
+    // getUpdatePacket only serializes fields the holder considers dirty, and load() marks nothing,
+    // so resyncAllFields has to run before the block update or clients keep the pre-paste state.
+    static void syncGregBlockEntity(ServerLevel level, BlockPos pos, @Nullable BlockEntity blockEntity) {
+        if (blockEntity == null) {
+            return;
         }
 
         if (isAe2GridConnectedGregMachine(blockEntity)) {
             refreshAe2GridNodeIfPresent(level, pos, blockEntity);
+        }
+
+        if (blockEntity instanceof ISyncManaged managed) {
+            try {
+                managed.getSyncDataHolder().resyncAllFields();
+            } catch (Throwable ignored) {
+            }
+        }
+
+        if (blockEntity instanceof IGregtechBlockEntity gregBlockEntity) {
+            try {
+                gregBlockEntity.scheduleRenderUpdate();
+            } catch (Throwable ignored) {
+            }
         }
 
         try {
@@ -2537,13 +2482,6 @@ public final class GTCEuStructureExtension
         BlockState state = level.getBlockState(pos);
 
         level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
-        level.getChunkSource().blockChanged(pos);
-
-        ClientboundBlockEntityDataPacket packet = ClientboundBlockEntityDataPacket.create(blockEntity);
-
-        for (ServerPlayer player : level.players()) {
-            player.connection.send(packet);
-        }
     }
 
     private static void notifyPostPlacedNeighborhood(ServerLevel level, BlockPos pos) {
@@ -2555,7 +2493,6 @@ public final class GTCEuStructureExtension
         }
 
         level.sendBlockUpdated(pos, state, state, Block.UPDATE_ALL);
-        level.getChunkSource().blockChanged(pos);
 
         for (Direction side : Direction.values()) {
             BlockPos neighborPos = pos.relative(side);
@@ -2577,7 +2514,6 @@ public final class GTCEuStructureExtension
             }
 
             level.sendBlockUpdated(neighborPos, neighborState, neighborState, Block.UPDATE_ALL);
-            level.getChunkSource().blockChanged(neighborPos);
         }
     }
 
@@ -2835,7 +2771,7 @@ public final class GTCEuStructureExtension
     public static void scheduleReplacedPipeInit(
             ServerLevel level,
             BlockPos pos,
-            @Nullable CompoundTag savedConnectionState) {
+            @Nullable CompoundTag savedPipeState) {
         BlockEntity be = level.getBlockEntity(pos);
         CompoundTag currentTag = saveCurrentTag(be);
 
@@ -2845,17 +2781,37 @@ public final class GTCEuStructureExtension
 
         CompoundTag initTag = currentTag.copy();
 
-        if (savedConnectionState != null) {
-            if (savedConnectionState.contains("connections", Tag.TAG_INT)) {
-                initTag.putInt("connections", savedConnectionState.getInt("connections"));
-            }
+        if (savedPipeState != null) {
+            NbtUtil.copyIntIfPresent(savedPipeState, initTag, "connections");
+            NbtUtil.copyIntIfPresent(savedPipeState, initTag, "blockedConnections");
+            NbtUtil.copyIntIfPresent(savedPipeState, initTag, "paintingColor");
+            NbtUtil.copyStringIfPresent(savedPipeState, initTag, "frameMaterial");
 
-            if (savedConnectionState.contains("blockedConnections", Tag.TAG_INT)) {
-                initTag.putInt("blockedConnections", savedConnectionState.getInt("blockedConnections"));
+            if (savedPipeState.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+                initTag.put(NBT_COVER, savedPipeState.getCompound(NBT_COVER).copy());
             }
         }
 
         scheduleSinglePipePostPlacementInit(level, pos, initTag, createCoverSnapshotForGuard(currentTag));
+    }
+
+    public static void copyPreservedPipeState(@Nullable BlockEntity be, CompoundTag out) {
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (currentTag == null || !isGregPipeTag(currentTag)) {
+            return;
+        }
+
+        NbtUtil.copyIntIfPresent(currentTag, out, "paintingColor");
+        NbtUtil.copyStringIfPresent(currentTag, out, "frameMaterial");
+
+        if (currentTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+            out.put(NBT_COVER, currentTag.getCompound(NBT_COVER).copy());
+        }
+    }
+
+    public static void collectPipeBaseRefund(ServerLevel level, BlockPos pos, List<ItemStack> refunds) {
+        addBaseBlockRefund(level, pos, refunds);
     }
 
     private enum PendingMode {

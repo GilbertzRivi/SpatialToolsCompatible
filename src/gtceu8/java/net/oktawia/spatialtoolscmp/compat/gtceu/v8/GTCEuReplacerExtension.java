@@ -1,7 +1,9 @@
 package net.oktawia.spatialtoolscmp.compat.gtceu.v8;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -20,6 +22,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -88,7 +91,25 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
         CompoundTag saved = new CompoundTag();
         saved.putInt("connections", pipe.getConnections());
         saved.putInt("blockedConnections", pipe.getBlockedConnections());
+        GTCEuStructureExtension.copyPreservedPipeState(pipe, saved);
         return saved;
+    }
+
+    @Override
+    @Nullable
+    public List<ItemStack> collectPreservedSourceRefunds(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be,
+            Block targetBlock) {
+        if (!(be instanceof PipeBlockEntity<?, ?>) || !(targetBlock instanceof PipeBlock<?, ?, ?>)) {
+            return null;
+        }
+
+        List<ItemStack> refunds = new ArrayList<>();
+        GTCEuStructureExtension.collectPipeBaseRefund(level, pos, refunds);
+        return refunds;
     }
 
     @Override
@@ -177,6 +198,8 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
             if (facing.upwards() != null && machine.allowExtendedFacing()) {
                 machine.setUpwardsFacing(facing.upwards());
             }
+
+            GTCEuStructureExtension.syncGregBlockEntity(level, pos, mmbe);
         } catch (Throwable ignored) {
         }
     }
@@ -215,7 +238,7 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
 
             if (controller.isFormed()) {
                 controller.notifyBlockUpdate();
-                be.setChanged();
+                GTCEuStructureExtension.syncGregBlockEntity(level, controllerPos, be);
             } else {
                 GTCEuStructureExtension.scheduleStructureCheck(level, controller);
             }
