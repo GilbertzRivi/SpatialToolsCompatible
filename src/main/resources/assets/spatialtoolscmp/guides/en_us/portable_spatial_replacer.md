@@ -1,7 +1,7 @@
 # Portable Spatial Replacer
 
-Swaps one block for another across a connected area. Machines, pipes and multiblocks are
-told about the swap, so a coil upgrade in a running multiblock or a cable tier change
+Swaps one block for another across a connected area. Machines, pipes, and multiblocks are
+told about the swap. So a coil upgrade in a running multiblock or a cable tier change
 does not break the build.
 
 > Can I retier a whole GregTech pipe/cable run in one click?
@@ -25,8 +25,8 @@ Hold the replacer. The hint above your hotbar tells you what the next click does
 
 ### Replacing
 
-- **Point** at a block of the kind you want gone, the preview outlines what would change
-- **Right click** to replace it with the target block
+- **Point** at a block of the kind you want gone, the preview outlines what would change.
+- **Right click** to replace it with the target block.
 
 Replacing things with GregTech pipes/cables connects them automatically. 
 Nothing happens when you point at air, at the block you are already replacing with, or at
@@ -34,14 +34,14 @@ a block the tool refuses to touch.
 
 ### Spread mode
 
-- `Direct` spreads through the **6 face neighbours** only, within a round radius
-- `Diagonal` spreads through all **26 neighbours**, edges and corners included
+- `Direct` spreads through the **6 face neighbours** only, within a round radius.
+- `Diagonal` spreads through all **26 neighbours**, edges and corners included.
 
 ### Match mode
 
-- `Block only` matches every block of that type
+- `Block only` matches every block of that type.
 - `Blockstate` matches only blocks in **exactly the same state**, so the same facing, the
-  same waterlogging, the same slab half etc
+  same waterlogging, the same slab half etc.
 
 ### Radius
 
@@ -50,9 +50,9 @@ block cap from the config, **1024** by default, whichever comes first.
 
 Some blocks are picked differently:
 
-- A **GregTech pipe** selects the whole pipe net it belongs to
+- A **GregTech pipe** selects the whole pipe net it belongs to.
 - An **AE2 cable** selects the connected cables of the same kind, and keeps the parts
-  attached to them
+  attached to them.
 
 ---
 
@@ -101,9 +101,9 @@ whether a link is set.
 Press `Left Alt` (rebindable) while holding the replacer to open the menu. Its title line
 shows the current radius and spread mode.
 
-- **Radius down** and **Radius up** change the radius by one
-- **Spread mode** switches between `Direct` and `Diagonal`
-- **Match mode** switches between `Block only` and `Blockstate`
+- **Radius down** and **Radius up** change the radius by one.
+- **Spread mode** switches between `Direct` and `Diagonal`.
+- **Match mode** switches between `Block only` and `Blockstate`.
 
 ---
 
