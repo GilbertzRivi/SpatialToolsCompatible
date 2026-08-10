@@ -2675,7 +2675,7 @@ public final class GTCEuStructureExtension
     public static void scheduleReplacedPipeInit(
             ServerLevel level,
             BlockPos pos,
-            @Nullable CompoundTag savedConnectionState) {
+            @Nullable CompoundTag savedPipeState) {
         BlockEntity be = level.getBlockEntity(pos);
         CompoundTag currentTag = saveCurrentTag(be);
 
@@ -2685,17 +2685,37 @@ public final class GTCEuStructureExtension
 
         CompoundTag initTag = currentTag.copy();
 
-        if (savedConnectionState != null) {
-            if (savedConnectionState.contains("connections", Tag.TAG_INT)) {
-                initTag.putInt("connections", savedConnectionState.getInt("connections"));
-            }
+        if (savedPipeState != null) {
+            NbtUtil.copyIntIfPresent(savedPipeState, initTag, "connections");
+            NbtUtil.copyIntIfPresent(savedPipeState, initTag, "blockedConnections");
+            NbtUtil.copyIntIfPresent(savedPipeState, initTag, "paintingColor");
+            NbtUtil.copyStringIfPresent(savedPipeState, initTag, "frameMaterial");
 
-            if (savedConnectionState.contains("blockedConnections", Tag.TAG_INT)) {
-                initTag.putInt("blockedConnections", savedConnectionState.getInt("blockedConnections"));
+            if (savedPipeState.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+                initTag.put(NBT_COVER, savedPipeState.getCompound(NBT_COVER).copy());
             }
         }
 
         scheduleSinglePipePostPlacementInit(level, pos, initTag, createCoverSnapshotForGuard(currentTag));
+    }
+
+    public static void copyPreservedPipeState(@Nullable BlockEntity be, CompoundTag out) {
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (currentTag == null || !isGregPipeTag(currentTag)) {
+            return;
+        }
+
+        NbtUtil.copyIntIfPresent(currentTag, out, "paintingColor");
+        NbtUtil.copyStringIfPresent(currentTag, out, "frameMaterial");
+
+        if (currentTag.contains(NBT_COVER, Tag.TAG_COMPOUND)) {
+            out.put(NBT_COVER, currentTag.getCompound(NBT_COVER).copy());
+        }
+    }
+
+    public static void collectPipeBaseRefund(ServerLevel level, BlockPos pos, List<ItemStack> refunds) {
+        addBaseBlockRefund(level, pos, refunds);
     }
 
     private enum PendingMode {

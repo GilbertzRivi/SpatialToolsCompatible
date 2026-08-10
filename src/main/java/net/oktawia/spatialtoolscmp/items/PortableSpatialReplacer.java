@@ -489,6 +489,27 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             }
         }
 
+        Map<BlockPos, List<ItemStack>> preservedSourceRefunds = new LinkedHashMap<>();
+
+        for (BlockPos pos : positions) {
+            BlockState s = level.getBlockState(pos);
+
+            if (strict ? !s.equals(sourceState) : s.getBlock() != sourceState.getBlock()) {
+                continue;
+            }
+
+            BlockEntity be = level.getBlockEntity(pos);
+
+            for (ReplacerExtension ext : ReplacerExtensions.get()) {
+                List<ItemStack> preserved = ext.collectPreservedSourceRefunds(level, pos, s, be, targetBlock);
+
+                if (preserved != null) {
+                    preservedSourceRefunds.put(pos.immutable(), preserved);
+                    break;
+                }
+            }
+        }
+
         Map<BlockPos, List<ItemStack>> preCollectedRefunds = new LinkedHashMap<>();
 
         if (!player.isCreative()) {
@@ -509,6 +530,17 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
 
                 if (swapped != null && !swapped.isEmpty()) {
                     posRefunds.add(swapped);
+                    preCollectedRefunds.put(pos.immutable(), posRefunds);
+                    continue;
+                }
+
+                List<ItemStack> preserved = preservedSourceRefunds.get(pos.immutable());
+
+                if (preserved != null) {
+                    for (ItemStack stack : preserved) {
+                        posRefunds.add(stack.copy());
+                    }
+
                     preCollectedRefunds.put(pos.immutable(), posRefunds);
                     continue;
                 }
@@ -632,9 +664,15 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             replaced++;
             replacedSourceItems.addAll(refunds);
 
-            List<ItemStack> undoRefunds = inPlace
-                    ? List.of(singleTargetItem(target))
-                    : List.of();
+            List<ItemStack> undoRefunds;
+
+            if (preservedSourceRefunds.containsKey(pos.immutable())) {
+                undoRefunds = placementCost.stream().map(ItemStack::copy).toList();
+            } else if (inPlace) {
+                undoRefunds = List.of(singleTargetItem(target));
+            } else {
+                undoRefunds = List.of();
+            }
 
             undoBlocks.add(new ClonerUndoHandler.ClonerUndoPlacedBlock(
                     pos.immutable(),

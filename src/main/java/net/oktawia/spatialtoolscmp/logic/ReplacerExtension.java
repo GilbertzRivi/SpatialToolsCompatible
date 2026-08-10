@@ -11,6 +11,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 public interface ReplacerExtension {
@@ -25,6 +26,16 @@ public interface ReplacerExtension {
 
     @Nullable
     default CompoundTag capturePreReplacementState(ServerLevel level, BlockPos pos) {
+        return null;
+    }
+
+    @Nullable
+    default List<ItemStack> collectPreservedSourceRefunds(
+            ServerLevel level,
+            BlockPos pos,
+            BlockState state,
+            @Nullable BlockEntity be,
+            Block targetBlock) {
         return null;
     }
 
