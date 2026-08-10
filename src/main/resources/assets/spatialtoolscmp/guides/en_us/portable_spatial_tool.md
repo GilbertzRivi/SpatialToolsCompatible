@@ -29,10 +29,10 @@ Every mode keeps its **own** settings, so switching back and forth does not lose
 
 These are **shared** by all modes:
 
-- the energy inside the item
-- the energy upgrades
-- the crafting card
-- the AE2 link
+- The energy inside the item
+- The energy upgrades
+- The crafting card
+- The AE2 link
 
 The item is always named `Portable Spatial Tool`. The tooltip line `Tool:` tells you which
 gadget is active.

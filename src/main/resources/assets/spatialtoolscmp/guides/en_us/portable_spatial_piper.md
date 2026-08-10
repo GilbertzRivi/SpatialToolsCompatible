@@ -1,7 +1,7 @@
 # Portable Spatial Piper
 
 Pick one block, draw a route in the world and let the piper place the whole run for you.
-Made for long pipe or cable runs, floors and walls.
+Made for long pipe, cable runs, floors and wall runs.
 
 > Can I place GregTech pipes and automatically set their direction?
 
@@ -23,14 +23,14 @@ Once the route has points, **shift right click** confirms the route and builds i
 ### Selection mode: default
 
 - **Right click** a block to add a route point.
-- **Repeat** untill the route is complete.
-- **confirm** and **build** the route with **shift right click**
+- **Repeat** until the route is complete.
+- **Confirm** and **build** the route with **shift right click**.
 
 ### Selection mode: block in front
 
-- **Right click** anywhere to add a route point 3 blocks ahead of you
-- **Repeat** untill the route is complete.
-- **confirm** and **build** the route with **shift right click**
+- **Right click** anywhere to add a route point 3 blocks ahead of you.
+- **Repeat** until the route is complete.
+- **Confirm** and **build** the route with **shift right click**.
 
 ### The preview
 
@@ -45,9 +45,9 @@ Once the route has points, **shift right click** confirms the route and builds i
 **Shift right click** with at least one route point set. The click works on a block or
 on air.
 
-- a position that already holds the **same block** is skipped
-- **air** and blocks that **can be replaced** are built
-- anything else is **blocked** and skipped
+- A position that already holds the **same block** is skipped.
+- **Air** and blocks that **can be replaced** are built.
+- Anything else is **blocked** and skipped.
 
 Materials are checked **before** anything is placed. If you are short on any of them the
 whole build is refused and **no energy** is spent. The same goes for energy: not enough
@@ -77,7 +77,7 @@ energy** as well.
 ## Fill mode
 
 - `Path` builds a line through every point in order, with **no limit** on how many points
-  you set
+  you set.
 - `Fill` treats the points as corners of a box: **2** points make a line, **3** make a
   flat platform, **4** make a full box. 
 
@@ -103,12 +103,12 @@ whether a link is set.
 Press `Left Alt` (rebindable) while holding the piper to open the menu.
 
 - **Selection mode** switches between picking the block you click and picking a spot
-  3 blocks ahead of you
-- **Fill mode** switches between `Path` and `Fill`
+  3 blocks ahead of you.
+- **Fill mode** switches between `Path` and `Fill`.
 - **Pipe direction** cycles off, along path and against path. Disabled unless the
-  `Build with` slot holds a GregTech item or fluid pipe
+  `Build with` slot holds a GregTech item or fluid pipe.
 - **Cancel selection** empties the `Build with` slot and drops the route. Disabled when
-  no block is picked
+  no block is picked.
 
 ---
 

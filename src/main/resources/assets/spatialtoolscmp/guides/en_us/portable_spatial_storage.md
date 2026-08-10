@@ -18,17 +18,17 @@ The block you select the second will be the `origin` point of the structure.
 
 ### Selection mode: default
 
-- **Shift right click** a block to select first corner (red)
-- Look at the second corner (up to 64 blocks away) and **right click** to select it (green)
-- **Right click** air **to perform the cut** or
-- **Shift right click** any block to **restart the selection**
+- **Shift right click** a block to select first corner (red).
+- Look at the second corner (up to 64 blocks away) and **right click** to select it (green).
+- **Right click** air **to perform the cut**.
+- **Shift right click** any block to **restart the selection**.
 
 ### Selection mode: block in front
 
-- **Right click** anywhere to select first corner (red)
-- **Repeat** to select the second corner (green)
-- **Right click** air **to perform the cut** or
-- **Shift right click** any block to **restart the selection**
+- **Right click** anywhere to select first corner (red).
+- **Repeat** to select the second corner (green).
+- **Right click** air **to perform the cut**.
+- **Shift right click** any block to **restart the selection**.
 
 ### Modifying the selection
 
@@ -80,15 +80,15 @@ after a paste also when any of the placed **blocks changed** in the meantime.
 
 Press `Left Alt` (rebindable) while holding the tool to open the menu.
 
-- **Offset** moves the stored structure with the 3D direction star
-- **Modify selection** lets you pick the red or green corner and move it
-- **Transform** has the same rotate and flip actions as the GUI, with Shift for **around origin**
+- **Offset** moves the stored structure with the 3D direction star.
+- **Modify selection** lets you pick the red or green corner and move it.
+- **Transform** has the same rotate and flip actions as the GUI, with Shift for **around origin**.
 - **Options** holds the rest:
     - **Selection mode** switches between picking the block you click and picking a
-      block 3 blocks ahead of you, which is how you select air or spots you cannot reach
+      block 3 blocks ahead of you, which is how you select air or spots you cannot reach.
     - **Anchor** freezes the paste position at the spot you are aiming at, so you can
-      walk around while lining the structure up
-    - **Cancel selection** drops the current corners
+      walk around while lining the structure .
+    - **Cancel selection** drops the current corners.
 
 ---
 
@@ -110,7 +110,7 @@ The transform row rotates and flips the stored structure:
 - `Flip North/South`
 - `Flip vertically`
 
-Press those buttons **holding shift** to get the **around origin** version.
+Press those buttons while **holding shift** to get the **around origin** version.
 The tooltips tell you which variant you are about to use.
 
 ### Upgrade slots

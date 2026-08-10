@@ -5,16 +5,16 @@ and paste it wherever you want. Don't worry, compatible block entities keep thei
 
 > Oh, no! I selected the wrong corner first! What now?
 
-- Open the **context menu** (`left alt`)
-- Press: `Flip East/West`, `Flip North/South` and `Flip vertically in place`
-- Press all those buttons again but **holding shift**
+- Open the **context menu** (`left alt`).
+- Press: `Flip East/West`, `Flip North/South` and `Flip vertically in place`.
+- Press all those buttons again but **holding shift**.
 
 > I want to connect my cloner to my storage, how do I do that?
 
 To link the cloner to a regular storage, like a chest, drawer or a storage controller,
 hold it in the **offhand** and **shift right click** on the storage.
 
-To link the cloner to AE2 storage, insert it to the `wireless access point`
+To link the cloner to AE2 storage, insert it to the `wireless access point`.
 
 > Can I link my cloner to my AE2 and to my chest at the same time? 
 
@@ -24,25 +24,25 @@ No. Linking any storage clears the previous link.
 
 ## How to copy a structure
 
-Hold the cloner. Make sure that you don't have any structure selected. 
-To **deselect a structure**, open the menu and press on the structure entry 
-below the search bar, then select `<empty>`, finally press `Select` and close the menu.
+Hold the cloner and make sure you do not have any structures selected. 
+To deselect a structure: open the menu, press on the structure entry below the search bar, 
+select <empty> and finally press Select and close the menu. 
 
-The block you select the second will be the `origin` point of the structure.
+The block you select as the second will be the `origin` point of the structure.
 
 ### Selection mode: default
 
-- **Shift right click** a block to select first corner (red)
-- Look at the second corner (up to 64 blocks away) and **Right click** to select it (green)
-- **Right click** air **to perform clone** or 
-- **Shift right click** any block to **restart the selection**
+- **Shift right click** a block to select first corner (red).
+- Look at the second corner (up to 64 blocks away) and **Right click** to select it (green).
+- **Right click** air **to perform clone**. 
+- **Shift right click** any block to **restart the selection**.
 
 ### Selection mode: block in front
 
-- **Right click** anywhere to select first corner (red)
-- **repeat** to select the second corner (green)
-- **Right click** air **to perform clone** or
-- **Shift right click** any block to **restart the selection**
+- **Right click** anywhere to select first corner (red).
+- **repeat** to select the second corner (green).
+- **Right click** air **to perform clone**.
+- **Shift right click** any block to **restart the selection**.
 
 ### Modifying the selection
 
@@ -58,10 +58,10 @@ then press on the render below to move the corner in a given direction.
 Press `Select` and close the menu. Now aim at the place where you want to paste the 
 structure, and **right click** to perform the paste.
 
-Once a structure is selected, **shift right click** on any block opens the menu as well.
+Once a structure is selected, **shift right clicking** on any block opens the menu as well.
 
 To **customize the paste** open either the **context menu** (`left alt`) or normal item menu.
-In there you can anchor the structure for easier placement, move, flip and rotate it.
+In there you can anchor the structure for easier placement, move, flip, and rotate it.
 
 ### Modifying 
 
@@ -114,16 +114,16 @@ selection that is too large costs no energy.
 
 Press `Left Alt` (rebindable) while holding the cloner to open the menu.
 
-- **Offset** moves the stored structure with the 3D direction star
-- **Modify selection** lets you pick the red or green corner and move it
+- **Offset** moves the stored structure with the 3D direction star.
+- **Modify selection** lets you pick the red or green corner and move it.
 - **Transform** has the same rotate and flip actions as the GUI, with Shift for **around origin**
 - **Options** holds the rest:
     - **Selection mode** switches between picking the block you click and picking a
-      block 3 blocks ahead of you, which is how you select air or spots you cannot reach
+      block 3 blocks ahead of you, which is how you select air or spots you cannot reach.
     - **Anchor** freezes the paste position at the spot you are aiming at, so you can
-      walk around while lining the structure up
-    - **Cancel selection** drops the current corners
-    - **Nested items** is the same cycle as the GUI button
+      walk around while lining the structure up.
+    - **Cancel selection** drops the current corners.
+    - **Nested items** is the same cycle as the GUI button.
 
 ---
 
@@ -137,32 +137,32 @@ Press `Left Alt` (rebindable) while holding the cloner to open the menu.
 The dropdown in the top left holds every structure you saved. Press the name bar below
 the search box to open it.
 
-- The **search box** filters the list as you type
-- Press a row to highlight it, then press `Select` or `Enter` to load it into the tool
-- Selecting `<empty>` clears the tool, so it holds **no structure**
-- The small red **x** on a row **deletes** that structure
-- `Rename` gives the highlighted structure the name from the text box, cut to 32 characters
-- `Escape` closes the dropdown
+- The **search box** filters the list as you type.
+- Press a row to highlight it, then press `Select` or `Enter` to load it into the tool.
+- Selecting `<empty>` clears the tool, so it holds **no structure**.
+- The small red **x** on a row **deletes** that structure.
+- `Rename` gives the highlighted structure the name from the text box, cut to 32 characters.
+- `Escape` closes the dropdown.
 
 #### Folders:
 
 - The **folder button** next to the search box creates a folder. Type a name, then press
   `Create` or `Enter`
-- Press a folder row to enter it, and the back row to leave it
+- Press a folder row to enter it, and the back row to leave it.
 - `Move` puts the highlighted structure into a folder. Press `Move`, then press the
   target folder. `Escape` cancels
 - When the structure already sits in a folder, the same button reads `Un-folder` and
-  moves it back to the root
-- A folder can only be deleted when it is **empty**
+  moves it back to the root.
+- A folder can only be deleted when it is **empty**.
 
 #### Sharing:
 
 - `Export` writes the highlighted structure to a `.stcstr` file through a normal save
-  dialog
+  dialog.
 - `Import` reads such a file back and adds it to your library. Files above **16 MB** are
-  rejected
+  rejected.
 
-The library is stored **per player on the server**, so it's safe even if you loose the item.
+The library is stored **per player on the server**, so it's safe even if you lose the item.
 
 ### Transform and offset
 
@@ -173,7 +173,7 @@ The transform row rotates and flips the stored structure:
 - `Flip North/South`
 - `Flip vertically`
 
-Press those buttons **holding shift** to get the **around origin** version.
+Press those buttons while **holding shift** to get the **around origin** version.
 The tooltips tell you which variant you are about to use.
 
 ### Material list
@@ -183,7 +183,7 @@ The list on the left shows everything a paste would cost.
 - Entries you can afford are listed last, **missing** ones first
 - A **craft button** shows up on a row when the item is missing, AE2 can craft it,
   and the item has the **crafting card** upgrade installed. Press it to open the
-  AE2 crafting window with the missing amount filled in
+  AE2 crafting window with the missing amount filled in.
 
 ### Nested inventory button
 
