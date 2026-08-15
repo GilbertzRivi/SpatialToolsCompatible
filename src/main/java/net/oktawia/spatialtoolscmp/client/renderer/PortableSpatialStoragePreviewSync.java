@@ -1,6 +1,6 @@
 package net.oktawia.spatialtoolscmp.client.renderer;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import net.minecraft.client.Minecraft;
@@ -27,8 +27,21 @@ import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
 public final class PortableSpatialStoragePreviewSync {
 
+    private static final int MAX_CACHED_STRUCTURES = 4;
+
     private static final StringBuilder BUFFER = new StringBuilder();
-    private static final Map<String, PreviewStructure> STRUCTURE_CACHE = new HashMap<>();
+    private static final Map<String, PreviewStructure> STRUCTURE_CACHE = new LinkedHashMap<>(8, 0.75f, true) {
+
+        @Override
+        protected boolean removeEldestEntry(Map.Entry<String, PreviewStructure> eldest) {
+            if (size() <= MAX_CACHED_STRUCTURES) {
+                return false;
+            }
+
+            eldest.getValue().release();
+            return true;
+        }
+    };
 
     private static boolean receiving = false;
     private static String receivingStructureId = "";
@@ -43,10 +56,10 @@ public final class PortableSpatialStoragePreviewSync {
             return;
         }
 
-        PreviewStructure old = STRUCTURE_CACHE.put(structureId, structure);
+        PreviewStructure old = STRUCTURE_CACHE.put(structureId, structure.acquire());
 
         if (old != null && old != structure) {
-            old.close();
+            old.release();
         }
     }
 
@@ -66,12 +79,12 @@ public final class PortableSpatialStoragePreviewSync {
         PreviewStructure old = STRUCTURE_CACHE.remove(structureId);
 
         if (old != null) {
-            old.close();
+            old.release();
         }
     }
 
     static void cacheClearAll() {
-        STRUCTURE_CACHE.values().forEach(PreviewStructure::close);
+        STRUCTURE_CACHE.values().forEach(PreviewStructure::release);
         STRUCTURE_CACHE.clear();
     }
 

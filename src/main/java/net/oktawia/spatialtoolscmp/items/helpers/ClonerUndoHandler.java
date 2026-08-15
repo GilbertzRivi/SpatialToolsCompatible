@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -50,6 +51,7 @@ public final class ClonerUndoHandler {
     private static final String STATE_KEY = "state";
     private static final String REFUNDS_KEY = "refunds";
     private static final String UNDO_REFUNDS_KEY = "undoRefunds";
+    private static final String SUPPORT_DEPENDENT_KEY = "supportDependent";
     private static final String REFUND_STACK_KEY = "stack";
     private static final String REFUND_COUNT_KEY = "count";
 
@@ -63,13 +65,22 @@ public final class ClonerUndoHandler {
             BlockPos pos,
             String stateSignature,
             List<ItemStack> refundStacks,
-            List<ItemStack> undoRefundStacks) {
+            List<ItemStack> undoRefundStacks,
+            boolean supportDependent) {
+
+        public ClonerUndoPlacedBlock(
+                BlockPos pos,
+                String stateSignature,
+                List<ItemStack> refundStacks,
+                List<ItemStack> undoRefundStacks) {
+            this(pos, stateSignature, refundStacks, undoRefundStacks, false);
+        }
 
         public ClonerUndoPlacedBlock(
                 BlockPos pos,
                 String stateSignature,
                 List<ItemStack> refundStacks) {
-            this(pos, stateSignature, refundStacks, List.of());
+            this(pos, stateSignature, refundStacks, List.of(), false);
         }
     }
 
@@ -112,6 +123,11 @@ public final class ClonerUndoHandler {
             }
 
             blockTag.put(REFUNDS_KEY, refundList);
+
+            if (placedBlock.supportDependent()) {
+                blockTag.putBoolean(SUPPORT_DEPENDENT_KEY, true);
+            }
+
             blocksTag.add(blockTag);
         }
 
@@ -516,7 +532,8 @@ public final class ClonerUndoHandler {
                     pos,
                     blockTag.getString(STATE_KEY),
                     readRefundList(blockTag, REFUNDS_KEY),
-                    readRefundList(blockTag, UNDO_REFUNDS_KEY)));
+                    readRefundList(blockTag, UNDO_REFUNDS_KEY),
+                    blockTag.getBoolean(SUPPORT_DEPENDENT_KEY)));
         }
 
         return out;
@@ -525,15 +542,58 @@ public final class ClonerUndoHandler {
     public static boolean areBlocksUnchanged(
             ServerLevel level,
             List<ClonerUndoPlacedBlock> undoBlocks) {
-        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
-            BlockState currentState = level.getBlockState(undoBlock.pos());
+        return filterUndoableBlocks(level, undoBlocks) != null;
+    }
 
-            if (!matchesStoredBlock(currentState, undoBlock.stateSignature())) {
-                return false;
+    @Nullable
+    public static List<ClonerUndoPlacedBlock> filterUndoableBlocks(
+            ServerLevel level,
+            List<ClonerUndoPlacedBlock> undoBlocks) {
+        return filterUndoable(
+                undoBlocks,
+                undoBlock -> matchesStoredBlock(level.getBlockState(undoBlock.pos()), undoBlock.stateSignature()),
+                ClonerUndoPlacedBlock::supportDependent);
+    }
+
+    @Nullable
+    public static <T> List<T> filterUndoable(
+            List<T> undoBlocks,
+            Predicate<T> stillPlaced,
+            Predicate<T> supportDependent) {
+        List<T> undoable = new ArrayList<>();
+
+        for (T undoBlock : undoBlocks) {
+            if (stillPlaced.test(undoBlock)) {
+                undoable.add(undoBlock);
+                continue;
+            }
+
+            if (!supportDependent.test(undoBlock)) {
+                return null;
             }
         }
 
-        return true;
+        return undoable;
+    }
+
+    public static <T> List<T> supportDependentFirst(
+            List<T> undoBlocks,
+            Predicate<T> supportDependent) {
+        List<T> ordered = new ArrayList<>(undoBlocks.size());
+
+        for (T undoBlock : undoBlocks) {
+            if (supportDependent.test(undoBlock)) {
+                ordered.add(undoBlock);
+            }
+        }
+
+        for (T undoBlock : undoBlocks) {
+            if (!supportDependent.test(undoBlock)) {
+                ordered.add(undoBlock);
+            }
+        }
+
+        return ordered;
     }
 
     private static boolean matchesStoredBlock(
@@ -634,12 +694,15 @@ public final class ClonerUndoHandler {
             ServerLevel level,
             List<ClonerUndoPlacedBlock> undoBlocks) {
         BlockState air = Blocks.AIR.defaultBlockState();
+        List<ClonerUndoPlacedBlock> ordered = supportDependentFirst(
+                undoBlocks,
+                ClonerUndoPlacedBlock::supportDependent);
 
-        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+        for (ClonerUndoPlacedBlock undoBlock : ordered) {
             level.removeBlockEntity(undoBlock.pos());
         }
 
-        for (ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+        for (ClonerUndoPlacedBlock undoBlock : ordered) {
             if (level.getBlockState(undoBlock.pos()).isAir()) {
                 continue;
             }

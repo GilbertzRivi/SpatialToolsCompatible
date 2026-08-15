@@ -1,7 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.scene;
 
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -30,8 +32,11 @@ import net.minecraft.world.level.block.RenderShape;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.client.model.data.ModelData;
 import net.minecraftforge.client.model.data.ModelDataManager;
+
+import net.oktawia.spatialtoolscmp.client.renderer.PreviewChunkGeometry;
 
 public class SpatialSceneRenderer {
 
@@ -40,9 +45,25 @@ public class SpatialSceneRenderer {
         void render(MultiBufferSource bufferSource, float partialTicks);
     }
 
+    public interface GeometryFiller {
+
+        void fill(PreviewChunkGeometry.LayerSink sink, PoseStack poseStack);
+    }
+
     private static final int FULL_BRIGHT = 0xF000F0;
+    private static final float RESORT_DISTANCE = 2.0F;
 
     private final Level level;
+
+    private final Map<BlockPos, ModelData> modelDataCache = new HashMap<>();
+
+    private @Nullable GeometryFiller geometryFiller;
+    private @Nullable PreviewChunkGeometry geometry;
+    private Vector3f geometrySortOrigin = new Vector3f();
+
+    private int invalidationCounter;
+    private int cachedInvalidationCounter = -1;
+    private int cachedLevelVersion = -1;
 
     private Collection<BlockPos> renderedBlocks = List.of();
     private Vector3f eyePos = new Vector3f(0, 0, 10);
@@ -68,6 +89,20 @@ public class SpatialSceneRenderer {
 
     public void setBeforeBatchEnd(@Nullable BatchHook beforeBatchEnd) {
         this.beforeBatchEnd = beforeBatchEnd;
+    }
+
+    public void setGeometryFiller(@Nullable GeometryFiller geometryFiller) {
+        this.geometryFiller = geometryFiller;
+        invalidate();
+    }
+
+    public void invalidate() {
+        this.invalidationCounter++;
+    }
+
+    public void close() {
+        closeGeometry();
+        this.modelDataCache.clear();
     }
 
     public void useOrtho(boolean ortho) {
@@ -206,26 +241,35 @@ public class SpatialSceneRenderer {
         Minecraft minecraft = Minecraft.getInstance();
         float partialTicks = minecraft.getFrameTime();
 
+        refreshCaches();
+
         MultiBufferSource.BufferSource bufferSource = minecraft.renderBuffers().bufferSource();
-        BlockRenderDispatcher dispatcher = minecraft.getBlockRenderer();
-        RandomSource random = RandomSource.createNewThreadLocalInstance();
+
+        if (PreviewChunkGeometry.exceedsCacheLimit(this.renderedBlocks.size())) {
+            drawWorldImmediate(bufferSource, partialTicks);
+            return;
+        }
+
+        PreviewChunkGeometry sceneGeometry = geometryForCamera();
+
+        Matrix4f modelViewMatrix = new Matrix4f(RenderSystem.getModelViewMatrix());
+        Matrix4f projectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
 
         for (RenderType layer : RenderType.chunkBufferLayers()) {
-            layer.setupRenderState();
-
-            PoseStack poseStack = new PoseStack();
-
             if (layer == RenderType.translucent()) {
-                setLayerState(null);
-                renderBlockEntities(poseStack, bufferSource, partialTicks);
+                layer.setupRenderState();
+
+                RenderSystem.setShaderColor(1, 1, 1, 1);
+                RenderSystem.enableDepthTest();
+                RenderSystem.disableBlend();
+                RenderSystem.depthMask(true);
+
+                renderBlockEntities(new PoseStack(), bufferSource, partialTicks);
                 bufferSource.endBatch();
+                layer.clearRenderState();
             }
 
-            setLayerState(layer);
-            renderBlocks(poseStack, dispatcher, layer, bufferSource.getBuffer(layer), random);
-            bufferSource.endBatch();
-
-            layer.clearRenderState();
+            sceneGeometry.draw(layer, modelViewMatrix, projectionMatrix, Vec3.ZERO, BlockPos.ZERO);
         }
 
         if (this.beforeBatchEnd != null) {
@@ -235,18 +279,88 @@ public class SpatialSceneRenderer {
         bufferSource.endBatch();
     }
 
-    private static void setLayerState(@Nullable RenderType layer) {
-        RenderSystem.setShaderColor(1, 1, 1, 1);
+    private void drawWorldImmediate(MultiBufferSource.BufferSource bufferSource, float partialTicks) {
+        closeGeometry();
 
-        if (layer == RenderType.translucent()) {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            RenderSystem.depthMask(false);
-        } else {
-            RenderSystem.enableDepthTest();
-            RenderSystem.disableBlend();
-            RenderSystem.depthMask(true);
+        BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
+        RandomSource random = RandomSource.createNewThreadLocalInstance();
+        PoseStack poseStack = new PoseStack();
+
+        RenderSystem.setShaderColor(1, 1, 1, 1);
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
+        RenderSystem.depthMask(true);
+
+        renderBlockEntities(poseStack, bufferSource, partialTicks);
+
+        for (RenderType layer : RenderType.chunkBufferLayers()) {
+            renderBlocks(poseStack, dispatcher, layer, bufferSource.getBuffer(layer), random);
         }
+
+        if (this.geometryFiller != null) {
+            this.geometryFiller.fill(bufferSource::getBuffer, poseStack);
+        }
+
+        if (this.beforeBatchEnd != null) {
+            this.beforeBatchEnd.render(bufferSource, partialTicks);
+        }
+
+        bufferSource.endBatch();
+    }
+
+    private void refreshCaches() {
+        int levelVersion = this.level instanceof PreviewLevel preview ? preview.contentVersion() : 0;
+
+        if (levelVersion == this.cachedLevelVersion
+                && this.invalidationCounter == this.cachedInvalidationCounter) {
+            return;
+        }
+
+        this.cachedLevelVersion = levelVersion;
+        this.cachedInvalidationCounter = this.invalidationCounter;
+        this.modelDataCache.clear();
+        closeGeometry();
+    }
+
+    private PreviewChunkGeometry geometryForCamera() {
+        if (this.geometry != null) {
+            float threshold = Math.max(RESORT_DISTANCE, this.eyePos.distance(this.lookAt) * 0.15F);
+
+            if (this.geometry.isEmpty(RenderType.translucent())
+                    || this.geometrySortOrigin.distance(this.eyePos) < threshold) {
+                return this.geometry;
+            }
+
+            closeGeometry();
+        }
+
+        BlockRenderDispatcher dispatcher = Minecraft.getInstance().getBlockRenderer();
+        RandomSource random = RandomSource.createNewThreadLocalInstance();
+        Vec3 sortOrigin = new Vec3(this.eyePos.x(), this.eyePos.y(), this.eyePos.z());
+
+        this.geometry = PreviewChunkGeometry.compile(sink -> {
+            PoseStack poseStack = new PoseStack();
+
+            for (RenderType layer : RenderType.chunkBufferLayers()) {
+                renderBlocks(poseStack, dispatcher, layer, sink.get(layer), random);
+            }
+
+            if (this.geometryFiller != null) {
+                this.geometryFiller.fill(sink, poseStack);
+            }
+        }, sortOrigin);
+
+        this.geometrySortOrigin = new Vector3f(this.eyePos);
+        return this.geometry;
+    }
+
+    private void closeGeometry() {
+        if (this.geometry == null) {
+            return;
+        }
+
+        this.geometry.close();
+        this.geometry = null;
     }
 
     private void renderBlocks(
@@ -343,6 +457,18 @@ public class SpatialSceneRenderer {
     }
 
     private ModelData getModelData(BakedModel model, BlockState state, BlockPos pos) {
+        ModelData cached = this.modelDataCache.get(pos);
+
+        if (cached != null) {
+            return cached;
+        }
+
+        ModelData computed = computeModelData(model, state, pos);
+        this.modelDataCache.put(pos.immutable(), computed);
+        return computed;
+    }
+
+    private ModelData computeModelData(BakedModel model, BlockState state, BlockPos pos) {
         ModelData modelData = null;
         ModelDataManager manager = this.level.getModelDataManager();
 

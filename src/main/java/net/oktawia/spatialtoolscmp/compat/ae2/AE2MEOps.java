@@ -131,6 +131,14 @@ public final class AE2MEOps {
             return;
         }
 
+        openCraftingMenuForKey(AEItemKey.of(filter), amount, player);
+    }
+
+    public static void openCraftingMenuForKey(AEItemKey key, long amount, ServerPlayer player) {
+        if (key == null || amount <= 0) {
+            return;
+        }
+
         int slot = findInventorySlot(player, findActiveClonerStack(player));
 
         if (slot < 0) {
@@ -140,7 +148,7 @@ public final class AE2MEOps {
         AE2CL.open(
                 player,
                 new AE2ClonerCraftingLocator(slot),
-                AEItemKey.of(filter),
+                key,
                 amount);
     }
 

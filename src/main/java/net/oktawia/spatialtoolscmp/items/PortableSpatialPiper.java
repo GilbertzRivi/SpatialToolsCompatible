@@ -679,7 +679,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
         }
 
         for (ReplacerExtension ext : ReplacerExtensions.get()) {
-            ext.onBeforeReplacement(level, plannedPositions);
+            ext.onBeforeReplacement(level, plannedPositions, player);
         }
 
         BlockState newState = resolution.block().defaultBlockState();
@@ -751,7 +751,7 @@ public class PortableSpatialPiper extends AbstractStructureCaptureToolItem {
         }
 
         for (ReplacerExtension ext : ReplacerExtensions.get()) {
-            ext.onReplacementDone(level, placedPositions);
+            ext.onReplacementDone(level, placedPositions, player);
         }
 
         for (PiperExtension ext : PiperExtensions.get()) {

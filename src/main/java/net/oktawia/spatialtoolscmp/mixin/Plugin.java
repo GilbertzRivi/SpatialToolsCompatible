@@ -19,6 +19,7 @@ public class Plugin implements IMixinConfigPlugin {
     public static final Logger LOGGER = LogUtils.getLogger();
 
     private boolean ae2Loaded;
+    private boolean ae2Cosmolite;
     private boolean cbMultipartLoaded;
 
     private static boolean isModLoaded(String modId) {
@@ -36,10 +37,26 @@ public class Plugin implements IMixinConfigPlugin {
         }
     }
 
+    private static boolean isCosmoliteAe2() {
+        try {
+            return LoadingModList.get().getMods().stream()
+                    .filter(info -> info.getModId().equals("ae2"))
+                    .anyMatch(info -> {
+                        String qualifier = info.getVersion().getQualifier();
+                        return qualifier != null && qualifier.contains("cosmolite");
+                    });
+        } catch (Throwable ignored) {
+            return false;
+        }
+    }
+
     @Override
     public void onLoad(String mixinPackage) {
         this.ae2Loaded = isModLoaded("ae2");
+        this.ae2Cosmolite = this.ae2Loaded && isCosmoliteAe2();
         this.cbMultipartLoaded = isModLoaded("cb_multipart");
+
+        LOGGER.debug("ae2 loaded: {}, cosmolite fork: {}", this.ae2Loaded, this.ae2Cosmolite);
     }
 
     @Override
@@ -53,6 +70,14 @@ public class Plugin implements IMixinConfigPlugin {
 
         if (mixinClassName.startsWith("net.oktawia.spatialtoolscmp.mixin.ae2.")) {
             doload = ae2Loaded;
+        }
+
+        if (mixinClassName.equals("net.oktawia.spatialtoolscmp.mixin.ae2.CraftingServiceMixin")) {
+            doload = ae2Loaded && !ae2Cosmolite;
+        }
+
+        if (mixinClassName.equals("net.oktawia.spatialtoolscmp.mixin.ae2.CraftingServiceCLMixin")) {
+            doload = ae2Loaded && ae2Cosmolite;
         }
 
         if (mixinClassName.startsWith("net.oktawia.spatialtoolscmp.mixin.cbmultipart.")) {

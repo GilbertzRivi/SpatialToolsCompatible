@@ -157,6 +157,7 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

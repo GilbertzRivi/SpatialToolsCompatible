@@ -1,23 +1,87 @@
 package net.oktawia.spatialtoolscmp.items.helpers;
 
+import java.util.Map;
+
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
+import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public final class ClonerBlockPlacer {
 
+    private static final int PLACE_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
+
     private ClonerBlockPlacer() {
+    }
+
+    public static boolean shouldDeferPlacement(
+            ServerLevel level,
+            BlockPos worldPos,
+            BlockState state,
+            @Nullable CompoundTag rawBeTag,
+            boolean structureNeighbourHasBlockEntity) {
+        if (rawBeTag != null || state.isAir()) {
+            return false;
+        }
+
+        if (state.isCollisionShapeFullBlock(level, worldPos)) {
+            return false;
+        }
+
+        if (structureNeighbourHasBlockEntity) {
+            return true;
+        }
+
+        for (Direction direction : Direction.values()) {
+            if (level.getBlockEntity(worldPos.relative(direction)) != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static boolean hasStructureNeighbourWithBlockEntity(
+            Map<BlockPos, TemplateUtil.BlockInfo> blocksByLocalPos,
+            BlockPos localPos) {
+        for (Direction direction : Direction.values()) {
+            TemplateUtil.BlockInfo neighbour = blocksByLocalPos.get(localPos.relative(direction));
+
+            if (neighbour != null && neighbour.blockEntityTag() != null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static void finishPlacement(ServerLevel level, Iterable<BlockPos> placedPositions) {
+        for (BlockPos pos : placedPositions) {
+            BlockState placed = level.getBlockState(pos);
+
+            if (placed.isAir()) {
+                continue;
+            }
+
+            try {
+                placed.updateNeighbourShapes(level, pos, Block.UPDATE_CLIENTS);
+                level.blockUpdated(pos, placed.getBlock());
+            } catch (Throwable ignored) {
+            }
+        }
     }
 
     public static boolean placeRegularBlockBestEffort(
@@ -117,10 +181,10 @@ public final class ClonerBlockPlacer {
         }
 
         if (!oldState.isAir()) {
-            level.setBlock(worldPos, Blocks.AIR.defaultBlockState(), 3);
+            level.setBlock(worldPos, Blocks.AIR.defaultBlockState(), PLACE_FLAGS);
         }
 
-        if (!level.setBlock(worldPos, stateToPlace, 3)) {
+        if (!level.setBlock(worldPos, stateToPlace, PLACE_FLAGS)) {
             return false;
         }
 

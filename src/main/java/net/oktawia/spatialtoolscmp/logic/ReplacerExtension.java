@@ -88,9 +88,15 @@ public interface ReplacerExtension {
     default void onNewBlocksPlaced(ServerLevel level, Set<BlockPos> positions) {
     }
 
-    default void onBeforeReplacement(ServerLevel level, Set<BlockPos> positions) {
+    default void onBeforeReplacement(
+            ServerLevel level,
+            Set<BlockPos> positions,
+            @Nullable ServerPlayer player) {
     }
 
-    default void onReplacementDone(ServerLevel level, Set<BlockPos> positions) {
+    default void onReplacementDone(
+            ServerLevel level,
+            Set<BlockPos> positions,
+            @Nullable ServerPlayer player) {
     }
 }

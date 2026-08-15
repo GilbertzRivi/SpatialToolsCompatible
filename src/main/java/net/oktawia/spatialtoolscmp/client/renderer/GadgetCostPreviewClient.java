@@ -21,6 +21,7 @@ import net.minecraftforge.fml.common.Mod;
 
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.client.misc.ClonerMissingBlocksClientCache;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
@@ -30,6 +31,8 @@ import net.oktawia.spatialtoolscmp.items.PortableSpatialStorage;
 import net.oktawia.spatialtoolscmp.logic.SpatialPowerCost;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.network.NetworkHandler;
+import net.oktawia.spatialtoolscmp.network.packets.RequestClonerMissingBlocksPacket;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 @Mod.EventBusSubscriber(modid = SpatialToolsCMP.MODID, value = Dist.CLIENT, bus = Mod.EventBusSubscriber.Bus.FORGE)
@@ -49,7 +52,12 @@ public class GadgetCostPreviewClient {
     private static long pasteCostValue = 0L;
 
     private static Component currentText = null;
+    private static Component currentWarning = null;
     private static int currentColor = COLOR_OK;
+
+    private static final int MISSING_BLOCKS_POLL_TICKS = 20;
+
+    private static int missingBlocksPollTick = MISSING_BLOCKS_POLL_TICKS;
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
@@ -58,6 +66,7 @@ public class GadgetCostPreviewClient {
         }
 
         currentText = null;
+        currentWarning = null;
         currentColor = COLOR_CYAN;
 
         Minecraft mc = Minecraft.getInstance();
@@ -151,10 +160,22 @@ public class GadgetCostPreviewClient {
                     String.format("%,d", cost));
 
             currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
+
+            if (held.getItem() instanceof PortableSpatialCloner) {
+                pollMissingBlocks();
+
+                if (ClonerMissingBlocksClientCache.isMissing()) {
+                    currentWarning = Component.translatable(LangDefs.MISSING_BLOCKS.getTranslationKey());
+                }
+            } else {
+                resetMissingBlocks();
+            }
+
             return;
         }
 
         invalidatePasteCache();
+        resetMissingBlocks();
 
         BlockPos selectionA = StructureToolStackState.getSelectionA(held);
 
@@ -303,6 +324,23 @@ public class GadgetCostPreviewClient {
     private static void resetCaches() {
         CAPTURE_COST_CACHE.invalidate();
         invalidatePasteCache();
+        resetMissingBlocks();
+    }
+
+    private static void pollMissingBlocks() {
+        missingBlocksPollTick++;
+
+        if (missingBlocksPollTick < MISSING_BLOCKS_POLL_TICKS) {
+            return;
+        }
+
+        missingBlocksPollTick = 0;
+        NetworkHandler.sendToServer(new RequestClonerMissingBlocksPacket());
+    }
+
+    private static void resetMissingBlocks() {
+        missingBlocksPollTick = MISSING_BLOCKS_POLL_TICKS;
+        ClonerMissingBlocksClientCache.set(false);
     }
 
     private static void invalidatePasteCache() {
@@ -334,6 +372,10 @@ public class GadgetCostPreviewClient {
         int y = screenHeight / 2 - 4;
 
         gui.drawString(mc.font, currentText, x, y, currentColor, true);
+
+        if (currentWarning != null) {
+            gui.drawString(mc.font, currentWarning, x, y + mc.font.lineHeight + 1, COLOR_RED, true);
+        }
     }
 
     private static long blockCaptureCostContribution(

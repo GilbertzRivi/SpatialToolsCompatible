@@ -47,8 +47,21 @@ public interface StructureCloneExtension {
             @Nullable CompoundTag blockMetadata,
             ClonerPasteContext ctx);
 
+    default boolean applyToExistingBlock(
+            ServerLevel level,
+            Player player,
+            BlockPos pos,
+            BlockState stateToPlace,
+            @Nullable CompoundTag rawBeTag,
+            @Nullable CompoundTag blockMetadata,
+            ClonerPasteContext ctx,
+            List<ItemStack> consumedStacks) {
+        return false;
+    }
+
     void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata);

@@ -52,6 +52,25 @@ public final class AE2BlockRenderExtension implements BlockRenderExtension {
     }
 
     @Override
+    public void onPreviewBlockEntityCreated(PreviewBlock previewBlock, BlockEntity blockEntity) {
+        CompoundTag metadata = previewBlock.cloneMetadata();
+
+        if (metadata == null
+                || !metadata.contains(StructureToolKeys.CLONE_KEY_AE2_CABLE_VISUAL, Tag.TAG_COMPOUND)
+                || !(blockEntity instanceof CableBusBlockEntity cableBus)) {
+            return;
+        }
+
+        var centerPart = cableBus.getPart((Direction) null);
+
+        if (centerPart == null) {
+            return;
+        }
+
+        centerPart.readVisualStateFromNBT(metadata.getCompound(StructureToolKeys.CLONE_KEY_AE2_CABLE_VISUAL));
+    }
+
+    @Override
     public boolean renderForPreview(
             PreviewBlock previewBlock,
             int[] sideMap,

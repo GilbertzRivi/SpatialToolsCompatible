@@ -4,12 +4,16 @@ import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import org.joml.Vector3f;
 
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+
+import net.oktawia.spatialtoolscmp.client.renderer.PreviewChunkGeometry;
 
 public class SpatialSceneWidget {
 
@@ -37,6 +41,11 @@ public class SpatialSceneWidget {
         this.renderer = new SpatialSceneRenderer(level);
         this.renderer.setRenderedBlocks(this.core);
         this.renderer.setBeforeBatchEnd(this::renderBeforeBatchEnd);
+        this.renderer.setGeometryFiller(this::fillStaticGeometry);
+    }
+
+    public void close() {
+        this.renderer.close();
     }
 
     public int getPositionX() {
@@ -84,6 +93,7 @@ public class SpatialSceneWidget {
     public SpatialSceneWidget setRenderedCore(Collection<BlockPos> blocks) {
         this.core.clear();
         this.core.addAll(blocks);
+        this.renderer.invalidate();
         return this;
     }
 
@@ -123,5 +133,8 @@ public class SpatialSceneWidget {
     }
 
     protected void renderBeforeBatchEnd(MultiBufferSource bufferSource, float partialTicks) {
+    }
+
+    protected void fillStaticGeometry(PreviewChunkGeometry.LayerSink sink, PoseStack poseStack) {
     }
 }

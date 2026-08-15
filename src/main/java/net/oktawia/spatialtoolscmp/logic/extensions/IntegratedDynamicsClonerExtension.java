@@ -164,6 +164,7 @@ public final class IntegratedDynamicsClonerExtension implements StructureCloneEx
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

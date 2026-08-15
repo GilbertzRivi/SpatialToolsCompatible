@@ -21,8 +21,21 @@ public final class StructureToolKeys {
     public static final String CLONE_KEY_SETTINGS = "settings";
     public static final String CLONE_KEY_UPGRADES = "upgrades";
     public static final String CLONE_KEY_PARTS = "parts";
+    public static final String CLONE_KEY_AE2_CABLE_VISUAL = "ae2CableVisual";
+    public static final String AE2_CABLE_VISUAL_CONNECTIONS = "connections";
+    public static final String AE2_CABLE_VISUAL_CHANNELS_PREFIX = "channels";
     public static final String CLONE_KEY_STACK = "stack";
     public static final String CLONE_KEY_COUNT = "count";
+
+    public static final String CRAZYAE2_MOD_ID = "crazyae2addons";
+    public static final String CRAZYAE2_PROVIDER_BE_ID = "crazyae2addons:crazy_pattern_provider_be";
+    public static final String CRAZYAE2_PROVIDER_PART_ID = "crazyae2addons:crazy_pattern_provider_part";
+    public static final String CRAZYAE2_UPGRADE_ITEM_ID = "crazy_upgrade";
+    public static final String CRAZYAE2_NBT_PROVIDER = "crazy_provider";
+    public static final String CRAZYAE2_NBT_STATE = "state";
+    public static final String CRAZYAE2_NBT_LEGACY_STATE = "crazy_state";
+    public static final String CRAZYAE2_NBT_ADDED = "added";
+    public static final String CLONE_KEY_CRAZY_UPGRADES = "crazyUpgrades";
 
     public static final String GTCEU_ID_PREFIX = "gtceu:";
     public static final String GT_CABLE_ID = "gtceu:cable";

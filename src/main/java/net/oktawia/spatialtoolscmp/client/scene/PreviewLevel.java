@@ -83,6 +83,8 @@ public class PreviewLevel extends Level {
     private final Map<BlockPos, BlockState> blocks = new HashMap<>();
     private final Map<BlockPos, BlockEntity> blockEntities = new HashMap<>();
 
+    private int contentVersion;
+
     public PreviewLevel(Level parent) {
         this(parent, true);
     }
@@ -102,9 +104,14 @@ public class PreviewLevel extends Level {
         this.parent = parent;
     }
 
+    public int contentVersion() {
+        return this.contentVersion;
+    }
+
     public void clear() {
         this.blocks.clear();
         this.blockEntities.clear();
+        this.contentVersion++;
     }
 
     @Override
@@ -113,12 +120,14 @@ public class PreviewLevel extends Level {
 
         this.blocks.put(immutable, state);
         this.blockEntities.remove(immutable);
+        this.contentVersion++;
         return true;
     }
 
     @Override
     public void setBlockEntity(BlockEntity blockEntity) {
         this.blockEntities.put(blockEntity.getBlockPos().immutable(), blockEntity);
+        this.contentVersion++;
     }
 
     @Override

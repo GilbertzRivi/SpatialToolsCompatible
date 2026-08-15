@@ -20,6 +20,9 @@ public interface BlockRenderExtension {
 
     boolean canRender(BlockState state, @Nullable CompoundTag rawBeTag);
 
+    default void onPreviewBlockEntityCreated(PreviewBlock previewBlock, BlockEntity blockEntity) {
+    }
+
     default boolean renderForPreview(
             PreviewBlock previewBlock,
             int[] sideMap,

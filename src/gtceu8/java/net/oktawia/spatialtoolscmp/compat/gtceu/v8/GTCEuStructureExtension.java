@@ -174,8 +174,110 @@ public final class GTCEuStructureExtension
     }
 
     @Override
+    public boolean applyToExistingBlock(
+            ServerLevel level,
+            Player player,
+            BlockPos pos,
+            BlockState stateToPlace,
+            @Nullable CompoundTag rawBeTag,
+            @Nullable CompoundTag blockMetadata,
+            ClonerPasteContext ctx,
+            List<ItemStack> consumedStacks) {
+        CompoundTag gregMeta = getGregMetadata(blockMetadata);
+
+        if (gregMeta.isEmpty()) {
+            return false;
+        }
+
+        CompoundTag wantedCover = gregMeta.getCompound(StructureToolKeys.CLONE_KEY_GREG_COVER);
+
+        if (!hasAnyCover(wantedCover)) {
+            return false;
+        }
+
+        BlockEntity be = level.getBlockEntity(pos);
+        CompoundTag currentTag = saveCurrentTag(be);
+
+        if (be == null || currentTag == null) {
+            return false;
+        }
+
+        CompoundTag currentCover = currentTag.getCompound(NBT_COVER);
+        CompoundTag missingCover = new CompoundTag();
+
+        for (String sideKey : wantedCover.getAllKeys()) {
+            if (currentCover.contains(sideKey)) {
+                continue;
+            }
+
+            Tag sideTag = wantedCover.get(sideKey);
+
+            if (sideTag != null) {
+                missingCover.put(sideKey, sideTag.copy());
+            }
+        }
+
+        if (missingCover.isEmpty()) {
+            return false;
+        }
+
+        boolean creative = player.isCreative();
+        List<ItemStack> costs = new ArrayList<>();
+
+        CompoundTag affordableCover = filterGregCoverForPlacement(
+                missingCover,
+                creative ? null : new LinkedHashMap<>(),
+                creative,
+                costs,
+                creative ? null : ctx);
+
+        if (affordableCover.isEmpty()) {
+            return false;
+        }
+
+        CompoundTag mergedCover = currentCover.copy();
+
+        for (String sideKey : affordableCover.getAllKeys()) {
+            Tag sideTag = affordableCover.get(sideKey);
+
+            if (sideTag != null) {
+                mergedCover.put(sideKey, sideTag.copy());
+            }
+        }
+
+        CompoundTag newTag = currentTag.copy();
+        newTag.put(NBT_COVER, mergedCover);
+        newTag.putInt("x", pos.getX());
+        newTag.putInt("y", pos.getY());
+        newTag.putInt("z", pos.getZ());
+
+        if (be instanceof PipeBlockEntity<?, ?> pipe) {
+            try {
+                initSinglePipe(level, pos, pipe, newTag);
+            } catch (Throwable ignored) {
+                return false;
+            }
+        } else {
+            try {
+                be.load(newTag);
+                be.setChanged();
+            } catch (Throwable ignored) {
+                return false;
+            }
+
+            BlockState current = level.getBlockState(pos);
+            level.sendBlockUpdated(pos, current, current, 3);
+            scheduleSingleMachineCoverReinit(level, pos);
+        }
+
+        consumedStacks.addAll(costs);
+        return true;
+    }
+
+    @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {
@@ -2449,8 +2551,6 @@ public final class GTCEuStructureExtension
         return false;
     }
 
-    // getUpdatePacket only serializes fields the holder considers dirty, and load() marks nothing,
-    // so resyncAllFields has to run before the block update or clients keep the pre-paste state.
     static void syncGregBlockEntity(ServerLevel level, BlockPos pos, @Nullable BlockEntity blockEntity) {
         if (blockEntity == null) {
             return;
@@ -2870,6 +2970,14 @@ public final class GTCEuStructureExtension
 
         if (!(be instanceof MetaMachine mmbe)) {
             return;
+        }
+
+        if (mmbe instanceof MultiblockControllerMachine controller) {
+            try {
+                resetPatternStates(MultiblockWorldSavedData.getOrCreate(level), controller);
+            } catch (Throwable throwable) {
+                SpatialToolsCMP.getLOGGER().warn("[gt] multiblock invalidate on removal failed at {}", pos, throwable);
+            }
         }
 
         if (!(mmbe instanceof MultiblockPartMachine part)) {

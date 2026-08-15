@@ -6,6 +6,8 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "spatialtoolscmp.refmap.json",
   "mixins": [
+    "ae2.CraftingServiceMixin",
+    "ae2.CraftingServiceCLMixin",
     "cbmultipart.MultiPartSPHMixin"
   ],
   "client": [

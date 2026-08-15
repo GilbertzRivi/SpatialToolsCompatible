@@ -30,7 +30,11 @@ public final class PreviewStructure {
     private @Nullable Map<BlockPos, BlockEntity> cachedBlockEntities;
 
     private final Map<String, Map<BlockPos, ModelData>> modelDataCache = new HashMap<>();
-    private final Map<String, PreviewChunkGeometry> previewGeometryCache = new HashMap<>();
+
+    private @Nullable String previewGeometryKey;
+    private @Nullable PreviewChunkGeometry previewGeometry;
+
+    private int refCount;
 
     private PreviewStructure(
             BlockPos size,
@@ -71,24 +75,63 @@ public final class PreviewStructure {
     }
 
     public @Nullable PreviewChunkGeometry getPreviewGeometry(String sideMapKey) {
-        return previewGeometryCache.get(sideMapKey);
+        return sideMapKey.equals(previewGeometryKey) ? previewGeometry : null;
     }
 
     public void storePreviewGeometry(String sideMapKey, PreviewChunkGeometry geometry) {
-        PreviewChunkGeometry old = previewGeometryCache.put(sideMapKey, geometry);
+        if (refCount == 0) {
+            geometry.close();
+            return;
+        }
 
-        if (old != null) {
-            old.close();
+        if (previewGeometry != null && previewGeometry != geometry) {
+            previewGeometry.close();
+        }
+
+        previewGeometryKey = sideMapKey;
+        previewGeometry = geometry;
+    }
+
+    public PreviewStructure acquire() {
+        refCount++;
+        return this;
+    }
+
+    public void release() {
+        if (refCount > 0) {
+            refCount--;
+        }
+
+        if (refCount == 0) {
+            dispose();
         }
     }
 
-    public void close() {
-        for (PreviewChunkGeometry geometry : previewGeometryCache.values()) {
-            geometry.close();
+    private void dispose() {
+        if (previewGeometry != null) {
+            previewGeometry.close();
         }
 
-        previewGeometryCache.clear();
+        previewGeometryKey = null;
+        previewGeometry = null;
+
         modelDataCache.clear();
+        disposeBlockEntities();
+    }
+
+    private void disposeBlockEntities() {
+        if (cachedBlockEntities == null) {
+            return;
+        }
+
+        for (BlockEntity be : cachedBlockEntities.values()) {
+            try {
+                be.setRemoved();
+            } catch (Throwable t) {
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
+            }
+        }
+
         cachedBlockEntities = null;
     }
 
@@ -107,6 +150,18 @@ public final class PreviewStructure {
                     block.blockEntityTag());
 
             if (be != null) {
+                for (BlockRenderExtension extension : BlockRenderExtensions.all()) {
+                    if (!extension.canRender(block.state(), block.blockEntityTag())) {
+                        continue;
+                    }
+
+                    try {
+                        extension.onPreviewBlockEntityCreated(block, be);
+                    } catch (Throwable t) {
+                        SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
+                    }
+                }
+
                 result.put(block.pos(), be);
             }
         }

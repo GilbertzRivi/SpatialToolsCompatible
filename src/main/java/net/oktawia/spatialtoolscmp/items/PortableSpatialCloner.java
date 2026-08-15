@@ -14,6 +14,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -329,6 +331,14 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
         List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoPlacedBlocks = new ArrayList<>();
 
+        Map<BlockPos, TemplateUtil.BlockInfo> blocksByLocalPos = new HashMap<>();
+
+        for (TemplateUtil.BlockInfo blockInfo : rawBlocks) {
+            blocksByLocalPos.put(blockInfo.pos(), blockInfo);
+        }
+
+        List<DeferredPaste> deferred = new ArrayList<>();
+
         int placed = 0;
         int skipped = 0;
 
@@ -340,89 +350,228 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     .offset(templateOffset)
                     .offset(localPos);
 
-            BlockState stateToPlace = blockInfo.state();
-            CompoundTag rawBeTag = blockInfo.blockEntityTag();
             CompoundTag blockMetadata = metadataByPos.get(localPos);
 
-            List<ItemStack> refundStacks = new ArrayList<>();
-            ClonerPasteContext pasteContext = new TrackingPasteContext(level, player, toolStack, refundStacks);
-
-            PlacementPlan selectedPlan = null;
-
-            for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
-                Optional<PlacementPlan> extensionPlan = extension.buildPlacementPlan(
-                        level,
-                        player,
-                        stateToPlace,
-                        rawBeTag,
-                        blockMetadata,
-                        pasteContext);
-
-                if (extensionPlan.isPresent()) {
-                    selectedPlan = extensionPlan.get();
-                    break;
-                }
+            if (ClonerBlockPlacer.shouldDeferPlacement(
+                    level,
+                    worldPos,
+                    blockInfo.state(),
+                    blockInfo.blockEntityTag(),
+                    ClonerBlockPlacer.hasStructureNeighbourWithBlockEntity(blocksByLocalPos, localPos))) {
+                deferred.add(new DeferredPaste(worldPos.immutable(), blockInfo, blockMetadata));
+                continue;
             }
 
-            boolean success;
-
-            if (selectedPlan != null) {
-                success = ClonerBlockPlacer.placePlannedBlockBestEffort(
-                        level,
-                        worldPos,
-                        selectedPlan,
-                        player,
-                        toolStack);
-
-                if (success) {
-                    for (ItemStack cost : selectedPlan.consumedStacks()) {
-                        if (!cost.isEmpty()) {
-                            refundStacks.add(cost.copy());
-                        }
-                    }
-                }
-            } else {
-                success = ClonerBlockPlacer.placeRegularBlockBestEffort(
-                        level,
-                        worldPos,
-                        stateToPlace,
-                        player,
-                        toolStack);
-
-                if (success) {
-                    ItemStack required = ClonerBlockPlacer.getRequiredBlockItem(stateToPlace);
-
-                    if (!required.isEmpty()) {
-                        refundStacks.add(required.copy());
-                    }
-                }
-            }
-
-            if (success) {
-                BlockState finalState = level.getBlockState(worldPos);
-                BlockPos worldPosImmutable = worldPos.immutable();
-
-                for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
-                    extension.onBlockPlaced(level, worldPosImmutable, level.getBlockEntity(worldPosImmutable),
-                            blockMetadata);
-                }
-
-                undoPlacedBlocks.add(new ClonerUndoHandler.ClonerUndoPlacedBlock(
-                        worldPosImmutable,
-                        finalState.toString(),
-                        List.copyOf(ClonerUndoHandler.aggregateRefundStacks(refundStacks))));
-
+            if (pasteSingleBlock(level, player, toolStack, worldPos, blockInfo, blockMetadata, undoPlacedBlocks,
+                    false)) {
                 placed++;
             } else {
-                if (!refundStacks.isEmpty()) {
-                    ClonerInventoryAccess.refundStacksToAeThenInventory(level, player, toolStack, refundStacks);
-                }
-
                 skipped++;
             }
         }
 
+        if (deferred.isEmpty()) {
+            finishPaste(level, player, toolStack, undoPlacedBlocks, placed, skipped);
+            return;
+        }
+
+        MinecraftServer server = level.getServer();
+        int placedBeforeDeferred = placed;
+        int skippedBeforeDeferred = skipped;
+
+        server.tell(new TickTask(server.getTickCount() + 2, () -> {
+            int placedTotal = placedBeforeDeferred;
+            int skippedTotal = skippedBeforeDeferred;
+
+            for (DeferredPaste entry : deferred) {
+                if (pasteSingleBlock(
+                        level,
+                        player,
+                        toolStack,
+                        entry.worldPos(),
+                        entry.blockInfo(),
+                        entry.blockMetadata(),
+                        undoPlacedBlocks,
+                        true)) {
+                    placedTotal++;
+                } else {
+                    skippedTotal++;
+                }
+            }
+
+            finishPaste(level, player, toolStack, undoPlacedBlocks, placedTotal, skippedTotal);
+        }));
+    }
+
+    private record DeferredPaste(
+            BlockPos worldPos,
+            TemplateUtil.BlockInfo blockInfo,
+            @Nullable CompoundTag blockMetadata) {
+    }
+
+    private boolean topUpExistingBlockWithoutUndo(
+            ServerLevel level,
+            Player player,
+            ItemStack toolStack,
+            BlockPos worldPos,
+            BlockState stateToPlace,
+            @Nullable CompoundTag rawBeTag,
+            @Nullable CompoundTag blockMetadata,
+            ClonerPasteContext pasteContext) {
+        List<ItemStack> consumedStacks = new ArrayList<>();
+        boolean applied = false;
+
+        for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
+            try {
+                if (extension.applyToExistingBlock(
+                        level,
+                        player,
+                        worldPos,
+                        stateToPlace,
+                        rawBeTag,
+                        blockMetadata,
+                        pasteContext,
+                        consumedStacks)) {
+                    applied = true;
+                    break;
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+
+        if (!applied) {
+            return false;
+        }
+
+        if (!player.isCreative()) {
+            for (ItemStack cost : consumedStacks) {
+                if (cost.isEmpty()) {
+                    continue;
+                }
+
+                ClonerInventoryAccess.consumeForPaste(level, player, toolStack, cost, cost.getCount());
+            }
+        }
+
+        return true;
+    }
+
+    private boolean pasteSingleBlock(
+            ServerLevel level,
+            Player player,
+            ItemStack toolStack,
+            BlockPos worldPos,
+            TemplateUtil.BlockInfo blockInfo,
+            @Nullable CompoundTag blockMetadata,
+            List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoPlacedBlocks,
+            boolean supportDependent) {
+        BlockState stateToPlace = blockInfo.state();
+        CompoundTag rawBeTag = blockInfo.blockEntityTag();
+
+        List<ItemStack> refundStacks = new ArrayList<>();
+        ClonerPasteContext pasteContext = new TrackingPasteContext(level, player, toolStack, refundStacks);
+
+        if (level.getBlockState(worldPos).getBlock() == stateToPlace.getBlock()) {
+            return topUpExistingBlockWithoutUndo(
+                    level,
+                    player,
+                    toolStack,
+                    worldPos,
+                    stateToPlace,
+                    rawBeTag,
+                    blockMetadata,
+                    pasteContext);
+        }
+
+        PlacementPlan selectedPlan = null;
+
+        for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
+            Optional<PlacementPlan> extensionPlan = extension.buildPlacementPlan(
+                    level,
+                    player,
+                    stateToPlace,
+                    rawBeTag,
+                    blockMetadata,
+                    pasteContext);
+
+            if (extensionPlan.isPresent()) {
+                selectedPlan = extensionPlan.get();
+                break;
+            }
+        }
+
+        boolean success;
+
+        if (selectedPlan != null) {
+            success = ClonerBlockPlacer.placePlannedBlockBestEffort(
+                    level,
+                    worldPos,
+                    selectedPlan,
+                    player,
+                    toolStack);
+
+            if (success) {
+                for (ItemStack cost : selectedPlan.consumedStacks()) {
+                    if (!cost.isEmpty()) {
+                        refundStacks.add(cost.copy());
+                    }
+                }
+            }
+        } else {
+            success = ClonerBlockPlacer.placeRegularBlockBestEffort(
+                    level,
+                    worldPos,
+                    stateToPlace,
+                    player,
+                    toolStack);
+
+            if (success) {
+                ItemStack required = ClonerBlockPlacer.getRequiredBlockItem(stateToPlace);
+
+                if (!required.isEmpty()) {
+                    refundStacks.add(required.copy());
+                }
+            }
+        }
+
+        if (!success) {
+            if (!refundStacks.isEmpty()) {
+                ClonerInventoryAccess.refundStacksToAeThenInventory(level, player, toolStack, refundStacks);
+            }
+
+            return false;
+        }
+
+        BlockState finalState = level.getBlockState(worldPos);
+        BlockPos worldPosImmutable = worldPos.immutable();
+
+        for (StructureCloneExtension extension : StructureToolExtensions.clonerExtensions()) {
+            extension.onBlockPlaced(level, player, worldPosImmutable,
+                    level.getBlockEntity(worldPosImmutable), blockMetadata);
+        }
+
+        undoPlacedBlocks.add(new ClonerUndoHandler.ClonerUndoPlacedBlock(
+                worldPosImmutable,
+                finalState.toString(),
+                List.copyOf(ClonerUndoHandler.aggregateRefundStacks(refundStacks)),
+                List.of(),
+                supportDependent));
+
+        return true;
+    }
+
+    private void finishPaste(
+            ServerLevel level,
+            Player player,
+            ItemStack toolStack,
+            List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoPlacedBlocks,
+            int placed,
+            int skipped) {
         if (placed > 0) {
+            ClonerBlockPlacer.finishPlacement(
+                    level,
+                    undoPlacedBlocks.stream().map(ClonerUndoHandler.ClonerUndoPlacedBlock::pos).toList());
+
             ClonerUndoHandler.store(toolStack, level, undoPlacedBlocks);
 
             showHud(
@@ -494,7 +643,10 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        if (!ClonerUndoHandler.areBlocksUnchanged(level, undoBlocks)) {
+        List<ClonerUndoHandler.ClonerUndoPlacedBlock> undoableBlocks = ClonerUndoHandler.filterUndoableBlocks(level,
+                undoBlocks);
+
+        if (undoableBlocks == null) {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
@@ -502,6 +654,8 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
                     red(Component.translatable(LangDefs.STRUCTURE_GADGET_UNDO_WORLD_CHANGED.getTranslationKey())));
             return;
         }
+
+        undoBlocks = undoableBlocks;
 
         List<ItemStack> refundStacks = ClonerUndoHandler.collectCurrentRefundStacks(level, undoBlocks);
         boolean shouldRefundItems = !player.isCreative() && !refundStacks.isEmpty();

@@ -139,6 +139,7 @@ public final class MekanismClonerExtension implements StructureCloneExtension {
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

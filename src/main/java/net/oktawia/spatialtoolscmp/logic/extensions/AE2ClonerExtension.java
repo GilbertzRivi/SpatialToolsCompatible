@@ -9,17 +9,28 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraftforge.registries.ForgeRegistries;
 
+import appeng.api.crafting.PatternDetailsHelper;
+import appeng.api.inventories.InternalInventory;
+import appeng.api.parts.IPart;
+import appeng.api.parts.IPartItem;
 import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.blockentity.networking.CableBusBlockEntity;
+import appeng.core.definitions.AEItems;
+import appeng.helpers.patternprovider.PatternProviderLogic;
+import appeng.helpers.patternprovider.PatternProviderLogicHost;
 import appeng.util.SettingsFrom;
 
 import net.oktawia.spatialtoolscmp.items.AbstractStructureCaptureToolItem;
@@ -34,6 +45,16 @@ import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 public final class AE2ClonerExtension implements StructureCloneExtension {
 
     private static final String AE2_CABLE_BUS_ID = "ae2:cable_bus";
+
+    private static final String AE2_SETTINGS_UPGRADES_KEY = "upgrades";
+
+    private static final int CRAZY_PROVIDER_BASE_SLOTS = 8 * 9;
+
+    private static final int CRAZY_PROVIDER_SLOTS_PER_UPGRADE = 9;
+
+    private static final String CRAZY_UPGRADES_BLOCK_KEY = "";
+
+    private final Map<String, Integer> plannedCrazyUpgrades = new HashMap<>();
 
     @Override
     public boolean collectMetadata(
@@ -57,8 +78,19 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             } catch (Throwable ignored) {
             }
 
+            settings.remove(AE2_SETTINGS_UPGRADES_KEY);
+            dropSettingsCarriedByBlockState(be.getBlockState(), settings);
+            addBlankPatternRequirements(be, requirements);
+
             if (!settings.isEmpty()) {
                 blockEntry.put(StructureToolKeys.CLONE_KEY_SETTINGS, settings);
+                hasAnyData = true;
+            }
+
+            CompoundTag crazySource = rawBeTag != null ? rawBeTag : saveCurrentTag(be);
+
+            if (isCrazyProviderTag(crazySource, StructureToolKeys.CRAZYAE2_PROVIDER_BE_ID)
+                    && storeCrazyUpgrades(crazySource, blockEntry, requirements)) {
                 hasAnyData = true;
             }
         }
@@ -79,6 +111,21 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         }
 
         if (be instanceof CableBusBlockEntity cableBus) {
+            CompoundTag cableVisual = new CompoundTag();
+            var centerPart = cableBus.getPart((Direction) null);
+
+            if (centerPart != null) {
+                try {
+                    centerPart.writeVisualStateToNBT(cableVisual);
+                } catch (Throwable ignored) {
+                }
+            }
+
+            if (!cableVisual.isEmpty()) {
+                blockEntry.put(StructureToolKeys.CLONE_KEY_AE2_CABLE_VISUAL, cableVisual);
+                hasAnyData = true;
+            }
+
             CompoundTag partsTag = new CompoundTag();
 
             for (Direction dir : Direction.values()) {
@@ -98,10 +145,14 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 } catch (Throwable ignored) {
                 }
 
+                partSettings.remove(AE2_SETTINGS_UPGRADES_KEY);
+
                 if (!partSettings.isEmpty()) {
                     partEntry.put(StructureToolKeys.CLONE_KEY_SETTINGS, partSettings);
                     hasPartData = true;
                 }
+
+                addBlankPatternRequirements(part, requirements);
 
                 if (part instanceof IUpgradeableObject partUpgradable) {
                     IUpgradeInventory upgrades = partUpgradable.getUpgrades();
@@ -116,6 +167,13 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                         upgrades.writeToNBT(partEntry, StructureToolKeys.CLONE_KEY_UPGRADES);
                         hasPartData = true;
                     }
+                }
+
+                CompoundTag rawPartTag = rawPartSection(rawBeTag, dir);
+
+                if (isCrazyProviderTag(rawPartTag, StructureToolKeys.CRAZYAE2_PROVIDER_PART_ID)
+                        && storeCrazyUpgrades(rawPartTag, partEntry, requirements)) {
+                    hasPartData = true;
                 }
 
                 if (hasPartData) {
@@ -145,12 +203,15 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             @Nullable CompoundTag rawBeTag,
             @Nullable CompoundTag blockMetadata,
             ClonerPasteContext ctx) {
+        plannedCrazyUpgrades.clear();
+
         if (isAe2CableBusTag(rawBeTag)) {
             if (rawBeTag == null) {
                 return Optional.of(PlacementPlan.none());
             }
 
             return Optional.of(buildCableBusPlacementPlan(
+                    level,
                     player,
                     state,
                     rawBeTag,
@@ -164,11 +225,13 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
 
         if (!blockMetadata.contains(StructureToolKeys.CLONE_KEY_SETTINGS, Tag.TAG_COMPOUND)
                 && !blockMetadata.contains(StructureToolKeys.CLONE_KEY_UPGRADES)
+                && !blockMetadata.contains(StructureToolKeys.CLONE_KEY_CRAZY_UPGRADES)
                 && !blockMetadata.contains(StructureToolKeys.CLONE_KEY_PARTS, Tag.TAG_COMPOUND)) {
             return Optional.empty();
         }
 
         return Optional.of(buildAe2BlockPlacementPlan(
+                level,
                 player,
                 state,
                 blockMetadata,
@@ -176,8 +239,129 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
     }
 
     @Override
+    public boolean applyToExistingBlock(
+            ServerLevel level,
+            Player player,
+            BlockPos pos,
+            BlockState stateToPlace,
+            @Nullable CompoundTag rawBeTag,
+            @Nullable CompoundTag blockMetadata,
+            ClonerPasteContext ctx,
+            List<ItemStack> consumedStacks) {
+        plannedCrazyUpgrades.clear();
+
+        if (rawBeTag == null || !isAe2CableBusTag(rawBeTag)) {
+            return false;
+        }
+
+        if (!(level.getBlockEntity(pos) instanceof CableBusBlockEntity cableBus)) {
+            return false;
+        }
+
+        Map<Item, Integer> reserved = new HashMap<>();
+        boolean added = false;
+
+        for (String key : StructureToolKeys.AE2_CABLE_BUS_KEYS) {
+            if (!rawBeTag.contains(key, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            Direction side = TemplateUtil.directionFromKey(key);
+
+            if (cableBus.getPart(side) != null) {
+                continue;
+            }
+
+            ItemStack partStack = normalizeSingle(NbtUtil.tryReadSavedItemStack(rawBeTag.getCompound(key)));
+
+            if (partStack.isEmpty() || !(partStack.getItem() instanceof IPartItem<?> partItem)) {
+                continue;
+            }
+
+            if (!cableBus.canAddPart(partStack, side)) {
+                continue;
+            }
+
+            if (!player.isCreative() && !ctx.canReserveForPaste(reserved, partStack, 1)) {
+                continue;
+            }
+
+            List<ItemStack> partCosts = new ArrayList<>();
+            CompoundTag partEntry = getPartEntry(blockMetadata, key);
+            int crazyUpgrades = planCrazyUpgrades(partEntry, player, ctx, reserved, partCosts);
+
+            if (!addPatternCosts(
+                    level,
+                    partEntry,
+                    player,
+                    ctx,
+                    reserved,
+                    partCosts,
+                    crazyUpgrades)) {
+                continue;
+            }
+
+            if (cableBus.addPart(partItem, side, player) == null) {
+                continue;
+            }
+
+            consumedStacks.add(partStack);
+            consumedStacks.addAll(partCosts);
+            added = true;
+
+            plannedCrazyUpgrades.put(key, crazyUpgrades);
+            applyExistingPartMetadata(level, player, cableBus, side, blockMetadata);
+        }
+
+        if (!added) {
+            return false;
+        }
+
+        cableBus.setChanged();
+
+        BlockState state = level.getBlockState(pos);
+        level.sendBlockUpdated(pos, state, state, 3);
+
+        return true;
+    }
+
+    private void applyExistingPartMetadata(
+            Level level,
+            Player player,
+            CableBusBlockEntity cableBus,
+            @Nullable Direction side,
+            @Nullable CompoundTag blockMetadata) {
+        if (side == null) {
+            return;
+        }
+
+        CompoundTag partEntry = getPartEntry(blockMetadata, TemplateUtil.directionKey(side));
+        var part = cableBus.getPart(side);
+
+        if (part == null || partEntry == null) {
+            return;
+        }
+
+        applyCrazyUpgrades(part, player, TemplateUtil.directionKey(side));
+
+        if (!partEntry.contains(StructureToolKeys.CLONE_KEY_SETTINGS, Tag.TAG_COMPOUND)) {
+            return;
+        }
+
+        CompoundTag partSettings = partEntry.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS);
+
+        try {
+            part.importSettings(SettingsFrom.MEMORY_CARD, withoutPatterns(partSettings), player);
+        } catch (Throwable ignored) {
+        }
+
+        restorePatterns(level, part, partEntry);
+    }
+
+    @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {
@@ -186,14 +370,15 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         }
 
         if (be instanceof CableBusBlockEntity cableBus) {
-            applyAe2CableBusMetadataAfterPlacement(level, pos, cableBus, blockMetadata);
+            applyAe2CableBusMetadataAfterPlacement(level, player, pos, cableBus, blockMetadata);
             return;
         }
 
-        applyAe2BlockMetadataAfterPlacement(level, pos, be, blockMetadata);
+        applyAe2BlockMetadataAfterPlacement(level, player, pos, be, blockMetadata);
     }
 
-    private static PlacementPlan buildCableBusPlacementPlan(
+    private PlacementPlan buildCableBusPlacementPlan(
+            Level level,
             Player player,
             BlockState stateToPlace,
             CompoundTag rawBeTag,
@@ -248,9 +433,24 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 continue;
             }
 
+            CompoundTag partEntry = getPartEntry(blockMetadata, key);
+            int crazyUpgrades = planCrazyUpgrades(partEntry, player, ctx, trialReserved, sectionCosts);
+
+            if (!addPatternCosts(
+                    level,
+                    partEntry,
+                    player,
+                    ctx,
+                    trialReserved,
+                    sectionCosts,
+                    crazyUpgrades)) {
+                continue;
+            }
+
             reserved.clear();
             reserved.putAll(trialReserved);
 
+            plannedCrazyUpgrades.put(key, crazyUpgrades);
             filtered.put(key, minimalSection);
             costs.addAll(sectionCosts);
             keptAnything = true;
@@ -289,7 +489,8 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 : PlacementPlan.none();
     }
 
-    private static PlacementPlan buildAe2BlockPlacementPlan(
+    private PlacementPlan buildAe2BlockPlacementPlan(
+            Level level,
             Player player,
             BlockState stateToPlace,
             CompoundTag blockMetadata,
@@ -320,6 +521,14 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             }
         }
 
+        int crazyUpgrades = planCrazyUpgrades(blockMetadata, player, ctx, reserved, costs);
+
+        if (!addPatternCosts(level, blockMetadata, player, ctx, reserved, costs, crazyUpgrades)) {
+            return PlacementPlan.none();
+        }
+
+        plannedCrazyUpgrades.put(CRAZY_UPGRADES_BLOCK_KEY, crazyUpgrades);
+
         return new PlacementPlan(true, stateToPlace, null, costs);
     }
 
@@ -330,21 +539,11 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             ClonerPasteContext ctx,
             Map<Item, Integer> reserved,
             List<ItemStack> costs) {
-        if (blockMetadata == null) {
+        CompoundTag partEntry = getPartEntry(blockMetadata, sideKey);
+
+        if (partEntry == null) {
             return true;
         }
-
-        if (!blockMetadata.contains(StructureToolKeys.CLONE_KEY_PARTS, Tag.TAG_COMPOUND)) {
-            return true;
-        }
-
-        CompoundTag partsTag = blockMetadata.getCompound(StructureToolKeys.CLONE_KEY_PARTS);
-
-        if (!partsTag.contains(sideKey, Tag.TAG_COMPOUND)) {
-            return true;
-        }
-
-        CompoundTag partEntry = partsTag.getCompound(sideKey);
 
         if (!partEntry.contains(StructureToolKeys.CLONE_KEY_UPGRADES)) {
             return true;
@@ -391,22 +590,27 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         return true;
     }
 
-    private static void applyAe2BlockMetadataAfterPlacement(
+    private void applyAe2BlockMetadataAfterPlacement(
             ServerLevel level,
+            Player player,
             BlockPos worldPos,
             BlockEntity be,
             CompoundTag blockMetadata) {
         boolean changed = false;
 
-        if (be instanceof AEBaseBlockEntity abbe
-                && blockMetadata.contains(StructureToolKeys.CLONE_KEY_SETTINGS, Tag.TAG_COMPOUND)) {
-            try {
-                abbe.importSettings(
-                        SettingsFrom.MEMORY_CARD,
-                        blockMetadata.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS),
-                        null);
-                changed = true;
-            } catch (Throwable ignored) {
+        if (be instanceof AEBaseBlockEntity abbe) {
+            changed |= applyCrazyUpgrades(abbe, player, CRAZY_UPGRADES_BLOCK_KEY);
+
+            if (blockMetadata.contains(StructureToolKeys.CLONE_KEY_SETTINGS, Tag.TAG_COMPOUND)) {
+                CompoundTag settings = blockMetadata.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS);
+
+                try {
+                    abbe.importSettings(SettingsFrom.MEMORY_CARD, withoutPatterns(settings), player);
+                    changed = true;
+                } catch (Throwable ignored) {
+                }
+
+                changed |= restorePatterns(level, be, blockMetadata);
             }
         }
 
@@ -429,8 +633,9 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         level.sendBlockUpdated(worldPos, state, state, 3);
     }
 
-    private static void applyAe2CableBusMetadataAfterPlacement(
+    private void applyAe2CableBusMetadataAfterPlacement(
             ServerLevel level,
+            Player player,
             BlockPos worldPos,
             CableBusBlockEntity cableBus,
             CompoundTag blockMetadata) {
@@ -458,14 +663,17 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 continue;
             }
 
+            applyCrazyUpgrades(part, player, key);
+
             if (partEntry.contains(StructureToolKeys.CLONE_KEY_SETTINGS, Tag.TAG_COMPOUND)) {
+                CompoundTag partSettings = partEntry.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS);
+
                 try {
-                    part.importSettings(
-                            SettingsFrom.MEMORY_CARD,
-                            partEntry.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS),
-                            null);
+                    part.importSettings(SettingsFrom.MEMORY_CARD, withoutPatterns(partSettings), player);
                 } catch (Throwable ignored) {
                 }
+
+                restorePatterns(level, part, partEntry);
             }
 
             if (part instanceof IUpgradeableObject partUpgradable
@@ -533,6 +741,316 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             for (int i = 0; i < listTag.size(); i++) {
                 collectNestedSavedItemStacks(listTag.get(i), requirements);
             }
+        }
+    }
+
+    private static void addBlankPatternRequirements(
+            Object host,
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
+        int encoded = countEncodedPatterns(host);
+
+        if (encoded > 0) {
+            requirements.add(AEItems.BLANK_PATTERN.stack(encoded));
+        }
+    }
+
+    private static int countEncodedPatterns(@Nullable Object host) {
+        if (!(host instanceof PatternProviderLogicHost providerHost)) {
+            return 0;
+        }
+
+        InternalInventory patterns = providerHost.getLogic().getPatternInv();
+        int encoded = 0;
+
+        for (int slot = 0; slot < patterns.size(); slot++) {
+            if (!patterns.getStackInSlot(slot).isEmpty()) {
+                encoded++;
+            }
+        }
+
+        return encoded;
+    }
+
+    private record RestorablePattern(int slot, ItemStack stack) {
+    }
+
+    private static @Nullable CompoundTag rawPartSection(@Nullable CompoundTag rawBeTag, Direction side) {
+        if (rawBeTag == null) {
+            return null;
+        }
+
+        String key = TemplateUtil.directionKey(side);
+
+        return rawBeTag.contains(key, Tag.TAG_COMPOUND) ? rawBeTag.getCompound(key) : null;
+    }
+
+    private static boolean isCrazyProviderTag(@Nullable CompoundTag tag, String expectedId) {
+        return tag != null && expectedId.equals(tag.getString("id"));
+    }
+
+    private static int readCrazyAdded(@Nullable CompoundTag tag) {
+        if (tag == null) {
+            return 0;
+        }
+
+        if (tag.contains(StructureToolKeys.CRAZYAE2_NBT_PROVIDER, Tag.TAG_COMPOUND)) {
+            CompoundTag providerTag = tag.getCompound(StructureToolKeys.CRAZYAE2_NBT_PROVIDER);
+
+            if (providerTag.contains(StructureToolKeys.CRAZYAE2_NBT_STATE, Tag.TAG_COMPOUND)) {
+                return providerTag.getCompound(StructureToolKeys.CRAZYAE2_NBT_STATE)
+                        .getInt(StructureToolKeys.CRAZYAE2_NBT_ADDED);
+            }
+        }
+
+        if (tag.contains(StructureToolKeys.CRAZYAE2_NBT_LEGACY_STATE, Tag.TAG_COMPOUND)) {
+            return tag.getCompound(StructureToolKeys.CRAZYAE2_NBT_LEGACY_STATE)
+                    .getInt(StructureToolKeys.CRAZYAE2_NBT_ADDED);
+        }
+
+        return tag.getInt(StructureToolKeys.CRAZYAE2_NBT_ADDED);
+    }
+
+    private static ItemStack crazyUpgradeStack(int count) {
+        if (count <= 0) {
+            return ItemStack.EMPTY;
+        }
+
+        Item item = ForgeRegistries.ITEMS.getValue(new ResourceLocation(
+                StructureToolKeys.CRAZYAE2_MOD_ID,
+                StructureToolKeys.CRAZYAE2_UPGRADE_ITEM_ID));
+
+        return item == null ? ItemStack.EMPTY : new ItemStack(item, count);
+    }
+
+    private static boolean storeCrazyUpgrades(
+            @Nullable CompoundTag sourceTag,
+            CompoundTag entry,
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
+        int added = readCrazyAdded(sourceTag);
+        ItemStack upgrades = crazyUpgradeStack(added);
+
+        if (upgrades.isEmpty()) {
+            return false;
+        }
+
+        requirements.add(upgrades);
+        entry.putInt(StructureToolKeys.CLONE_KEY_CRAZY_UPGRADES, added);
+
+        return true;
+    }
+
+    private static int readCrazyUpgradeCount(@Nullable CompoundTag entry) {
+        return entry == null ? 0 : entry.getInt(StructureToolKeys.CLONE_KEY_CRAZY_UPGRADES);
+    }
+
+    private static int patternCapacity(int added) {
+        if (added <= 0) {
+            return Integer.MAX_VALUE;
+        }
+
+        return CRAZY_PROVIDER_BASE_SLOTS + CRAZY_PROVIDER_SLOTS_PER_UPGRADE * added;
+    }
+
+    private static int planCrazyUpgrades(
+            @Nullable CompoundTag entry,
+            Player player,
+            ClonerPasteContext ctx,
+            Map<Item, Integer> reserved,
+            List<ItemStack> costs) {
+        int added = readCrazyUpgradeCount(entry);
+        ItemStack upgrades = crazyUpgradeStack(added);
+
+        if (upgrades.isEmpty()) {
+            return 0;
+        }
+
+        int affordable = added;
+
+        if (!player.isCreative()) {
+            long available = ctx.countAvailableForPaste(upgrades)
+                    - reserved.getOrDefault(upgrades.getItem(), 0);
+
+            affordable = (int) Math.max(0L, Math.min(added, available));
+        }
+
+        if (affordable <= 0) {
+            return 0;
+        }
+
+        ItemStack cost = crazyUpgradeStack(affordable);
+
+        if (!player.isCreative() && !ctx.canReserveForPaste(reserved, cost, affordable)) {
+            return 0;
+        }
+
+        costs.add(cost);
+
+        return affordable;
+    }
+
+    private boolean applyCrazyUpgrades(@Nullable Object host, Player player, String entryKey) {
+        Integer planned = plannedCrazyUpgrades.remove(entryKey);
+        int added = planned == null ? 0 : planned;
+
+        if (added <= 0) {
+            return false;
+        }
+
+        CompoundTag stateTag = new CompoundTag();
+        stateTag.putInt(StructureToolKeys.CRAZYAE2_NBT_ADDED, added);
+
+        CompoundTag providerTag = new CompoundTag();
+        providerTag.put(StructureToolKeys.CRAZYAE2_NBT_STATE, stateTag);
+
+        CompoundTag input = new CompoundTag();
+        input.put(StructureToolKeys.CRAZYAE2_NBT_PROVIDER, providerTag);
+
+        try {
+            if (host instanceof AEBaseBlockEntity be) {
+                be.importSettings(SettingsFrom.DISMANTLE_ITEM, input, player);
+                return true;
+            }
+
+            if (host instanceof IPart part) {
+                part.importSettings(SettingsFrom.DISMANTLE_ITEM, input, player);
+                return true;
+            }
+        } catch (Throwable ignored) {
+        }
+
+        return false;
+    }
+
+    private static @Nullable CompoundTag getSettings(@Nullable CompoundTag metadata) {
+        if (metadata == null || !metadata.contains(StructureToolKeys.CLONE_KEY_SETTINGS, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        return metadata.getCompound(StructureToolKeys.CLONE_KEY_SETTINGS);
+    }
+
+    private static @Nullable CompoundTag getPartEntry(@Nullable CompoundTag blockMetadata, String sideKey) {
+        if (blockMetadata == null || !blockMetadata.contains(StructureToolKeys.CLONE_KEY_PARTS, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        CompoundTag partsTag = blockMetadata.getCompound(StructureToolKeys.CLONE_KEY_PARTS);
+
+        if (!partsTag.contains(sideKey, Tag.TAG_COMPOUND)) {
+            return null;
+        }
+
+        return partsTag.getCompound(sideKey);
+    }
+
+    private static CompoundTag withoutPatterns(CompoundTag settings) {
+        CompoundTag copy = settings.copy();
+
+        copy.remove(PatternProviderLogic.NBT_MEMORY_CARD_PATTERNS);
+
+        return copy;
+    }
+
+    private static List<RestorablePattern> readEncodedPatterns(Level level, @Nullable CompoundTag settings) {
+        if (settings == null || !settings.contains(PatternProviderLogic.NBT_MEMORY_CARD_PATTERNS, Tag.TAG_LIST)) {
+            return List.of();
+        }
+
+        ListTag entries = settings.getList(PatternProviderLogic.NBT_MEMORY_CARD_PATTERNS, Tag.TAG_COMPOUND);
+        List<RestorablePattern> patterns = new ArrayList<>(entries.size());
+
+        for (int i = 0; i < entries.size(); i++) {
+            CompoundTag entry = entries.getCompound(i);
+            ItemStack stack = ItemStack.of(entry);
+
+            if (stack.isEmpty()) {
+                continue;
+            }
+
+            try {
+                var details = PatternDetailsHelper.decodePattern(stack, level, true);
+
+                if (details == null) {
+                    continue;
+                }
+
+                patterns.add(new RestorablePattern(entry.getInt("Slot"), details.getDefinition().toStack()));
+            } catch (Throwable ignored) {
+            }
+        }
+
+        return patterns;
+    }
+
+    private static boolean addPatternCosts(
+            Level level,
+            @Nullable CompoundTag entry,
+            Player player,
+            ClonerPasteContext ctx,
+            Map<Item, Integer> reserved,
+            List<ItemStack> costs,
+            int crazyUpgrades) {
+        int count = Math.min(
+                readEncodedPatterns(level, getSettings(entry)).size(),
+                patternCapacity(crazyUpgrades));
+
+        if (count <= 0) {
+            return true;
+        }
+
+        ItemStack blankPatterns = AEItems.BLANK_PATTERN.stack(count);
+
+        if (!player.isCreative() && !ctx.canReserveForPaste(reserved, blankPatterns, count)) {
+            return false;
+        }
+
+        costs.add(blankPatterns);
+
+        return true;
+    }
+
+    private static boolean restorePatterns(Level level, @Nullable Object host, @Nullable CompoundTag entry) {
+        if (!(host instanceof PatternProviderLogicHost providerHost)) {
+            return false;
+        }
+
+        List<RestorablePattern> patterns = readEncodedPatterns(level, getSettings(entry));
+
+        if (patterns.isEmpty()) {
+            return false;
+        }
+
+        InternalInventory patternInv = providerHost.getLogic().getPatternInv();
+        int limit = patternInv.size();
+        boolean restored = false;
+        int placed = 0;
+
+        for (RestorablePattern pattern : patterns) {
+            if (placed >= limit) {
+                break;
+            }
+
+            int slot = pattern.slot();
+
+            if (slot >= 0 && slot < limit && patternInv.getStackInSlot(slot).isEmpty()) {
+                patternInv.setItemDirect(slot, pattern.stack());
+                restored = true;
+                placed++;
+                continue;
+            }
+
+            if (patternInv.addItems(pattern.stack()).isEmpty()) {
+                restored = true;
+                placed++;
+            }
+        }
+
+        return restored;
+    }
+
+    private static void dropSettingsCarriedByBlockState(BlockState state, CompoundTag settings) {
+        for (Property<?> property : state.getProperties()) {
+            settings.remove(property.getName());
         }
     }
 
@@ -658,6 +1176,20 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             }
         }
 
+        int encodedPatterns = countEncodedPatterns(be);
+
+        if (encodedPatterns > 0) {
+            refunds.add(AEItems.BLANK_PATTERN.stack(encodedPatterns));
+        }
+
+        if (isCrazyProviderTag(currentTag, StructureToolKeys.CRAZYAE2_PROVIDER_BE_ID)) {
+            ItemStack crazyUpgrades = crazyUpgradeStack(readCrazyAdded(currentTag));
+
+            if (!crazyUpgrades.isEmpty()) {
+                refunds.add(crazyUpgrades);
+            }
+        }
+
         return true;
     }
 
@@ -687,6 +1219,20 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             }
 
             collectNestedSavedItemStacks(rawBeTag.get(key), refunds);
+
+            if (!rawBeTag.contains(key, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            CompoundTag section = rawBeTag.getCompound(key);
+
+            if (isCrazyProviderTag(section, StructureToolKeys.CRAZYAE2_PROVIDER_PART_ID)) {
+                ItemStack crazyUpgrades = crazyUpgradeStack(readCrazyAdded(section));
+
+                if (!crazyUpgrades.isEmpty()) {
+                    refunds.add(crazyUpgrades);
+                }
+            }
         }
 
         for (String key : StructureToolKeys.AE2_FACADE_KEYS) {

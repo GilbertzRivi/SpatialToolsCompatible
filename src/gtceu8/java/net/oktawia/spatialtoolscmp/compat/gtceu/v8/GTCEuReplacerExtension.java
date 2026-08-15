@@ -6,6 +6,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import com.gregtechceu.gtceu.api.block.PipeBlock;
 import com.gregtechceu.gtceu.api.blockentity.PipeBlockEntity;
@@ -15,6 +16,7 @@ import com.gregtechceu.gtceu.api.multiblock.MultiblockWorldSavedData;
 import com.gregtechceu.gtceu.api.multiblock.pattern.PatternState;
 import com.gregtechceu.gtceu.api.pipenet.LevelPipeNet;
 import com.gregtechceu.gtceu.api.pipenet.PipeNet;
+import com.gregtechceu.gtceu.common.machine.owner.MachineOwner;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -22,6 +24,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -131,26 +134,43 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
 
     private final Set<BlockPos> pendingControllers = new LinkedHashSet<>();
     private final Map<BlockPos, MachineFacing> pendingFacings = new LinkedHashMap<>();
+    private final Map<BlockPos, UUID> pendingOwners = new LinkedHashMap<>();
 
     private record MachineFacing(Direction front, @Nullable Direction upwards) {
     }
 
     @Override
-    public void onBeforeReplacement(ServerLevel level, Set<BlockPos> positions) {
+    public void onBeforeReplacement(ServerLevel level, Set<BlockPos> positions, @Nullable ServerPlayer player) {
         pendingControllers.clear();
         collectAffectedControllers(level, positions, pendingControllers);
 
         pendingFacings.clear();
         captureMachineFacings(level, positions, pendingFacings);
+
+        pendingOwners.clear();
+        captureMachineOwners(level, positions, pendingOwners);
     }
 
     @Override
-    public void onReplacementDone(ServerLevel level, Set<BlockPos> positions) {
+    public void onReplacementDone(ServerLevel level, Set<BlockPos> positions, @Nullable ServerPlayer player) {
         Map<BlockPos, MachineFacing> facings = new LinkedHashMap<>(pendingFacings);
         pendingFacings.clear();
 
         for (Map.Entry<BlockPos, MachineFacing> entry : facings.entrySet()) {
             restoreMachineFacing(level, entry.getKey(), entry.getValue());
+        }
+
+        Map<BlockPos, UUID> owners = new LinkedHashMap<>(pendingOwners);
+        pendingOwners.clear();
+
+        UUID placingOwner = player != null ? player.getUUID() : null;
+
+        for (BlockPos pos : positions) {
+            UUID owner = owners.getOrDefault(pos, placingOwner);
+
+            if (owner != null) {
+                applyMachineOwner(level, pos, owner);
+            }
         }
 
         Set<BlockPos> controllers = new LinkedHashSet<>(pendingControllers);
@@ -182,6 +202,39 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
 
             Direction upwards = machine.allowExtendedFacing() ? machine.getUpwardsFacing() : null;
             out.put(pos.immutable(), new MachineFacing(machine.getFrontFacing(), upwards));
+        }
+    }
+
+    private static void captureMachineOwners(ServerLevel level, Set<BlockPos> positions, Map<BlockPos, UUID> out) {
+        for (BlockPos pos : positions) {
+            if (!(level.getBlockEntity(pos) instanceof MetaMachine machine)) {
+                continue;
+            }
+
+            try {
+                UUID owner = machine.getOwnerUUID();
+
+                if (owner != null && !owner.equals(MachineOwner.EMPTY)) {
+                    out.put(pos.immutable(), owner);
+                }
+            } catch (Throwable ignored) {
+            }
+        }
+    }
+
+    private static void applyMachineOwner(ServerLevel level, BlockPos pos, UUID owner) {
+        if (!(level.getBlockEntity(pos) instanceof MetaMachine machine)) {
+            return;
+        }
+
+        try {
+            if (owner.equals(machine.getOwnerUUID())) {
+                return;
+            }
+
+            machine.setOwnerUUID(owner);
+            GTCEuStructureExtension.syncGregBlockEntity(level, pos, machine);
+        } catch (Throwable ignored) {
         }
     }
 

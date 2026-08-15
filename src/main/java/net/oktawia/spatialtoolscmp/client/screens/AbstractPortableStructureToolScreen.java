@@ -49,7 +49,6 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
     protected Set<BlockPos> directionCompassCore = Collections.emptySet();
 
     protected boolean transformAroundOriginMode = false;
-    protected boolean previewStructureFromSharedCache = false;
     protected boolean initialCameraAlignedToPlayer = false;
 
     protected final PortableSpatialStorageDummyWorld world = new PortableSpatialStorageDummyWorld();
@@ -376,11 +375,9 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         String structureId = StructureToolStackState.getStructureId(stack);
 
         PreviewStructure newStructure = null;
-        boolean fromSharedCache = false;
 
         if (!structureId.isBlank()) {
             newStructure = PortableSpatialStoragePreviewSync.cacheGet(structureId);
-            fromSharedCache = newStructure != null;
         }
 
         if (newStructure == null || newStructure.blocks().isEmpty()) {
@@ -388,12 +385,13 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
             return;
         }
 
-        if (this.previewStructure != null && !this.previewStructureFromSharedCache) {
-            this.previewStructure.close();
-        }
+        PreviewStructure previous = this.previewStructure;
 
-        this.previewStructure = newStructure;
-        this.previewStructureFromSharedCache = fromSharedCache;
+        this.previewStructure = newStructure.acquire();
+
+        if (previous != null) {
+            previous.release();
+        }
 
         int minX = Integer.MAX_VALUE;
         int minY = Integer.MAX_VALUE;
@@ -465,14 +463,17 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         this.renderedCore = Collections.emptySet();
         this.world.loadPreviewStructure(null);
 
-        if (this.previewStructure != null && !this.previewStructureFromSharedCache) {
-            this.previewStructure.close();
+        if (this.scene != null) {
+            this.scene.close();
+        }
+
+        this.scene = null;
+
+        if (this.previewStructure != null) {
+            this.previewStructure.release();
         }
 
         this.previewStructure = null;
-        this.previewStructureFromSharedCache = false;
-
-        this.scene = null;
 
         this.initialCameraAlignedToPlayer = false;
         this.min = BlockPos.ZERO;
@@ -607,6 +608,10 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
     }
 
     protected void clearDirectionCompassScene() {
+        if (this.directionCompassScene != null) {
+            this.directionCompassScene.close();
+        }
+
         this.directionCompassScene = null;
         this.directionCompassWorld = null;
         this.directionCompassCore = Collections.emptySet();

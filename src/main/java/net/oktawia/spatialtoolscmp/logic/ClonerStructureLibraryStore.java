@@ -149,6 +149,16 @@ public final class ClonerStructureLibraryStore {
         return isValidId(id) && Files.exists(getStructurePath(server, owner, id));
     }
 
+    public static long lastModified(MinecraftServer server, UUID owner, String id) throws IOException {
+        if (!isValidId(id)) {
+            return 0L;
+        }
+
+        Path path = getStructurePath(server, owner, id);
+
+        return Files.exists(path) ? Files.getLastModifiedTime(path).toMillis() : 0L;
+    }
+
     public static @Nullable CompoundTag load(MinecraftServer server, UUID owner, String id) throws IOException {
         if (!isValidId(id)) {
             return null;

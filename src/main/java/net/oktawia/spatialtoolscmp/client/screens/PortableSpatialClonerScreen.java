@@ -16,6 +16,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import net.oktawia.spatialtoolscmp.IsModLoaded;
+import net.oktawia.spatialtoolscmp.client.misc.ClonerCraftingProgressClientCache;
 import net.oktawia.spatialtoolscmp.client.misc.CraftingBufferStatusClientCache;
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.PortableSpatialClonerRequirementSync;
@@ -26,6 +27,7 @@ import net.oktawia.spatialtoolscmp.compat.ae2.AE2GridLinkableHandler;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.buffer.BufferRequestState;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.RequestClonerLibraryPacket;
@@ -57,6 +59,14 @@ public class PortableSpatialClonerScreen
     private static final int CRAFT_ALL_BUTTON_SIZE = 16;
 
     private static final int NESTED_MODE_TOOLTIP_MAX_CHARS = 28;
+
+    private static final int PROGRESS_BAR_HEIGHT = 10;
+    private static final int PROGRESS_BAR_GAP = 2;
+    private static final int PROGRESS_BG_COLOR = 0xFF1A1A1A;
+    private static final int PROGRESS_BORDER_COLOR = 0xFF000000;
+    private static final int PROGRESS_FILL_COLOR = 0xFF3FBF3F;
+    private static final int PROGRESS_FILL_WAITING_COLOR = 0xFFD8A22A;
+    private static final int PROGRESS_TEXT_COLOR = 0xFFFFFFFF;
 
     private ClonerMaterialListWidget materialList;
     private SearchableClonerStructureDropdownWidget structureSelector;
@@ -169,7 +179,7 @@ public class PortableSpatialClonerScreen
                     top + MATERIAL_LIST_TOP);
             this.materialList.resize(
                     MATERIAL_LIST_WIDTH,
-                    MATERIAL_LIST_HEIGHT);
+                    getMaterialListHeight());
         }
 
         if (this.nestedInventoryModeButton != null) {
@@ -256,6 +266,7 @@ public class PortableSpatialClonerScreen
         super.removed();
         PortableSpatialClonerRequirementSync.clear(getMenu().containerId);
         CraftingBufferStatusClientCache.clear(getMenu().containerId);
+        ClonerCraftingProgressClientCache.clear(getMenu().containerId);
     }
 
     @Override
@@ -272,6 +283,87 @@ public class PortableSpatialClonerScreen
 
         syncRequirementEntries();
         updateCraftAllButton();
+
+        if (this.materialList != null && this.materialList.getHeight() != getMaterialListHeight()) {
+            this.materialList.resize(MATERIAL_LIST_WIDTH, getMaterialListHeight());
+        }
+    }
+
+    private ClonerCraftingProgressClientCache.Progress getCraftingProgress() {
+        return ClonerCraftingProgressClientCache.get(getMenu().containerId);
+    }
+
+    private int getMaterialListHeight() {
+        return getCraftingProgress().visible()
+                ? MATERIAL_LIST_HEIGHT - PROGRESS_BAR_HEIGHT - PROGRESS_BAR_GAP
+                : MATERIAL_LIST_HEIGHT;
+    }
+
+    private void renderCraftingProgress(GuiGraphics graphics, int mouseX, int mouseY) {
+        ClonerCraftingProgressClientCache.Progress progress = getCraftingProgress();
+
+        if (!progress.visible()) {
+            return;
+        }
+
+        int x = this.leftPos + MATERIAL_LIST_LEFT;
+        int y = this.topPos + MATERIAL_LIST_TOP + getMaterialListHeight() + PROGRESS_BAR_GAP;
+        int width = MATERIAL_LIST_WIDTH;
+        int height = PROGRESS_BAR_HEIGHT;
+
+        graphics.fill(x - 1, y - 1, x + width + 1, y + height + 1, PROGRESS_BORDER_COLOR);
+        graphics.fill(x, y, x + width, y + height, PROGRESS_BG_COLOR);
+
+        BufferRequestState state = progress.requestState();
+        int filled = (int) (width * progress.fraction());
+
+        if (filled > 0) {
+            graphics.fill(
+                    x,
+                    y,
+                    x + Math.min(width, filled),
+                    y + height,
+                    state == BufferRequestState.AWAITING_CONFIRM
+                            ? PROGRESS_FILL_WAITING_COLOR
+                            : PROGRESS_FILL_COLOR);
+        }
+
+        String text = Math.round(progress.fraction() * 100.0F) + "%";
+        int textX = x + (width - this.font.width(text)) / 2;
+        int textY = y + (height - this.font.lineHeight) / 2 + 1;
+
+        graphics.drawString(this.font, text, textX, textY, PROGRESS_TEXT_COLOR, true);
+
+        if (mouseX < x || mouseX >= x + width || mouseY < y || mouseY >= y + height) {
+            return;
+        }
+
+        List<Component> lines = new ArrayList<>();
+
+        LangDefs stateKey = switch (state) {
+            case AWAITING_CONFIRM -> LangDefs.CRAFT_PROGRESS_AWAITING;
+            case READY -> LangDefs.CRAFT_PROGRESS_READY;
+            default -> LangDefs.CRAFT_PROGRESS_CRAFTING;
+        };
+
+        addWrappedTooltipLines(
+                lines,
+                Component.translatable(stateKey.getTranslationKey()).withStyle(ChatFormatting.YELLOW));
+
+        addWrappedTooltipLines(
+                lines,
+                Component.translatable(
+                        LangDefs.CRAFT_PROGRESS_ITEMS.getTranslationKey(),
+                        String.valueOf(progress.done()),
+                        String.valueOf(progress.total())).withStyle(ChatFormatting.GRAY));
+
+        if (!progress.label().isBlank()) {
+            addWrappedTooltipLines(
+                    lines,
+                    Component.literal(progress.label()).withStyle(ChatFormatting.DARK_GRAY));
+        }
+
+        graphics.renderComponentTooltip(this.font, lines, mouseX, mouseY);
     }
 
     @Override
@@ -352,6 +444,7 @@ public class PortableSpatialClonerScreen
         renderNestedInventoryModeTooltip(graphics, mouseX, mouseY);
         renderCraftAllHighlight(graphics);
         renderCraftAllTooltip(graphics, mouseX, mouseY);
+        renderCraftingProgress(graphics, mouseX, mouseY);
 
         if (this.structureSelector != null) {
             this.structureSelector.renderDropdownOverlay(graphics, mouseX, mouseY, partialTick);
@@ -597,6 +690,8 @@ public class PortableSpatialClonerScreen
             key = LangDefs.CRAFT_ALL_SCHEDULED;
         } else if (status == CraftingBufferStatusClientCache.ALL_BUSY) {
             key = LangDefs.CRAFT_ALL_ALL_BUSY;
+        } else if (status == CraftingBufferStatusClientCache.TOO_MANY_ITEMS) {
+            key = LangDefs.CRAFT_ALL_TOO_MANY_ITEMS;
         } else if (!hasCraftableMissing) {
             key = LangDefs.CRAFT_ALL_NOTHING_TO_CRAFT;
         } else {

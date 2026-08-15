@@ -25,6 +25,8 @@ import net.minecraft.client.renderer.block.ModelBlockRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+
 public final class PreviewChunkGeometry implements AutoCloseable {
 
     public interface LayerSink {
@@ -32,10 +34,19 @@ public final class PreviewChunkGeometry implements AutoCloseable {
         VertexConsumer get(RenderType renderType);
     }
 
+    public static final int MAX_CACHED_BLOCKS = 20000;
+
+    private static ChunkBufferBuilderPack sharedBuilderPack;
+    private static boolean sharedBuilderPackInUse;
+
     private final Map<RenderType, VertexBuffer> layers;
 
     private PreviewChunkGeometry(Map<RenderType, VertexBuffer> layers) {
         this.layers = layers;
+    }
+
+    public static boolean exceedsCacheLimit(int blockCount) {
+        return blockCount > MAX_CACHED_BLOCKS;
     }
 
     public static RenderType canonicalLayer(RenderType renderType) {
@@ -64,56 +75,118 @@ public final class PreviewChunkGeometry implements AutoCloseable {
     }
 
     public static PreviewChunkGeometry compile(Consumer<LayerSink> filler, Vec3 sortOrigin) {
-        ChunkBufferBuilderPack builderPack = new ChunkBufferBuilderPack();
-        Set<RenderType> started = new LinkedHashSet<>();
+        boolean shared = RenderSystem.isOnRenderThread() && !sharedBuilderPackInUse;
+        ChunkBufferBuilderPack builderPack;
 
-        ModelBlockRenderer.enableCaching();
-
-        try {
-            filler.accept(renderType -> {
-                RenderType layer = canonicalLayer(renderType);
-                BufferBuilder builder = builderPack.builder(layer);
-
-                if (started.add(layer)) {
-                    builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
-                }
-
-                return builder;
-            });
-        } finally {
-            ModelBlockRenderer.clearCache();
-        }
-
-        if (started.contains(RenderType.translucent())) {
-            BufferBuilder builder = builderPack.builder(RenderType.translucent());
-
-            if (!builder.isCurrentBatchEmpty()) {
-                builder.setQuadSorting(VertexSorting.byDistance(
-                        (float) sortOrigin.x,
-                        (float) sortOrigin.y,
-                        (float) sortOrigin.z));
+        if (shared) {
+            if (sharedBuilderPack == null) {
+                sharedBuilderPack = new ChunkBufferBuilderPack();
             }
+
+            builderPack = sharedBuilderPack;
+            sharedBuilderPackInUse = true;
+        } else {
+            builderPack = new ChunkBufferBuilderPack();
         }
 
+        Set<RenderType> started = new LinkedHashSet<>();
         Map<RenderType, VertexBuffer> layers = new LinkedHashMap<>();
 
-        for (RenderType layer : started) {
-            BufferBuilder.RenderedBuffer rendered = builderPack.builder(layer).endOrDiscardIfEmpty();
+        try {
+            ModelBlockRenderer.enableCaching();
 
-            if (rendered == null) {
-                continue;
+            try {
+                filler.accept(renderType -> {
+                    RenderType layer = canonicalLayer(renderType);
+                    BufferBuilder builder = builderPack.builder(layer);
+
+                    if (started.add(layer)) {
+                        builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.BLOCK);
+                    }
+
+                    return builder;
+                });
+            } finally {
+                ModelBlockRenderer.clearCache();
             }
 
-            VertexBuffer buffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
+            if (started.contains(RenderType.translucent())) {
+                BufferBuilder builder = builderPack.builder(RenderType.translucent());
 
-            buffer.bind();
-            buffer.upload(rendered);
-            VertexBuffer.unbind();
+                if (!builder.isCurrentBatchEmpty()) {
+                    builder.setQuadSorting(VertexSorting.byDistance(
+                            (float) sortOrigin.x,
+                            (float) sortOrigin.y,
+                            (float) sortOrigin.z));
+                }
+            }
 
-            layers.put(layer, buffer);
+            for (RenderType layer : started) {
+                BufferBuilder.RenderedBuffer rendered = builderPack.builder(layer).endOrDiscardIfEmpty();
+
+                if (rendered == null) {
+                    continue;
+                }
+
+                VertexBuffer buffer = new VertexBuffer(VertexBuffer.Usage.STATIC);
+
+                layers.put(layer, buffer);
+
+                buffer.bind();
+                buffer.upload(rendered);
+                VertexBuffer.unbind();
+            }
+        } catch (Throwable t) {
+            releaseBuffers(layers);
+            throw t;
+        } finally {
+            releaseBuilderPack(builderPack, started, shared);
         }
 
         return new PreviewChunkGeometry(layers);
+    }
+
+    private static void releaseBuffers(Map<RenderType, VertexBuffer> layers) {
+        if (layers.isEmpty()) {
+            return;
+        }
+
+        for (VertexBuffer buffer : layers.values()) {
+            if (!buffer.isInvalid()) {
+                buffer.close();
+            }
+        }
+
+        layers.clear();
+    }
+
+    private static void releaseBuilderPack(
+            ChunkBufferBuilderPack builderPack,
+            Set<RenderType> started,
+            boolean shared) {
+        for (RenderType layer : started) {
+            BufferBuilder builder = builderPack.builder(layer);
+
+            if (!builder.building()) {
+                continue;
+            }
+
+            try {
+                BufferBuilder.RenderedBuffer leftover = builder.endOrDiscardIfEmpty();
+
+                if (leftover != null) {
+                    leftover.release();
+                }
+            } catch (Throwable t) {
+                SpatialToolsCMP.getLOGGER().debug(t.getLocalizedMessage());
+            }
+        }
+
+        builderPack.discardAll();
+
+        if (shared) {
+            sharedBuilderPackInUse = false;
+        }
     }
 
     public boolean isEmpty(RenderType layer) {
@@ -227,12 +300,6 @@ public final class PreviewChunkGeometry implements AutoCloseable {
     }
 
     private void closeBuffers() {
-        for (VertexBuffer buffer : this.layers.values()) {
-            if (!buffer.isInvalid()) {
-                buffer.close();
-            }
-        }
-
-        this.layers.clear();
+        releaseBuffers(this.layers);
     }
 }

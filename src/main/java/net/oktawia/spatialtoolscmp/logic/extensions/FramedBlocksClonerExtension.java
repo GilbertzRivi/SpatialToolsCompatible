@@ -164,6 +164,7 @@ public final class FramedBlocksClonerExtension implements StructureCloneExtensio
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

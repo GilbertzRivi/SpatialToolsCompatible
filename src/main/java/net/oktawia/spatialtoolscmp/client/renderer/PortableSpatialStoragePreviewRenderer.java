@@ -17,7 +17,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -202,6 +201,7 @@ public class PortableSpatialStoragePreviewRenderer {
             if (isSolidStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
+                        poseStack,
                         levelModelView,
                         event.getProjectionMatrix(),
                         structure,
@@ -215,6 +215,7 @@ public class PortableSpatialStoragePreviewRenderer {
             if (isCutoutMippedStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
+                        poseStack,
                         levelModelView,
                         event.getProjectionMatrix(),
                         structure,
@@ -228,6 +229,7 @@ public class PortableSpatialStoragePreviewRenderer {
             if (isCutoutStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
+                        poseStack,
                         levelModelView,
                         event.getProjectionMatrix(),
                         structure,
@@ -252,6 +254,7 @@ public class PortableSpatialStoragePreviewRenderer {
             if (isTripwireStage(stage)) {
                 renderGhostModelsPass(
                         minecraft,
+                        poseStack,
                         levelModelView,
                         event.getProjectionMatrix(),
                         structure,
@@ -382,16 +385,27 @@ public class PortableSpatialStoragePreviewRenderer {
                 continue;
             }
 
-            Iterable<RenderType> renderTypes = extension.getPreviewRenderTypes(
-                    previewBlock,
-                    sideMap,
-                    dispatcher,
-                    localLevel,
-                    model,
-                    state,
-                    localPos,
-                    seed,
-                    modelData);
+            Iterable<RenderType> renderTypes;
+
+            try {
+                renderTypes = extension.getPreviewRenderTypes(
+                        previewBlock,
+                        sideMap,
+                        dispatcher,
+                        localLevel,
+                        model,
+                        state,
+                        localPos,
+                        seed,
+                        modelData);
+            } catch (Throwable t) {
+                SpatialToolsCMP.getLOGGER().debug(
+                        "Preview render types failed for {} at {}: {}",
+                        state,
+                        localPos,
+                        t.getMessage());
+                continue;
+            }
 
             if (renderTypes != null) {
                 return renderTypes;
@@ -457,6 +471,7 @@ public class PortableSpatialStoragePreviewRenderer {
 
     private void renderGhostModelsPass(
             Minecraft minecraft,
+            PoseStack poseStack,
             Matrix4f modelViewMatrix,
             Matrix4f projectionMatrix,
             PreviewStructure structure,
@@ -464,6 +479,14 @@ public class PortableSpatialStoragePreviewRenderer {
             int[] sideMap,
             String sideMapKey,
             RenderType layer) {
+        if (PreviewChunkGeometry.exceedsCacheLimit(structure.surfaceBlocks().size())) {
+            if (layer == RenderType.solid()) {
+                renderGhostModelsImmediate(minecraft, poseStack, structure, origin, sideMap, sideMapKey);
+            }
+
+            return;
+        }
+
         PreviewChunkGeometry geometry = structure.getPreviewGeometry(sideMapKey);
 
         if (geometry == null) {
@@ -483,79 +506,124 @@ public class PortableSpatialStoragePreviewRenderer {
             int[] sideMap,
             String sideMapKey,
             BlockPos origin) {
-        ClientLevel level = minecraft.level;
-        var dispatcher = minecraft.getBlockRenderer();
-        var modelRenderer = dispatcher.getModelRenderer();
-
         PreviewBlockAndTintGetter localLevel = new PreviewBlockAndTintGetter(
-                level,
+                minecraft.level,
                 structure,
                 BlockPos.ZERO);
 
         Vec3 localCamera = cameraPosition(minecraft)
                 .subtract(origin.getX(), origin.getY(), origin.getZ());
 
-        PreviewChunkGeometry geometry = PreviewChunkGeometry.compile(sink -> {
-            PoseStack ps = new PoseStack();
-
-            for (PreviewBlock previewBlock : structure.surfaceBlocks()) {
-                BlockPos localPos = previewBlock.pos();
-                BlockState state = previewBlock.state();
-                BakedModel model = dispatcher.getBlockModel(state);
-                long seed = state.getSeed(localPos);
-
-                ModelData modelData = PreviewRenderModelDataHelper.getPreviewModelData(
+        PreviewChunkGeometry geometry = PreviewChunkGeometry.compile(
+                sink -> fillPreviewGeometry(
+                        sink,
+                        new PoseStack(),
+                        minecraft,
                         structure,
+                        localLevel,
+                        sideMap,
+                        sideMapKey),
+                localCamera);
+
+        structure.storePreviewGeometry(sideMapKey, geometry);
+        return geometry;
+    }
+
+    private void fillPreviewGeometry(
+            PreviewChunkGeometry.LayerSink sink,
+            PoseStack poseStack,
+            Minecraft minecraft,
+            PreviewStructure structure,
+            PreviewBlockAndTintGetter localLevel,
+            int[] sideMap,
+            String sideMapKey) {
+        var dispatcher = minecraft.getBlockRenderer();
+        var modelRenderer = dispatcher.getModelRenderer();
+
+        for (PreviewBlock previewBlock : structure.surfaceBlocks()) {
+            BlockPos localPos = previewBlock.pos();
+            BlockState state = previewBlock.state();
+            BakedModel model = dispatcher.getBlockModel(state);
+            long seed = state.getSeed(localPos);
+
+            ModelData modelData = PreviewRenderModelDataHelper.getPreviewModelData(
+                    structure,
+                    previewBlock,
+                    sideMap,
+                    sideMapKey,
+                    minecraft.level,
+                    model,
+                    localLevel);
+
+            poseStack.pushPose();
+            poseStack.translate(localPos.getX(), localPos.getY(), localPos.getZ());
+
+            try {
+                for (RenderType renderType : getPreviewRenderTypes(
                         previewBlock,
                         sideMap,
-                        sideMapKey,
-                        level,
+                        dispatcher,
+                        localLevel,
                         model,
-                        localLevel);
-
-                ps.pushPose();
-                ps.translate(localPos.getX(), localPos.getY(), localPos.getZ());
-
-                try {
-                    for (RenderType renderType : getPreviewRenderTypes(
+                        state,
+                        localPos,
+                        seed,
+                        modelData)) {
+                    tesselatePreviewBlockForRenderType(
                             previewBlock,
                             sideMap,
                             dispatcher,
+                            modelRenderer,
                             localLevel,
                             model,
                             state,
                             localPos,
+                            poseStack,
+                            sink.get(renderType),
+                            renderType,
                             seed,
-                            modelData)) {
-                        tesselatePreviewBlockForRenderType(
-                                previewBlock,
-                                sideMap,
-                                dispatcher,
-                                modelRenderer,
-                                localLevel,
-                                model,
-                                state,
-                                localPos,
-                                ps,
-                                sink.get(renderType),
-                                renderType,
-                                seed,
-                                modelData);
-                    }
-                } catch (Throwable t) {
-                    SpatialToolsCMP.getLOGGER().debug(
-                            "Preview tesselation failed for {} at {}: {}",
-                            state,
-                            localPos,
-                            t.getMessage());
+                            modelData);
                 }
-
-                ps.popPose();
+            } catch (Throwable t) {
+                SpatialToolsCMP.getLOGGER().debug(
+                        "Preview tesselation failed for {} at {}: {}",
+                        state,
+                        localPos,
+                        t.getMessage());
             }
-        }, localCamera);
 
-        structure.storePreviewGeometry(sideMapKey, geometry);
-        return geometry;
+            poseStack.popPose();
+        }
+    }
+
+    private void renderGhostModelsImmediate(
+            Minecraft minecraft,
+            PoseStack poseStack,
+            PreviewStructure structure,
+            BlockPos origin,
+            int[] sideMap,
+            String sideMapKey) {
+        PreviewBlockAndTintGetter localLevel = new PreviewBlockAndTintGetter(
+                minecraft.level,
+                structure,
+                BlockPos.ZERO);
+
+        MultiBufferSource.BufferSource bufferSource = previewBufferSource();
+
+        poseStack.pushPose();
+        poseStack.translate(origin.getX(), origin.getY(), origin.getZ());
+
+        fillPreviewGeometry(
+                bufferSource::getBuffer,
+                poseStack,
+                minecraft,
+                structure,
+                localLevel,
+                sideMap,
+                sideMapKey);
+
+        poseStack.popPose();
+        bufferSource.endBatch();
     }
 
     private void renderBlockEntityRenderers(

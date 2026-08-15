@@ -2,7 +2,11 @@ package net.oktawia.spatialtoolscmp.items;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.jetbrains.annotations.Nullable;
@@ -13,6 +17,8 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
@@ -36,6 +42,8 @@ import net.minecraft.world.phys.HitResult;
 import net.oktawia.spatialtoolscmp.SpatialConfig;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
+import net.oktawia.spatialtoolscmp.items.helpers.ClonerBlockPlacer;
+import net.oktawia.spatialtoolscmp.items.helpers.ClonerUndoHandler;
 import net.oktawia.spatialtoolscmp.logic.StructureToolExtensions;
 import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
@@ -71,9 +79,12 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     private static final String STORAGE_UNDO_POS_Y_KEY = "y";
     private static final String STORAGE_UNDO_POS_Z_KEY = "z";
     private static final String STORAGE_UNDO_STATE_KEY = "state";
+    private static final String STORAGE_UNDO_SUPPORT_DEPENDENT_KEY = "supportDependent";
 
     private static final int STORAGE_UNDO_CLEAR_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE
             | Block.UPDATE_SUPPRESS_DROPS;
+
+    private static final int STORAGE_PLACE_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
     public PortableSpatialStorage(Item.Properties properties) {
         super(SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY::get, 4, 4, properties);
@@ -254,12 +265,25 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return false;
         }
 
-        StructureTemplate template = new StructureTemplate();
-        template.load(level.registryAccess().lookupOrThrow(Registries.BLOCK), savedTag);
-
         BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(savedTag);
         BlockPos templateOffset = TemplateUtil.getTemplateOffset(savedTag);
         BlockPos placementOrigin = origin.subtract(energyOrigin).offset(templateOffset);
+
+        List<TemplateUtil.BlockInfo> deferredBlocks = collectSupportDependentBlocks(level, savedTag, placementOrigin);
+        CompoundTag placeTag = savedTag;
+
+        if (!deferredBlocks.isEmpty()) {
+            Set<BlockPos> rawPositions = new HashSet<>();
+
+            for (TemplateUtil.BlockInfo blockInfo : deferredBlocks) {
+                rawPositions.add(blockInfo.pos().subtract(templateOffset));
+            }
+
+            placeTag = TemplateUtil.withoutBlocksAt(savedTag, rawPositions);
+        }
+
+        StructureTemplate template = new StructureTemplate();
+        template.load(level.registryAccess().lookupOrThrow(Registries.BLOCK), placeTag);
 
         double requiredPower = StructureToolUtil.calculatePreviewStructurePower(
                 savedTag,
@@ -275,20 +299,45 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         StructurePlaceSettings settings = new StructurePlaceSettings()
                 .setIgnoreEntities(true);
 
-        boolean placed = template.placeInWorld(level, placementOrigin, placementOrigin, settings, level.random, 3);
+        boolean placed = template.placeInWorld(
+                level,
+                placementOrigin,
+                placementOrigin,
+                settings,
+                level.random,
+                STORAGE_PLACE_FLAGS);
 
         if (!placed) {
             showHud(player, Component.translatable(LangDefs.FAILED_TO_PASTE_STRUCTURE.getTranslationKey()));
             return false;
         }
 
+        List<BlockPos> placedPositions = new ArrayList<>();
+
+        for (TemplateUtil.BlockInfo blockInfo : TemplateUtil.parseRawBlocksFromTag(savedTag)) {
+            placedPositions.add(placementOrigin.offset(blockInfo.pos()).immutable());
+        }
+
+        ClonerBlockPlacer.finishPlacement(level, placedPositions);
+
         StructureToolExtensions.notifyTemplatePasted(level, placementOrigin, savedTag);
 
-        if (recordUndoPaste) {
+        Set<BlockPos> deferredPositions = new HashSet<>();
+
+        for (TemplateUtil.BlockInfo blockInfo : deferredBlocks) {
+            deferredPositions.add(placementOrigin.offset(blockInfo.pos()).immutable());
+        }
+
+        Runnable recordUndo = () -> {
+            if (!recordUndoPaste) {
+                return;
+            }
+
             List<StorageUndoPlacedBlock> undoBlocks = collectUndoPlacedBlocksAfterPaste(
                     level,
                     savedTag,
-                    origin);
+                    origin,
+                    deferredPositions);
 
             if (!undoBlocks.isEmpty()) {
                 storeUndoPaste(
@@ -298,6 +347,25 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                         savedTag,
                         undoBlocks);
             }
+        };
+
+        if (deferredBlocks.isEmpty()) {
+            recordUndo.run();
+        } else {
+            MinecraftServer server = level.getServer();
+
+            server.tell(new TickTask(server.getTickCount() + 2, () -> {
+                for (TemplateUtil.BlockInfo blockInfo : deferredBlocks) {
+                    ClonerBlockPlacer.placeBlockAndLoadTag(
+                            level,
+                            placementOrigin.offset(blockInfo.pos()),
+                            blockInfo.state(),
+                            blockInfo.blockEntityTag());
+                }
+
+                ClonerBlockPlacer.finishPlacement(level, deferredPositions);
+                recordUndo.run();
+            }));
         }
 
         if (clearAfterPaste) {
@@ -439,7 +507,9 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        if (!areUndoPlacedBlocksUnchanged(level, undoBlocks)) {
+        List<StorageUndoPlacedBlock> undoableBlocks = filterUndoablePlacedBlocks(level, undoBlocks);
+
+        if (undoableBlocks == null) {
             showHud(
                     player,
                     HUD_TIME_MEDIUM,
@@ -448,7 +518,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        removeUndoPlacedBlocks(level, undoBlocks);
+        removeUndoPlacedBlocks(level, undoableBlocks);
 
         String newId;
 
@@ -545,6 +615,10 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             blockTag.putInt(STORAGE_UNDO_POS_Y_KEY, placedBlock.pos().getY());
             blockTag.putInt(STORAGE_UNDO_POS_Z_KEY, placedBlock.pos().getZ());
             blockTag.putString(STORAGE_UNDO_STATE_KEY, placedBlock.stateSignature());
+
+            if (placedBlock.supportDependent()) {
+                blockTag.putBoolean(STORAGE_UNDO_SUPPORT_DEPENDENT_KEY, true);
+            }
 
             blocksTag.add(blockTag);
         }
@@ -689,32 +763,32 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
             out.add(new StorageUndoPlacedBlock(
                     pos,
-                    blockTag.getString(STORAGE_UNDO_STATE_KEY)));
+                    blockTag.getString(STORAGE_UNDO_STATE_KEY),
+                    blockTag.getBoolean(STORAGE_UNDO_SUPPORT_DEPENDENT_KEY)));
         }
 
         return out;
     }
 
-    private boolean areUndoPlacedBlocksUnchanged(
+    @Nullable
+    private List<StorageUndoPlacedBlock> filterUndoablePlacedBlocks(
             ServerLevel level,
             List<StorageUndoPlacedBlock> undoBlocks) {
-        for (StorageUndoPlacedBlock undoBlock : undoBlocks) {
-            BlockState currentState = level.getBlockState(undoBlock.pos());
-
-            if (!currentState.toString().equals(undoBlock.stateSignature())) {
-                return false;
-            }
-        }
-
-        return true;
+        return ClonerUndoHandler.filterUndoable(
+                undoBlocks,
+                undoBlock -> level.getBlockState(undoBlock.pos()).toString().equals(undoBlock.stateSignature()),
+                StorageUndoPlacedBlock::supportDependent);
     }
 
     private void removeUndoPlacedBlocks(
             ServerLevel level,
             List<StorageUndoPlacedBlock> undoBlocks) {
         BlockState air = Blocks.AIR.defaultBlockState();
+        List<StorageUndoPlacedBlock> ordered = ClonerUndoHandler.supportDependentFirst(
+                undoBlocks,
+                StorageUndoPlacedBlock::supportDependent);
 
-        for (StorageUndoPlacedBlock undoBlock : undoBlocks) {
+        for (StorageUndoPlacedBlock undoBlock : ordered) {
             BlockEntity be = level.getBlockEntity(undoBlock.pos());
 
             if (be != null) {
@@ -725,7 +799,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             level.removeBlockEntity(undoBlock.pos());
         }
 
-        for (StorageUndoPlacedBlock undoBlock : undoBlocks) {
+        for (StorageUndoPlacedBlock undoBlock : ordered) {
             if (level.getBlockState(undoBlock.pos()).isAir()) {
                 continue;
             }
@@ -741,7 +815,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
     private List<StorageUndoPlacedBlock> collectUndoPlacedBlocksAfterPaste(
             ServerLevel level,
             CompoundTag templateTag,
-            BlockPos origin) {
+            BlockPos origin,
+            Set<BlockPos> supportDependentPositions) {
         List<StorageUndoPlacedBlock> out = new ArrayList<>();
 
         BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(templateTag);
@@ -756,9 +831,12 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 continue;
             }
 
+            BlockPos immutablePos = worldPos.immutable();
+
             out.add(new StorageUndoPlacedBlock(
-                    worldPos.immutable(),
-                    currentState.toString()));
+                    immutablePos,
+                    currentState.toString(),
+                    supportDependentPositions.contains(immutablePos)));
         }
 
         return out;
@@ -816,6 +894,38 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         }
     }
 
+    private static List<TemplateUtil.BlockInfo> collectSupportDependentBlocks(
+            ServerLevel level,
+            CompoundTag templateTag,
+            BlockPos placementOrigin) {
+        List<TemplateUtil.BlockInfo> blocks = TemplateUtil.parseRawBlocksFromTag(templateTag);
+        Map<BlockPos, TemplateUtil.BlockInfo> byPos = new HashMap<>();
+
+        for (TemplateUtil.BlockInfo blockInfo : blocks) {
+            byPos.put(blockInfo.pos(), blockInfo);
+        }
+
+        List<TemplateUtil.BlockInfo> deferred = new ArrayList<>();
+
+        for (TemplateUtil.BlockInfo blockInfo : blocks) {
+            if (blockInfo.blockEntityTag() != null || blockInfo.state().isAir()) {
+                continue;
+            }
+
+            BlockPos worldPos = placementOrigin.offset(blockInfo.pos());
+
+            if (blockInfo.state().isCollisionShapeFullBlock(level, worldPos)) {
+                continue;
+            }
+
+            if (ClonerBlockPlacer.hasStructureNeighbourWithBlockEntity(byPos, blockInfo.pos())) {
+                deferred.add(blockInfo);
+            }
+        }
+
+        return deferred;
+    }
+
     private boolean hasPlacementCollision(ServerLevel level, CompoundTag templateTag, BlockPos origin) {
         List<TemplateUtil.BlockInfo> blocks = TemplateUtil.parseRawBlocksFromTag(templateTag);
 
@@ -847,7 +957,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     private record StorageUndoPlacedBlock(
             BlockPos pos,
-            String stateSignature) {
+            String stateSignature,
+            boolean supportDependent) {
     }
 
     private record BlockBounds(

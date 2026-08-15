@@ -9,6 +9,7 @@ public final class CraftingBufferStatusClientCache {
     public static final int AVAILABLE = 1;
     public static final int ALL_BUSY = 2;
     public static final int CRAFTING_SCHEDULED = 3;
+    public static final int TOO_MANY_ITEMS = 4;
 
     private static final ConcurrentHashMap<Integer, Integer> cache = new ConcurrentHashMap<>();
 

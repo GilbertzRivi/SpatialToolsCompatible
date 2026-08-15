@@ -3,8 +3,6 @@ package net.oktawia.spatialtoolscmp.logic.buffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.Future;
-import java.util.function.Supplier;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -13,36 +11,56 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
+import it.unimi.dsi.fastutil.objects.Object2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import lombok.Getter;
-import lombok.Setter;
 
 import appeng.api.config.Actionable;
 import appeng.api.crafting.PatternDetailsHelper;
 import appeng.api.networking.IGrid;
 import appeng.api.networking.IManagedGridNode;
-import appeng.api.networking.crafting.CalculationStrategy;
+import appeng.api.networking.crafting.CraftingJobStatus;
+import appeng.api.networking.crafting.ICraftingCPU;
 import appeng.api.networking.crafting.ICraftingLink;
-import appeng.api.networking.crafting.ICraftingPlan;
 import appeng.api.networking.crafting.ICraftingRequester;
 import appeng.api.networking.security.IActionHost;
 import appeng.api.networking.security.IActionSource;
 import appeng.api.stacks.AEItemKey;
 import appeng.api.stacks.AEKey;
 import appeng.api.stacks.GenericStack;
-import appeng.api.stacks.KeyCounter;
 import appeng.api.storage.StorageHelper;
+import appeng.crafting.execution.CraftingCpuLogic;
+import appeng.crafting.pattern.AEProcessingPattern;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
-import appeng.me.helpers.MachineSource;
+import appeng.me.cluster.implementations.CraftingCPUCluster;
 
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
+import net.oktawia.spatialtoolscmp.compat.ae2.CraftingBufferRequests;
 
 public class ManagedBuffer {
+    public static final String DUMMY_ID_KEY = "s";
+
+    public static final int CONFIRM_TIMEOUT_TICKS = 20 * 120;
+
+    public static final int READY_DISPLAY_TICKS = 20 * 5;
+
+    private static final int DUMMY_CLEANUP_TICKS = 20 * 10;
+
+    public enum PrepareStatus {
+        BUSY,
+        READY,
+        AWAITING_CONFIRM,
+        UNSUPPORTED
+    }
+
+    public record PrepareResult(PrepareStatus status, @Nullable AEItemKey dummyKey) {
+    }
 
     private final Object2LongOpenHashMap<AEKey> items = new Object2LongOpenHashMap<>();
     private final ManagedBufferLogic logic;
@@ -51,38 +69,84 @@ public class ManagedBuffer {
     private final IActionHost actionHost;
     private final Runnable onDirty;
     private final Runnable onReady;
-    private final Supplier<Boolean> isActive;
 
-    private final List<Future<ICraftingPlan>> pendingPlans = new ArrayList<>();
     private final List<ICraftingLink> activeLinks = new ArrayList<>();
+
+    @Getter
+    private BufferRequestState state = BufferRequestState.IDLE;
+
+    @Getter
+    @Nullable
+    private UUID requestId = null;
+
+    @Nullable
+    private ItemStack dummyStack = null;
+
+    @Nullable
+    private AEItemKey dummyKey = null;
+
+    @Getter
+    private long expectedPatterns = 0;
+
+    private long pushedPatterns = 0;
+
+    @Getter
+    private long expectedTotal = 0;
+
+    @Getter
+    private long progressDone = 0;
+
+    private long patternTotal = 0;
+
+    private GenericStack[] patternStacks = new GenericStack[0];
+
+    private boolean aborting = false;
+    private long awaitingSinceTick = 0;
+    private long readyUntilTick = 0;
+    private long dummyCleanupUntilTick = 0;
+    private long pendingDummyReturn = 0;
 
     @Getter
     private boolean flushPending = false;
     private int flushTickAcc = 0;
     private long readyAtTick = 0;
 
-    @Setter
-    private boolean canCraft = true;
-
-    @Getter
-    @Nullable
-    private String lastError = null;
-
     public ManagedBuffer(IManagedGridNode mainNode, PatternProviderLogicHost logicHost,
-            IActionHost actionHost, Runnable onDirty, Runnable onReady,
-            Supplier<Boolean> isActive) {
+            IActionHost actionHost, Runnable onDirty, Runnable onReady) {
         this.mainNode = mainNode;
         this.logicHost = logicHost;
         this.actionHost = actionHost;
         this.onDirty = onDirty;
         this.onReady = onReady;
-        this.isActive = isActive;
         this.items.defaultReturnValue(0L);
         this.logic = new ManagedBufferLogic(mainNode, logicHost, this);
     }
 
     public PatternProviderLogic getLogic() {
         return logic;
+    }
+
+    @Nullable
+    public ICraftingRequester getRequester() {
+        return actionHost instanceof ICraftingRequester requester ? requester : null;
+    }
+
+    public boolean isRequestUsable() {
+        return state == BufferRequestState.AWAITING_CONFIRM || state == BufferRequestState.CRAFTING;
+    }
+
+    public boolean isAwaitingConfirmFor(int ticks) {
+        return state == BufferRequestState.AWAITING_CONFIRM && now() - awaitingSinceTick >= ticks;
+    }
+
+    public void touchAwaitingConfirm() {
+        if (state == BufferRequestState.AWAITING_CONFIRM) {
+            awaitingSinceTick = now();
+        }
+    }
+
+    public boolean isBusy() {
+        return state.isBusy() || hasActiveCrafting() || flushPending;
     }
 
     public long get(AEKey key) {
@@ -116,78 +180,283 @@ public class ManagedBuffer {
         return items.isEmpty();
     }
 
-    public void collectFromNetwork(GenericStack[] required, Supplier<Boolean> hasCreative) {
-        if (hasCreative.get())
-            return;
-        var grid = grid();
-        if (grid == null)
-            return;
-        var storage = grid.getStorageService().getInventory();
-        var es = grid.getEnergyService();
+    public long getBufferedTotal() {
+        long total = 0;
 
-        for (var stack : required) {
-            if (stack == null)
-                continue;
-            var key = stack.what();
-            if (key == null)
-                continue;
-            long need = stack.amount() - get(key);
-            if (need <= 0)
-                continue;
-
-            long pulled = StorageHelper.poweredExtraction(es, storage, key, need, src(), Actionable.MODULATE);
-            if (pulled > 0)
-                add(key, pulled);
-        }
-
-        grid.getStorageService().invalidateCache();
-    }
-
-    public GenericStack[] computeMissing(GenericStack[] required, Supplier<Boolean> hasCreative) {
-        if (hasCreative.get())
-            return new GenericStack[0];
-
-        GenericStack[] tmp = new GenericStack[required.length];
-        int count = 0;
-
-        for (var stack : required) {
-            if (stack == null)
-                continue;
-            var key = stack.what();
-            if (key == null)
-                continue;
-            long need = stack.amount() - get(key);
-            if (need > 0) {
-                tmp[count++] = new GenericStack(key, need);
+        for (Object2LongMap.Entry<AEKey> e : items.object2LongEntrySet()) {
+            if (e.getKey() != null && e.getLongValue() > 0) {
+                total += e.getLongValue();
             }
         }
 
-        if (count == tmp.length) {
-            return tmp;
-        }
-
-        GenericStack[] trimmed = new GenericStack[count];
-        System.arraycopy(tmp, 0, trimmed, 0, count);
-        return trimmed;
+        return total;
     }
 
-    public boolean request(GenericStack[] required, boolean allowedToCraft) {
-        if (flushPending)
-            return false;
-        if (!flushUnneeded(required))
-            return false;
+    private long computeProgressDone() {
+        long buffered = getBufferedTotal();
 
-        collectFromNetwork(required, () -> false);
-        var missing = computeMissing(required, () -> false);
-        if (missing.length == 0) {
+        if (state != BufferRequestState.CRAFTING || patternTotal <= 0) {
+            return buffered;
+        }
+
+        long remainingPushes = Math.max(0, expectedPatterns - pushedPatterns);
+
+        if (remainingPushes <= 0) {
+            return buffered;
+        }
+
+        long inFlight = patternTotal * remainingPushes;
+
+        return buffered + Math.min(inFlight, securedPatternAmount());
+    }
+
+    private long securedPatternAmount() {
+        CraftingCpuLogic cpu = findRequestCpu();
+
+        if (cpu == null) {
+            return 0;
+        }
+
+        long secured = 0;
+
+        for (GenericStack stack : patternStacks) {
+            if (stack == null || stack.what() == null) {
+                continue;
+            }
+
+            secured += Math.min(stack.amount(), cpu.getStored(stack.what()));
+        }
+
+        return secured;
+    }
+
+    @Nullable
+    private CraftingCpuLogic findRequestCpu() {
+        var grid = grid();
+
+        if (requestId == null || grid == null || patternStacks.length == 0) {
+            return null;
+        }
+
+        for (ICraftingCPU cpu : grid.getCraftingService().getCpus()) {
+            CraftingJobStatus status = cpu.getJobStatus();
+
+            if (status == null || status.crafting() == null
+                    || !requestId.equals(CraftingBufferRequests.readRequestId(status.crafting().what()))) {
+                continue;
+            }
+
+            return cpu instanceof CraftingCPUCluster cluster ? cluster.craftingLogic : null;
+        }
+
+        return null;
+    }
+
+    private GenericStack[] condense(GenericStack[] required) {
+        var merged = new Object2LongLinkedOpenHashMap<AEKey>();
+        merged.defaultReturnValue(0L);
+
+        for (var stack : required) {
+            if (stack == null || stack.what() == null || stack.amount() <= 0)
+                continue;
+            merged.put(stack.what(), merged.getLong(stack.what()) + stack.amount());
+        }
+
+        GenericStack[] result = new GenericStack[merged.size()];
+        int i = 0;
+
+        for (var e : merged.object2LongEntrySet()) {
+            result[i++] = new GenericStack(e.getKey(), e.getLongValue());
+        }
+
+        return result;
+    }
+
+    private GenericStack[] networkShortfall(GenericStack[] condensed) {
+        var grid = grid();
+        var storage = grid == null ? null : grid.getStorageService().getInventory();
+
+        List<GenericStack> shortfall = new ArrayList<>(condensed.length);
+
+        for (var stack : condensed) {
+            long need = stack.amount() - get(stack.what());
+
+            if (need > 0 && storage != null) {
+                need -= storage.extract(stack.what(), need, Actionable.SIMULATE, src());
+            }
+
+            if (need > 0) {
+                shortfall.add(new GenericStack(stack.what(), need));
+            }
+        }
+
+        return shortfall.toArray(GenericStack[]::new);
+    }
+
+    public PrepareResult prepare(GenericStack[] required, @Nullable Component displayName) {
+        if (isBusy()) {
+            return new PrepareResult(PrepareStatus.BUSY, null);
+        }
+
+        if (!flushUnneeded(required)) {
+            return new PrepareResult(PrepareStatus.BUSY, null);
+        }
+
+        GenericStack[] inputs = condense(required);
+
+        if (inputs.length > AEProcessingPattern.MAX_INPUT_SLOTS) {
+            inputs = networkShortfall(inputs);
+        }
+
+        if (inputs.length == 0) {
+            expectedTotal = 0;
+            progressDone = 0;
+            patternTotal = 0;
+            patternStacks = new GenericStack[0];
+            expectedPatterns = 1;
+            pushedPatterns = 1;
             fireReady();
-            return true;
+            return new PrepareResult(PrepareStatus.READY, null);
         }
-        if (allowedToCraft) {
-            requestCrafting(missing);
-            return hasActiveCrafting();
+
+        if (inputs.length > AEProcessingPattern.MAX_INPUT_SLOTS) {
+            return new PrepareResult(PrepareStatus.UNSUPPORTED, null);
         }
-        return false;
+
+        long inputSum = 0;
+        for (var stack : inputs) {
+            inputSum += stack.amount();
+        }
+
+        ItemStack dummy = logicHost.getBlockEntity().getBlockState().getBlock().asItem().getDefaultInstance();
+        UUID id = UUID.randomUUID();
+        dummy.getOrCreateTag().putUUID(DUMMY_ID_KEY, id);
+
+        if (displayName != null) {
+            dummy.setHoverName(displayName);
+        }
+
+        AEItemKey key = AEItemKey.of(dummy);
+
+        if (key == null) {
+            return new PrepareResult(PrepareStatus.UNSUPPORTED, null);
+        }
+
+        var patternStack = PatternDetailsHelper.encodeProcessingPattern(
+                inputs,
+                new GenericStack[] { new GenericStack(key, 1) });
+
+        logic.getPatternInv().setItemDirect(0, patternStack);
+        logic.updatePatterns();
+
+        this.requestId = id;
+        this.dummyStack = dummy;
+        this.dummyKey = key;
+        this.expectedPatterns = 0;
+        this.pushedPatterns = 0;
+        this.patternTotal = inputSum;
+        this.patternStacks = inputs;
+        this.expectedTotal = inputSum;
+        this.awaitingSinceTick = now();
+        this.progressDone = 0;
+        this.state = BufferRequestState.AWAITING_CONFIRM;
+
+        CraftingBufferRequests.register(id, this);
+        onDirty.run();
+
+        return new PrepareResult(PrepareStatus.AWAITING_CONFIRM, key);
+    }
+
+    public void onJobSubmitted(ICraftingLink link, long amount) {
+        if (link == null) {
+            return;
+        }
+
+        activeLinks.add(link);
+
+        long requested = Math.max(1, amount);
+
+        if (state == BufferRequestState.CRAFTING) {
+            this.expectedPatterns += requested;
+            this.expectedTotal += requested * patternTotal;
+        } else {
+            this.expectedPatterns = requested;
+            this.pushedPatterns = 0;
+            this.expectedTotal += (requested - 1) * patternTotal;
+            this.state = BufferRequestState.CRAFTING;
+        }
+
+        onDirty.run();
+    }
+
+    public void onPushPatternComplete() {
+        pushedPatterns++;
+
+        if (pushedPatterns < Math.max(1, expectedPatterns)) {
+            onDirty.run();
+            return;
+        }
+
+        finishRequest();
+    }
+
+    private void finishRequest() {
+        clearPattern();
+        CraftingBufferRequests.unregister(requestId);
+
+        readyAtTick = now() + 1;
+        dummyCleanupUntilTick = now() + DUMMY_CLEANUP_TICKS;
+
+        if (activeLinks.isEmpty()) {
+            pendingDummyReturn = Math.max(1, pushedPatterns);
+        } else {
+            cancelAllLinks();
+        }
+
+        onDirty.run();
+    }
+
+    public void abortRequest() {
+        endRequest(BufferRequestState.IDLE);
+    }
+
+    public void failRequest() {
+        endRequest(BufferRequestState.ERROR);
+    }
+
+    private void endRequest(BufferRequestState finalState) {
+        if (aborting) {
+            return;
+        }
+
+        aborting = true;
+
+        try {
+            doEndRequest(finalState);
+        } finally {
+            aborting = false;
+        }
+    }
+
+    private void doEndRequest(BufferRequestState finalState) {
+        clearPattern();
+        cancelAllLinks();
+        CraftingBufferRequests.unregister(requestId);
+
+        requestId = null;
+        dummyStack = null;
+        dummyKey = null;
+        expectedPatterns = 0;
+        pushedPatterns = 0;
+        expectedTotal = 0;
+        patternTotal = 0;
+        patternStacks = new GenericStack[0];
+        awaitingSinceTick = 0;
+        readyAtTick = 0;
+        state = finalState;
+
+        beginFlush();
+        onDirty.run();
     }
 
     private boolean flushUnneeded(GenericStack[] required) {
@@ -238,114 +507,89 @@ public class ManagedBuffer {
         return !stillHasExcess;
     }
 
-    public boolean requestCrafting(GenericStack[] inputs) {
-        if (!canCraft || hasActiveCrafting())
-            return false;
-        var grid = grid();
-        if (grid == null)
-            return false;
-
-        var dummy = logicHost.getBlockEntity().getBlockState().getBlock().asItem().getDefaultInstance();
-        dummy.getOrCreateTag().putUUID("s", UUID.randomUUID());
-        var dummyOutput = new GenericStack(AEItemKey.of(dummy), 1);
-
-        var patternStack = PatternDetailsHelper.encodeProcessingPattern(inputs, new GenericStack[] { dummyOutput });
-        logic.getPatternInv().setItemDirect(0, patternStack);
-        logic.updatePatterns();
-
-        var plan = grid.getCraftingService().beginCraftingCalculation(
-                level(),
-                () -> new MachineSource(actionHost),
-                dummyOutput.what(),
-                dummyOutput.amount(),
-                CalculationStrategy.REPORT_MISSING_ITEMS);
-
-        pendingPlans.add(plan);
-        onDirty.run();
-        return true;
-    }
-
-    public void onPushPatternComplete() {
-        clearPattern();
-        readyAtTick = level().getGameTime() + 1;
-        cancelAllLinks();
-    }
-
-    public @Nullable GenericStack tick(int ticksSinceLastCall) {
-        if (!isActive.get() && !hasActiveCrafting() && !items.isEmpty() && !flushPending)
-            beginFlush();
-        var missing = tickCrafting();
+    public void tick(int ticksSinceLastCall) {
+        tickRequestState();
+        tickCrafting();
+        tickDummy();
         tickFlush(ticksSinceLastCall);
-        return missing;
+        tickProgress();
     }
 
-    @Nullable
-    private GenericStack tickCrafting() {
-        if (readyAtTick > 0) {
-            if (level().getGameTime() >= readyAtTick) {
-                readyAtTick = 0;
-                fireReady();
-            }
-            return null;
-        }
-        if (pendingPlans.isEmpty() && activeLinks.isEmpty())
-            return null;
-
-        GenericStack firstMissing = null;
-        var it = pendingPlans.iterator();
-        while (it.hasNext()) {
-            var future = it.next();
-            if (!future.isDone())
-                continue;
-            it.remove();
-
-            try {
-                var plan = future.get();
-                var grid = grid();
-                if (grid == null) {
-                    clearPattern();
-                    beginFlush();
-                    continue;
-                }
-
-                var result = grid.getCraftingService().submitJob(
-                        plan,
-                        actionHost instanceof ICraftingRequester r ? r : null,
-                        null,
-                        true,
-                        src());
-
-                if (result.successful() && result.link() != null) {
-                    activeLinks.add(result.link());
-                    onDirty.run();
-                } else {
-                    if (firstMissing == null) {
-                        try {
-                            KeyCounter mc = plan.missingItems();
-                            if (mc != null && !mc.isEmpty()) {
-                                var e = mc.iterator().next();
-                                firstMissing = new GenericStack(e.getKey(), e.getLongValue());
-                                lastError = e.getKey().getDisplayName().getString() + " x" + e.getLongValue();
-                                SpatialToolsCMP.getLOGGER().debug("crafting job failed, first missing: {} x{}",
-                                        e.getKey(), e.getLongValue());
-                            }
-                        } catch (Throwable e) {
-                            SpatialToolsCMP.getLOGGER().debug("failed to read missing items from crafting plan", e);
-                        }
-                    }
-                }
-            } catch (Exception e) {
-                SpatialToolsCMP.getLOGGER().debug("crafting plan future failed", e);
-            }
+    private void tickProgress() {
+        if (state == BufferRequestState.IDLE) {
+            progressDone = 0;
+            return;
         }
 
-        if (firstMissing != null) {
-            clearPattern();
-            cancelAllLinks();
+        progressDone = Math.max(progressDone, computeProgressDone());
+    }
+
+    private void tickRequestState() {
+        if (state == BufferRequestState.AWAITING_CONFIRM
+                && readyAtTick == 0
+                && activeLinks.isEmpty()
+                && now() - awaitingSinceTick > CONFIRM_TIMEOUT_TICKS) {
+            SpatialToolsCMP.getLOGGER().debug("managed buffer request {} was never confirmed, dropping it", requestId);
+            abortRequest();
+            return;
+        }
+
+        if (state == BufferRequestState.READY && now() > readyUntilTick && !flushPending) {
+            requestId = null;
+            dummyStack = null;
+            expectedPatterns = 0;
+            pushedPatterns = 0;
+            expectedTotal = 0;
+            patternTotal = 0;
+            patternStacks = new GenericStack[0];
+            state = BufferRequestState.IDLE;
+            onDirty.run();
+        }
+
+        if (!state.isBusy()
+                && state != BufferRequestState.READY
+                && !items.isEmpty()
+                && !flushPending
+                && !hasActiveCrafting()) {
             beginFlush();
-            return firstMissing;
         }
-        return null;
+    }
+
+    private void tickCrafting() {
+        if (readyAtTick > 0 && now() >= readyAtTick) {
+            readyAtTick = 0;
+            fireReady();
+        }
+    }
+
+    private void tickDummy() {
+        if (dummyKey == null) {
+            return;
+        }
+
+        var grid = grid();
+
+        if (grid == null) {
+            return;
+        }
+
+        if (pendingDummyReturn > 0) {
+            var inv = grid.getStorageService().getInventory();
+            var es = grid.getEnergyService();
+
+            StorageHelper.poweredInsert(es, inv, dummyKey, pendingDummyReturn, src(), Actionable.MODULATE);
+            pendingDummyReturn = 0;
+        }
+
+        if (dummyCleanupUntilTick > 0) {
+            if (now() > dummyCleanupUntilTick) {
+                dummyCleanupUntilTick = 0;
+                dummyKey = null;
+                return;
+            }
+
+            grid.getStorageService().getInventory().extract(dummyKey, Long.MAX_VALUE, Actionable.MODULATE, src());
+        }
     }
 
     public ImmutableSet<ICraftingLink> getRequestedJobs() {
@@ -353,9 +597,18 @@ public class ManagedBuffer {
     }
 
     public long insertCraftedItems(AEKey what, long amount, Actionable mode) {
-        if (mode == Actionable.MODULATE && what != null) {
+        if (what == null) {
+            return 0;
+        }
+
+        if (dummyKey != null && dummyKey.equals(what)) {
+            return amount;
+        }
+
+        if (mode == Actionable.MODULATE) {
             add(what, amount);
         }
+
         return 0;
     }
 
@@ -364,15 +617,12 @@ public class ManagedBuffer {
         onDirty.run();
 
         if (link.isDone()) {
-            if (pendingPlans.isEmpty() && activeLinks.isEmpty() && readyAtTick == 0) {
-                readyAtTick = level().getGameTime() + 1;
+            if (activeLinks.isEmpty() && readyAtTick == 0) {
+                readyAtTick = now() + 1;
             }
         } else if (link.isCanceled()) {
-            if (readyAtTick == 0
-                    && pendingPlans.isEmpty()
-                    && activeLinks.isEmpty()
-                    && !isActive.get()) {
-                beginFlush();
+            if (readyAtTick == 0 && activeLinks.isEmpty() && state == BufferRequestState.CRAFTING) {
+                failRequest();
             }
         }
     }
@@ -440,6 +690,22 @@ public class ManagedBuffer {
         tag.putBoolean("flushPending", flushPending);
         tag.putInt("flushTickAcc", flushTickAcc);
 
+        tag.putInt("state", state.ordinal());
+        tag.putLong("expectedPatterns", expectedPatterns);
+        tag.putLong("pushedPatterns", pushedPatterns);
+        tag.putLong("expectedTotal", expectedTotal);
+        tag.putLong("patternTotal", patternTotal);
+        tag.put("patternStacks", saveGenericStacks(patternStacks));
+        tag.putLong("awaitingFor", Math.max(0, now() - awaitingSinceTick));
+
+        if (requestId != null) {
+            tag.putUUID("requestId", requestId);
+        }
+
+        if (dummyStack != null && !dummyStack.isEmpty()) {
+            tag.put("dummy", dummyStack.save(new CompoundTag()));
+        }
+
         ItemStack patternSlot = logic.getPatternInv().getStackInSlot(0);
         if (!patternSlot.isEmpty()) {
             tag.put("patternSlot", patternSlot.save(new CompoundTag()));
@@ -461,8 +727,36 @@ public class ManagedBuffer {
         flushPending = tag.getBoolean("flushPending") && !items.isEmpty();
         flushTickAcc = tag.getInt("flushTickAcc");
         readyAtTick = 0;
-        pendingPlans.clear();
+        readyUntilTick = 0;
+        dummyCleanupUntilTick = 0;
+        pendingDummyReturn = 0;
         activeLinks.clear();
+
+        state = BufferRequestState.byOrdinal(tag.getInt("state"));
+        expectedPatterns = tag.getLong("expectedPatterns");
+        pushedPatterns = tag.getLong("pushedPatterns");
+        expectedTotal = tag.getLong("expectedTotal");
+        patternTotal = tag.getLong("patternTotal");
+        patternStacks = loadGenericStacks(tag.getList("patternStacks", Tag.TAG_COMPOUND));
+        awaitingSinceTick = -tag.getLong("awaitingFor");
+
+        if (tag.hasUUID("requestId")) {
+            requestId = tag.getUUID("requestId");
+        } else {
+            requestId = null;
+        }
+
+        if (tag.contains("dummy", Tag.TAG_COMPOUND)) {
+            dummyStack = ItemStack.of(tag.getCompound("dummy"));
+            dummyKey = dummyStack.isEmpty() ? null : AEItemKey.of(dummyStack);
+        } else {
+            dummyStack = null;
+            dummyKey = null;
+        }
+
+        if (state == BufferRequestState.READY) {
+            state = BufferRequestState.IDLE;
+        }
 
         if (actionHost instanceof ICraftingRequester requester) {
             ListTag linkTags = tag.getList("links", Tag.TAG_COMPOUND);
@@ -487,6 +781,18 @@ public class ManagedBuffer {
         if (!logic.getPatternInv().getStackInSlot(0).isEmpty()) {
             logic.updatePatterns();
         }
+
+        if (awaitingSinceTick <= 0) {
+            awaitingSinceTick = now() + awaitingSinceTick;
+        }
+
+        if (requestId != null && isRequestUsable()) {
+            CraftingBufferRequests.register(requestId, this);
+        }
+    }
+
+    public void onUnload() {
+        CraftingBufferRequests.unregister(requestId);
     }
 
     public GenericStack[] getItemsAsStacks() {
@@ -494,7 +800,7 @@ public class ManagedBuffer {
     }
 
     public boolean hasActiveCrafting() {
-        return !pendingPlans.isEmpty() || !activeLinks.isEmpty() || readyAtTick > 0;
+        return !activeLinks.isEmpty() || readyAtTick > 0;
     }
 
     private void clearPattern() {
@@ -505,7 +811,6 @@ public class ManagedBuffer {
     private void cancelAllLinks() {
         var toCancel = new ArrayList<>(activeLinks);
         activeLinks.clear();
-        pendingPlans.clear();
         for (var link : toCancel) {
             try {
                 link.cancel();
@@ -516,7 +821,10 @@ public class ManagedBuffer {
     }
 
     private void fireReady() {
-        lastError = null;
+        state = BufferRequestState.READY;
+        readyUntilTick = now() + READY_DISPLAY_TICKS;
+        CraftingBufferRequests.unregister(requestId);
+        beginFlush();
         onReady.run();
     }
 
@@ -524,10 +832,12 @@ public class ManagedBuffer {
         return IActionSource.ofMachine(actionHost);
     }
 
-    private Level level() {
-        return logicHost.getBlockEntity().getLevel();
+    private long now() {
+        Level level = logicHost.getBlockEntity().getLevel();
+        return level == null ? 0 : level.getGameTime();
     }
 
+    @Nullable
     private IGrid grid() {
         return mainNode.getGrid();
     }

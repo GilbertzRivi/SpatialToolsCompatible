@@ -5,6 +5,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import com.google.common.collect.ImmutableSet;
 
@@ -13,7 +14,11 @@ import org.jetbrains.annotations.Nullable;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
@@ -32,7 +37,10 @@ import appeng.api.util.IConfigManager;
 import appeng.blockentity.grid.AENetworkBlockEntity;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
+import appeng.menu.me.crafting.CraftAmountMenu;
+import appeng.menu.me.crafting.CraftConfirmMenu;
 
+import net.oktawia.spatialtoolscmp.logic.buffer.BufferRequestState;
 import net.oktawia.spatialtoolscmp.logic.buffer.ManagedBuffer;
 
 public class CraftingBufferBlockEntity extends AENetworkBlockEntity
@@ -41,11 +49,17 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
     public record DisplayEntry(ItemStack stack, long requestedAmount, long bufferedAmount) {
     }
 
+    private static final int ABANDONED_CONFIRM_TICKS = 40;
+
     private final ManagedBuffer buffer;
 
-    private boolean hasActiveRequest = false;
     private boolean displayHasError = false;
     private GenericStack[] requestedStacks = new GenericStack[0];
+
+    @Nullable
+    private UUID ownerId = null;
+
+    private String requestLabel = "";
 
     public CraftingBufferBlockEntity(BlockPos pos, BlockState state) {
         super(AE2BlockRegistrar.CRAFTING_BUFFER_BE_TYPE.get(), pos, state);
@@ -55,8 +69,7 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
                 this,
                 this,
                 this::setChanged,
-                this::onBufferReady,
-                () -> hasActiveRequest);
+                this::onBufferReady);
 
         getMainNode()
                 .setIdlePowerUsage(1.0)
@@ -75,11 +88,30 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
     }
 
     @Override
+    public void setRemoved() {
+        super.setRemoved();
+        buffer.onUnload();
+    }
+
+    @Override
+    public void onChunkUnloaded() {
+        super.onChunkUnloaded();
+        buffer.onUnload();
+    }
+
+    @Override
     public void saveAdditional(CompoundTag tag) {
         super.saveAdditional(tag);
 
         tag.put("buffer", buffer.toTag());
         tag.putBoolean("displayHasError", displayHasError);
+        tag.putString("requestLabel", requestLabel);
+
+        if (ownerId != null) {
+            tag.putUUID("ownerId", ownerId);
+        }
+
+        tag.put("requested", saveRequestedStacks());
     }
 
     @Override
@@ -93,6 +125,13 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         if (tag.contains("displayHasError", Tag.TAG_BYTE)) {
             displayHasError = tag.getBoolean("displayHasError");
         }
+
+        requestLabel = tag.getString("requestLabel");
+        ownerId = tag.hasUUID("ownerId") ? tag.getUUID("ownerId") : null;
+
+        if (tag.contains("requested", Tag.TAG_LIST)) {
+            requestedStacks = loadRequestedStacks(tag);
+        }
     }
 
     @Override
@@ -102,61 +141,68 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
 
     @Override
     public TickRateModulation tickingRequest(IGridNode node, int ticksSinceLastCall) {
-        GenericStack missing = buffer.tick(ticksSinceLastCall);
+        buffer.tick(ticksSinceLastCall);
+        tickAbandonedRequest();
 
-        if (missing != null) {
-            hasActiveRequest = false;
-            markDisplayError();
-        }
-
-        if (buffer.getLastError() != null) {
-            hasActiveRequest = false;
-            markDisplayError();
-        }
-
-        if (hasActiveRequest && !hasAnyProgress()) {
-            hasActiveRequest = false;
+        if (buffer.getState() == BufferRequestState.ERROR) {
             markDisplayError();
         }
 
         clearDisplayRequestIfIdle();
 
-        return (buffer.hasActiveCrafting() || buffer.isFlushPending() || hasActiveRequest)
-                ? TickRateModulation.URGENT
-                : TickRateModulation.IDLE;
+        return buffer.isBusy() ? TickRateModulation.URGENT : TickRateModulation.IDLE;
     }
 
-    public boolean request(GenericStack[] required, boolean allowedToCraft) {
+    public ManagedBuffer.PrepareResult prepare(
+            @Nullable UUID requester,
+            String label,
+            GenericStack[] required,
+            @Nullable Component dummyName) {
         this.requestedStacks = copyStacks(required);
+        this.ownerId = requester;
+        this.requestLabel = label == null ? "" : label;
+
         setChanged();
 
-        hasActiveRequest = true;
+        ManagedBuffer.PrepareResult result = buffer.prepare(required, dummyName);
 
-        boolean ready = buffer.request(required, allowedToCraft);
-
-        if (buffer.getLastError() != null) {
-            hasActiveRequest = false;
-            markDisplayError();
-        } else if (ready) {
-            hasActiveRequest = false;
+        if (result.status() == ManagedBuffer.PrepareStatus.READY
+                || result.status() == ManagedBuffer.PrepareStatus.AWAITING_CONFIRM) {
             clearDisplayError();
-        } else if (!hasAnyProgress()) {
-            hasActiveRequest = false;
-            markDisplayError();
+        } else {
+            clearDisplayRequestIfIdle();
         }
 
-        clearDisplayRequestIfIdle();
+        return result;
+    }
 
-        return ready;
+    public BufferRequestState getRequestState() {
+        return buffer.getState();
+    }
+
+    public long getProgressDone() {
+        return buffer.getProgressDone();
+    }
+
+    public long getProgressTotal() {
+        return buffer.getExpectedTotal();
+    }
+
+    @Nullable
+    public UUID getOwnerId() {
+        return ownerId;
+    }
+
+    public String getRequestLabel() {
+        return requestLabel;
+    }
+
+    public boolean isBusy() {
+        return buffer.isBusy();
     }
 
     public boolean hasActiveCrafting() {
         return buffer.hasActiveCrafting();
-    }
-
-    @Nullable
-    public String getLastError() {
-        return buffer.getLastError();
     }
 
     public boolean hasDisplayError() {
@@ -165,11 +211,12 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
 
     public List<DisplayEntry> getDisplayEntries() {
         Map<AEItemKey, long[]> amountsByKey = new LinkedHashMap<>();
+        long sets = Math.max(1, buffer.getExpectedPatterns());
 
         for (GenericStack stack : requestedStacks) {
             if (stack != null && stack.what() instanceof AEItemKey itemKey && stack.amount() > 0) {
                 long[] amounts = amountsByKey.computeIfAbsent(itemKey, k -> new long[2]);
-                amounts[0] += stack.amount();
+                amounts[0] += stack.amount() * sets;
             }
         }
 
@@ -197,10 +244,29 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         return List.copyOf(result);
     }
 
+    private void tickAbandonedRequest() {
+        if (buffer.getState() != BufferRequestState.AWAITING_CONFIRM || level == null || level.getServer() == null) {
+            return;
+        }
+
+        ServerPlayer owner = ownerId == null ? null : level.getServer().getPlayerList().getPlayer(ownerId);
+
+        if (owner != null && isCraftingRequestMenu(owner.containerMenu)) {
+            buffer.touchAwaitingConfirm();
+            return;
+        }
+
+        if (buffer.isAwaitingConfirmFor(ABANDONED_CONFIRM_TICKS)) {
+            buffer.abortRequest();
+        }
+    }
+
+    private static boolean isCraftingRequestMenu(@Nullable AbstractContainerMenu menu) {
+        return menu instanceof CraftAmountMenu || menu instanceof CraftConfirmMenu;
+    }
+
     private void onBufferReady() {
-        hasActiveRequest = false;
         clearDisplayError();
-        clearDisplayRequestIfIdle();
         setChanged();
     }
 
@@ -268,40 +334,12 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         }
     }
 
-    private boolean hasAnyProgress() {
-        if (buffer.hasActiveCrafting()) {
-            return true;
-        }
-
-        if (buffer.isFlushPending()) {
-            return true;
-        }
-
-        if (!buffer.getRequestedJobs().isEmpty()) {
-            return true;
-        }
-
-        return hasBufferedItems();
-    }
-
     private void clearDisplayRequestIfIdle() {
         if (displayHasError) {
             return;
         }
 
-        if (hasActiveRequest) {
-            return;
-        }
-
-        if (buffer.hasActiveCrafting()) {
-            return;
-        }
-
-        if (buffer.isFlushPending()) {
-            return;
-        }
-
-        if (!buffer.getRequestedJobs().isEmpty()) {
+        if (buffer.isBusy()) {
             return;
         }
 
@@ -311,6 +349,8 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
 
         if (requestedStacks.length > 0) {
             requestedStacks = new GenericStack[0];
+            ownerId = null;
+            requestLabel = "";
             setChanged();
         }
     }
@@ -323,6 +363,47 @@ public class CraftingBufferBlockEntity extends AENetworkBlockEntity
         }
 
         return false;
+    }
+
+    private ListTag saveRequestedStacks() {
+        ListTag list = new ListTag();
+
+        for (GenericStack stack : requestedStacks) {
+            if (stack == null || stack.what() == null || stack.amount() <= 0) {
+                continue;
+            }
+
+            ItemStack wrapped = GenericStack.wrapInItemStack(stack);
+
+            if (!wrapped.isEmpty()) {
+                list.add(wrapped.save(new CompoundTag()));
+            }
+        }
+
+        return list;
+    }
+
+    private static GenericStack[] loadRequestedStacks(CompoundTag tag) {
+        ListTag list = tag.getList("requested", Tag.TAG_COMPOUND);
+        List<GenericStack> stacks = new ArrayList<>(list.size());
+
+        for (int i = 0; i < list.size(); i++) {
+            ItemStack wrapped = ItemStack.of(list.getCompound(i));
+
+            if (wrapped.isEmpty()) {
+                continue;
+            }
+
+            GenericStack stack = GenericStack.fromItemStack(wrapped);
+
+            if (stack == null || stack.what() == null || stack.amount() <= 0) {
+                continue;
+            }
+
+            stacks.add(stack);
+        }
+
+        return stacks.toArray(GenericStack[]::new);
     }
 
     private static GenericStack[] copyStacks(GenericStack[] stacks) {

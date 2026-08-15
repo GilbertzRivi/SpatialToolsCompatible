@@ -158,10 +158,28 @@ public final class NetworkHandler {
                 .consumerMainThread(SyncCraftingBufferStatusPacket::handle)
                 .add();
 
+        CHANNEL.messageBuilder(SyncClonerCraftingProgressPacket.class, nextId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncClonerCraftingProgressPacket::encode)
+                .decoder(SyncClonerCraftingProgressPacket::decode)
+                .consumerMainThread(SyncClonerCraftingProgressPacket::handle)
+                .add();
+
         CHANNEL.messageBuilder(ReplacerContextActionPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
                 .encoder(ReplacerContextActionPacket::encode)
                 .decoder(ReplacerContextActionPacket::decode)
                 .consumerMainThread(ReplacerContextActionPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(RequestClonerMissingBlocksPacket.class, nextId++, NetworkDirection.PLAY_TO_SERVER)
+                .encoder(RequestClonerMissingBlocksPacket::encode)
+                .decoder(RequestClonerMissingBlocksPacket::decode)
+                .consumerMainThread(RequestClonerMissingBlocksPacket::handle)
+                .add();
+
+        CHANNEL.messageBuilder(SyncClonerMissingBlocksPacket.class, nextId++, NetworkDirection.PLAY_TO_CLIENT)
+                .encoder(SyncClonerMissingBlocksPacket::encode)
+                .decoder(SyncClonerMissingBlocksPacket::decode)
+                .consumerMainThread(SyncClonerMissingBlocksPacket::handle)
                 .add();
     }
 

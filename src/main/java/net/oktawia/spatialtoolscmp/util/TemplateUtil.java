@@ -226,6 +226,28 @@ public final class TemplateUtil {
         return out;
     }
 
+    public static CompoundTag withoutBlocksAt(CompoundTag templateTag, Set<BlockPos> rawPositions) {
+        CompoundTag result = templateTag.copy();
+        ListTag blocks = result.getList("blocks", Tag.TAG_COMPOUND);
+        ListTag kept = new ListTag();
+
+        for (int i = 0; i < blocks.size(); i++) {
+            CompoundTag blockTag = blocks.getCompound(i);
+            ListTag posTag = blockTag.getList("pos", Tag.TAG_INT);
+
+            if (posTag.size() >= 3
+                    && rawPositions.contains(
+                            new BlockPos(posTag.getInt(0), posTag.getInt(1), posTag.getInt(2)))) {
+                continue;
+            }
+
+            kept.add(blockTag);
+        }
+
+        result.put("blocks", kept);
+        return result;
+    }
+
     public static boolean sanitizeCapturedBlockEntityTags(@Nullable CompoundTag tag) {
         if (tag == null) {
             return false;
@@ -776,6 +798,14 @@ public final class TemplateUtil {
                                 cableBusTransform));
             }
 
+            if (blockEntry.contains(StructureToolKeys.CLONE_KEY_AE2_CABLE_VISUAL, Tag.TAG_COMPOUND)) {
+                blockEntry.put(
+                        StructureToolKeys.CLONE_KEY_AE2_CABLE_VISUAL,
+                        transformAe2CableVisualTag(
+                                blockEntry.getCompound(StructureToolKeys.CLONE_KEY_AE2_CABLE_VISUAL),
+                                cableBusTransform));
+            }
+
             if (blockEntry.contains(CB_MULTIPART_META_KEY, Tag.TAG_COMPOUND)) {
                 blockEntry.put(
                         CB_MULTIPART_META_KEY,
@@ -875,6 +905,47 @@ public final class TemplateUtil {
         result.putIntArray(StructureToolKeys.CHISELED_KEY_OPS, updated);
 
         return result;
+    }
+
+    private static CompoundTag transformAe2CableVisualTag(CompoundTag tag, CableBusTransform transform) {
+        CompoundTag result = tag.copy();
+
+        ListTag connections = tag.getList(StructureToolKeys.AE2_CABLE_VISUAL_CONNECTIONS, Tag.TAG_STRING);
+        ListTag mappedConnections = new ListTag();
+
+        for (int i = 0; i < connections.size(); i++) {
+            Direction side = Direction.byName(connections.getString(i));
+
+            if (side == null) {
+                continue;
+            }
+
+            mappedConnections.add(StringTag.valueOf(mapCableBusSide(side, transform).getSerializedName()));
+        }
+
+        result.put(StructureToolKeys.AE2_CABLE_VISUAL_CONNECTIONS, mappedConnections);
+
+        for (Direction side : Direction.values()) {
+            result.remove(ae2CableChannelKey(side));
+        }
+
+        for (Direction side : Direction.values()) {
+            String sourceKey = ae2CableChannelKey(side);
+
+            if (tag.contains(sourceKey, Tag.TAG_INT)) {
+                result.putInt(ae2CableChannelKey(mapCableBusSide(side, transform)), tag.getInt(sourceKey));
+            }
+        }
+
+        return result;
+    }
+
+    private static String ae2CableChannelKey(Direction side) {
+        String name = side.getSerializedName();
+
+        return StructureToolKeys.AE2_CABLE_VISUAL_CHANNELS_PREFIX
+                + Character.toUpperCase(name.charAt(0))
+                + name.substring(1);
     }
 
     private static CompoundTag transformDirectionalMetadataTag(CompoundTag tag, CableBusTransform transform) {
@@ -1746,7 +1817,7 @@ public final class TemplateUtil {
         }
     }
 
-    private static @Nullable Direction directionFromKey(String key) {
+    public static @Nullable Direction directionFromKey(String key) {
         return switch (key) {
             case KEY_NORTH -> Direction.NORTH;
             case KEY_SOUTH -> Direction.SOUTH;

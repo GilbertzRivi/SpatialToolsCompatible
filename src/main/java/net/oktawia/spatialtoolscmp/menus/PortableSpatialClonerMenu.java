@@ -1,11 +1,8 @@
 package net.oktawia.spatialtoolscmp.menus;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,18 +14,21 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.oktawia.spatialtoolscmp.IsModLoaded;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2CraftingBufferOps;
 import net.oktawia.spatialtoolscmp.compat.ae2.AE2MEOps;
+import net.oktawia.spatialtoolscmp.compat.ae2.CraftingBufferBlockEntity;
 import net.oktawia.spatialtoolscmp.defs.SpatialMenuRegistrar;
 import net.oktawia.spatialtoolscmp.items.PortableSpatialCloner;
+import net.oktawia.spatialtoolscmp.logic.ClonerRequirementStatus;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
+import net.oktawia.spatialtoolscmp.logic.buffer.BufferRequestState;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.RequestClonerCraftingPacket;
 import net.oktawia.spatialtoolscmp.network.packets.RequestCraftAllPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SetClonerNestedInventoryModePacket;
+import net.oktawia.spatialtoolscmp.network.packets.SyncClonerCraftingProgressPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerLibraryPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncClonerRequirementStatusPacket;
 import net.oktawia.spatialtoolscmp.network.packets.SyncCraftAllStatusPacket;
-import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu {
@@ -283,10 +283,62 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             return;
 
         try {
-            int status = AE2CraftingBufferOps.requestCraftAll(serverLevel, getItemStack(), buildRequirementEntries());
+            int status = AE2CraftingBufferOps.requestCraftAll(
+                    serverLevel,
+                    getItemStack(),
+                    serverPlayer,
+                    getSelectedStructureName(serverPlayer),
+                    buildRequirementEntries());
             NetworkHandler.sendToPlayer(serverPlayer, new SyncCraftAllStatusPacket(this.containerId, status));
         } catch (Throwable ignored) {
         }
+    }
+
+    private String getSelectedStructureName(ServerPlayer serverPlayer) {
+        String id = StructureToolStackState.getStructureId(getItemStack());
+
+        if (id == null || id.isBlank()) {
+            return "";
+        }
+
+        try {
+            ClonerStructureLibraryStore.Entry entry = ClonerStructureLibraryStore.get(
+                    serverPlayer.server,
+                    serverPlayer.getUUID(),
+                    id);
+
+            return entry == null ? "" : entry.name();
+        } catch (Exception ignored) {
+            return "";
+        }
+    }
+
+    private void syncCraftingProgressToClient(ServerPlayer serverPlayer, ServerLevel serverLevel) {
+        CraftingBufferBlockEntity buffer = AE2CraftingBufferOps.findOwnedBuffer(
+                serverLevel,
+                getItemStack(),
+                serverPlayer.getUUID());
+
+        if (buffer == null) {
+            NetworkHandler.sendToPlayer(
+                    serverPlayer,
+                    new SyncClonerCraftingProgressPacket(
+                            this.containerId,
+                            BufferRequestState.IDLE.ordinal(),
+                            0L,
+                            0L,
+                            ""));
+            return;
+        }
+
+        NetworkHandler.sendToPlayer(
+                serverPlayer,
+                new SyncClonerCraftingProgressPacket(
+                        this.containerId,
+                        buffer.getRequestState().ordinal(),
+                        buffer.getProgressDone(),
+                        buffer.getProgressTotal(),
+                        buffer.getRequestLabel()));
     }
 
     private void syncRequirementsToClient() {
@@ -307,6 +359,7 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             try {
                 int status = AE2CraftingBufferOps.getStatus(serverLevel, getItemStack());
                 NetworkHandler.sendToPlayer(serverPlayer, new SyncCraftAllStatusPacket(this.containerId, status));
+                syncCraftingProgressToClient(serverPlayer, serverLevel);
             } catch (Throwable ignored) {
             }
         }
@@ -331,117 +384,6 @@ public class PortableSpatialClonerMenu extends AbstractPortableStructureToolMenu
             return List.of();
         }
 
-        if (!structureTag.contains(StructureToolKeys.CLONE_METADATA_KEY, Tag.TAG_COMPOUND)) {
-            return List.of();
-        }
-
-        CompoundTag metadata = structureTag.getCompound(StructureToolKeys.CLONE_METADATA_KEY);
-
-        if (!metadata.contains(StructureToolKeys.CLONE_REQUIREMENTS_KEY, Tag.TAG_LIST)) {
-            return List.of();
-        }
-
-        ListTag requirements = metadata.getList(
-                StructureToolKeys.CLONE_REQUIREMENTS_KEY,
-                Tag.TAG_COMPOUND);
-
-        List<SyncClonerRequirementStatusPacket.Entry> out = new ArrayList<>();
-
-        PortableSpatialCloner.NestedInventoryResourceMode nestedMode = PortableSpatialCloner
-                .getNestedInventoryResourceMode(getItemStack());
-
-        for (int i = 0; i < requirements.size(); i++) {
-            CompoundTag row = requirements.getCompound(i);
-
-            if (!row.contains(StructureToolKeys.CLONE_KEY_STACK, Tag.TAG_COMPOUND)) {
-                continue;
-            }
-
-            ItemStack stack = ItemStack.of(row.getCompound(StructureToolKeys.CLONE_KEY_STACK));
-
-            if (stack.isEmpty()) {
-                continue;
-            }
-
-            stack = stack.copy();
-            stack.setCount(1);
-
-            long required = Math.max(1L, row.getLong(StructureToolKeys.CLONE_KEY_COUNT));
-            long available = countPlayerInventory(stack);
-            boolean craftable = false;
-
-            if (getPlayer().level() instanceof ServerLevel serverLevel) {
-                if (nestedMode.usePlayerNested()) {
-                    available += PortableSpatialCloner.countNestedInventoryInPlayerInventory(
-                            serverLevel,
-                            getPlayer(),
-                            getItemStack(),
-                            stack);
-                }
-
-                if (PortableSpatialCloner.hasItemHandlerLink(getItemStack())) {
-                    available += PortableSpatialCloner.countLinkedItemHandlerStorage(
-                            serverLevel,
-                            getItemStack(),
-                            stack);
-
-                    if (nestedMode.useConnectedNested()) {
-                        available += PortableSpatialCloner.countNestedInventoryInLinkedItemHandlerStorage(
-                                serverLevel,
-                                getItemStack(),
-                                stack);
-                    }
-                } else if (IsModLoaded.AE2) {
-                    try {
-                        available += AE2MEOps.getAmount(
-                                stack,
-                                getItemStack(),
-                                serverLevel);
-                    } catch (Throwable ignored) {
-                    }
-
-                    try {
-                        craftable = hasCraftingUpgradeInstalled()
-                                && AE2MEOps.isCraftable(
-                                        stack,
-                                        getItemStack(),
-                                        serverLevel);
-                    } catch (Throwable ignored) {
-                        craftable = false;
-                    }
-                }
-            }
-
-            out.add(new SyncClonerRequirementStatusPacket.Entry(
-                    stack,
-                    available,
-                    required,
-                    craftable));
-        }
-
-        return out;
-    }
-
-    private long countPlayerInventory(ItemStack targetStack) {
-        if (targetStack.isEmpty()) {
-            return 0L;
-        }
-
-        long total = 0L;
-        Inventory inventory = getPlayer().getInventory();
-
-        for (ItemStack stack : inventory.items) {
-            if (!stack.isEmpty() && ItemStack.isSameItemSameTags(stack, targetStack)) {
-                total += stack.getCount();
-            }
-        }
-
-        for (ItemStack stack : inventory.offhand) {
-            if (!stack.isEmpty() && ItemStack.isSameItemSameTags(stack, targetStack)) {
-                total += stack.getCount();
-            }
-        }
-
-        return total;
+        return ClonerRequirementStatus.build(getPlayer(), getItemStack(), structureTag);
     }
 }

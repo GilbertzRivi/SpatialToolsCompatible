@@ -153,6 +153,7 @@ public final class ExtendedAEStructureExtension implements StructureCloneExtensi
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

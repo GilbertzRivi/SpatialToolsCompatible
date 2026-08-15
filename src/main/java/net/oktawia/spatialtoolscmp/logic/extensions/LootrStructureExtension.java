@@ -77,6 +77,7 @@ public final class LootrStructureExtension implements StructureCloneExtension, S
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

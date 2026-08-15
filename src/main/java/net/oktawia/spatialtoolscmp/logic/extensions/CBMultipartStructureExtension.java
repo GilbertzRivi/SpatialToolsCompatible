@@ -166,6 +166,7 @@ public final class CBMultipartStructureExtension implements StructureCloneExtens
     @Override
     public void onBlockPlaced(
             ServerLevel level,
+            Player player,
             BlockPos pos,
             @Nullable BlockEntity be,
             @Nullable CompoundTag blockMetadata) {

@@ -201,7 +201,12 @@ dependencies {
     gtceu7CompileOnly fg.deobf("gtceu7:gtceu-1.20.1:${gtceu7_version}") { transitive = false }
     gtceu8CompileOnly fg.deobf("gtceu8:gtceu-1.20.1:${gtceu8_version}") { transitive = false }
 
+//    implementation fg.deobf("appeng:appliedenergistics2-forge:15.4.10-cosmolite.36")
+//    compileOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10-cosmolite.36")
+
     compileOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
+    runtimeOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
+
     compileOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }
     compileOnly fg.deobf("curse.maven:mekanism-268560:6552911")
     compileOnly fg.deobf("curse.maven:sophisticated-core-618298:8007530")
@@ -231,7 +236,6 @@ dependencies {
     compileOnly fg.deobf("mezz.jei:jei-1.20.1-forge:15.20.0.115")
     compileOnly fg.deobf("curse.maven:emi-580555:8081375")
 
-    runtimeOnly fg.deobf("appeng:appliedenergistics2-forge:15.4.10")
     runtimeOnly fg.deobf("curse.maven:guideme-1173950:6489464")
     if (gtceuRuntimeMajor < 8) {
         runtimeOnly fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:1.0.45") { transitive = false }

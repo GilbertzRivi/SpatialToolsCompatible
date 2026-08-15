@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.client.model.data.ModelData;
 
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.client.renderer.*;
 import net.oktawia.spatialtoolscmp.client.scene.PreviewLevel;
 import net.oktawia.spatialtoolscmp.client.scene.SpatialSceneWidget;
@@ -137,14 +138,24 @@ public class PortableSpatialStorageSceneWidget extends SpatialSceneWidget {
             return;
         }
 
+        renderOriginMarker(bufferSource);
+    }
+
+    @Override
+    protected void fillStaticGeometry(PreviewChunkGeometry.LayerSink sink, PoseStack poseStack) {
+        if (previewStructure == null) {
+            return;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
         ClientLevel clientLevel = minecraft.level;
         if (clientLevel == null) {
             return;
         }
 
-        renderFloor(bufferSource, minecraft);
-        renderOriginMarker(bufferSource);
+        MultiBufferSource bufferSource = sink::get;
+
+        fillFloor(bufferSource, minecraft, poseStack);
 
         if (extensionBlocks.isEmpty()) {
             return;
@@ -153,8 +164,6 @@ public class PortableSpatialStorageSceneWidget extends SpatialSceneWidget {
         BlockRenderDispatcher dispatcher = minecraft.getBlockRenderer();
         PreviewBlockAndTintGetter localLevel = new PreviewBlockAndTintGetter(clientLevel, previewStructure,
                 BlockPos.ZERO);
-
-        PoseStack poseStack = new PoseStack();
 
         for (PreviewBlock previewBlock : previewStructure.blocks()) {
             BlockPos localPos = previewBlock.pos();
@@ -225,18 +234,26 @@ public class PortableSpatialStorageSceneWidget extends SpatialSceneWidget {
                 continue;
             }
 
-            if (extension.renderForWidget(
-                    previewBlock,
-                    sideMap,
-                    dispatcher,
-                    localLevel,
-                    state,
-                    model,
-                    localPos,
-                    poseStack,
-                    bufferSource,
-                    seed)) {
-                return true;
+            try {
+                if (extension.renderForWidget(
+                        previewBlock,
+                        sideMap,
+                        dispatcher,
+                        localLevel,
+                        state,
+                        model,
+                        localPos,
+                        poseStack,
+                        bufferSource,
+                        seed)) {
+                    return true;
+                }
+            } catch (Throwable t) {
+                SpatialToolsCMP.getLOGGER().debug(
+                        "Widget preview rendering failed for {} at {}: {}",
+                        state,
+                        localPos,
+                        t.getMessage());
             }
         }
 
@@ -270,13 +287,12 @@ public class PortableSpatialStorageSceneWidget extends SpatialSceneWidget {
         }
     }
 
-    private void renderFloor(MultiBufferSource bufferSource, Minecraft minecraft) {
+    private void fillFloor(MultiBufferSource bufferSource, Minecraft minecraft, PoseStack poseStack) {
         if (!hasFloor) {
             return;
         }
 
         BlockRenderDispatcher dispatcher = minecraft.getBlockRenderer();
-        PoseStack poseStack = new PoseStack();
 
         for (int x = floorMinX; x <= floorMaxX; x++) {
             for (int z = floorMinZ; z <= floorMaxZ; z++) {
