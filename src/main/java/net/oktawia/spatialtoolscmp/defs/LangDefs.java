@@ -326,6 +326,23 @@ public enum LangDefs {
             "How far the piper can place route points, in blocks."),
     CONFIG_DESC_UNLIMITED_MINUS_ONE("gui.spatialtoolscmp.config.desc_unlimited_minus_one", "-1 means no limit."),
 
+    CONTEXT_MENU_ROTATE_GROUP("gui.spatialtoolscmp.context_menu.rotate_group", "Rotate"),
+    CONTEXT_MENU_MODE_MOVE("gui.spatialtoolscmp.context_menu.mode_move", "Move mode"),
+    CONTEXT_MENU_MODE_ROTATE("gui.spatialtoolscmp.context_menu.mode_rotate", "Rotate mode"),
+    CONTEXT_MENU_CLEAR_AXIS("gui.spatialtoolscmp.context_menu.clear_axis", "Clear the selected axis"),
+    CONTEXT_MENU_PICK_AXIS("gui.spatialtoolscmp.context_menu.pick_axis", "Pick an axis to rotate around"),
+    ROTATE_AXIS_X_TOOLTIP("gui.spatialtoolscmp.context_menu.rotate_axis_x", "Rotate around the X axis"),
+    ROTATE_AXIS_Y_TOOLTIP("gui.spatialtoolscmp.context_menu.rotate_axis_y", "Rotate around the Y axis"),
+    ROTATE_AXIS_Z_TOOLTIP("gui.spatialtoolscmp.context_menu.rotate_axis_z", "Rotate around the Z axis"),
+    ROTATE_RIGHT("gui.spatialtoolscmp.context_menu.rotate_right", "Rotate right in place"),
+    ROTATE_LEFT("gui.spatialtoolscmp.context_menu.rotate_left", "Rotate left in place"),
+    ROTATE_RIGHT_AROUND_ORIGIN("gui.spatialtoolscmp.context_menu.rotate_right_around_origin",
+            "Rotate right around origin"),
+    ROTATE_LEFT_AROUND_ORIGIN("gui.spatialtoolscmp.context_menu.rotate_left_around_origin",
+            "Rotate left around origin"),
+    ROTATE_BLOCKS_KEPT_ORIENTATION("gui.spatialtoolscmp.context_menu.rotate_blocks_kept_orientation",
+            "%s blocks kept their orientation"),
+
     GUIDE_BUTTON("gui.spatialtoolscmp.guide.button", "Guide"),
     GUIDE_MISSING("gui.spatialtoolscmp.guide.missing", "No guide for this item yet.");
 

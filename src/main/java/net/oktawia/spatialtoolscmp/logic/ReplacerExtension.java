@@ -99,4 +99,10 @@ public interface ReplacerExtension {
             Set<BlockPos> positions,
             @Nullable ServerPlayer player) {
     }
+
+    default void onBlocksRestored(
+            ServerLevel level,
+            Set<BlockPos> positions,
+            @Nullable ServerPlayer player) {
+    }
 }

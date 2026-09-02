@@ -50,6 +50,16 @@ public final class StructureToolExtensions {
         }
     }
 
+    public static boolean hasPendingPasteWork(ServerLevel level) {
+        for (StructurePasteExtension extension : PASTE_EXTENSIONS) {
+            if (extension.hasPendingWork(level)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public static void notifyBeforeBlockRemoved(ServerLevel level, BlockPos pos) {
         for (StructureRemoveExtension extension : REMOVE_EXTENSIONS) {
             extension.onBeforeBlockRemoved(level, pos);

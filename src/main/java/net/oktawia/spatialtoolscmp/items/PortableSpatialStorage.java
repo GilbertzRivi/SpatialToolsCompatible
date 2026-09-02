@@ -86,6 +86,8 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
     private static final int STORAGE_PLACE_FLAGS = Block.UPDATE_CLIENTS | Block.UPDATE_KNOWN_SHAPE;
 
+    private static final int PASTE_SETTLE_MAX_TICKS = 60;
+
     public PortableSpatialStorage(Item.Properties properties) {
         super(SpatialConfig.COMMON.PORTABLE_SPATIAL_STORAGE_BASE_INTERNAL_POWER_CAPACITY::get, 4, 4, properties);
     }
@@ -350,7 +352,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         };
 
         if (deferredBlocks.isEmpty()) {
-            recordUndo.run();
+            runWhenPasteWorkSettled(level, recordUndo);
         } else {
             MinecraftServer server = level.getServer();
 
@@ -364,7 +366,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
                 }
 
                 ClonerBlockPlacer.finishPlacement(level, deferredPositions);
-                recordUndo.run();
+                runWhenPasteWorkSettled(level, recordUndo);
             }));
         }
 
@@ -381,6 +383,32 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
         }
 
         return true;
+    }
+
+    private static void runWhenPasteWorkSettled(ServerLevel level, Runnable action) {
+        if (!StructureToolExtensions.hasPendingPasteWork(level)) {
+            action.run();
+            return;
+        }
+
+        MinecraftServer server = level.getServer();
+
+        schedulePasteWorkCheck(server, level, action, server.getTickCount() + PASTE_SETTLE_MAX_TICKS);
+    }
+
+    private static void schedulePasteWorkCheck(
+            MinecraftServer server,
+            ServerLevel level,
+            Runnable action,
+            int deadlineTick) {
+        server.tell(new TickTask(server.getTickCount() + 1, () -> {
+            if (server.getTickCount() >= deadlineTick || !StructureToolExtensions.hasPendingPasteWork(level)) {
+                action.run();
+                return;
+            }
+
+            schedulePasteWorkCheck(server, level, action, deadlineTick);
+        }));
     }
 
     private void undoLastStorageAction(ServerLevel level, Player player, ItemStack stack) {

@@ -341,6 +341,10 @@ public final class ChiseledBitsStructureExtension implements StructureCloneExten
                 case StructureToolKeys.CHISELED_OP_MIRROR_Z -> multiState.mirror(Direction.Axis.Z);
                 case StructureToolKeys.CHISELED_OP_MIRROR_X -> multiState.mirror(Direction.Axis.X);
                 case StructureToolKeys.CHISELED_OP_MIRROR_Y -> multiState.mirror(Direction.Axis.Y);
+                case StructureToolKeys.CHISELED_OP_ROTATE_X_CW -> multiState.rotate(Direction.Axis.X, 1);
+                case StructureToolKeys.CHISELED_OP_ROTATE_X_CCW -> multiState.rotate(Direction.Axis.X, 3);
+                case StructureToolKeys.CHISELED_OP_ROTATE_Z_CW -> multiState.rotate(Direction.Axis.Z, 1);
+                case StructureToolKeys.CHISELED_OP_ROTATE_Z_CCW -> multiState.rotate(Direction.Axis.Z, 3);
                 default -> {
                 }
             }

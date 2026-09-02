@@ -30,6 +30,8 @@ public final class StructureToolStackState {
     private static final String TAG_SELECTION_MODE = "selection_mode";
     private static final String TAG_GREEN_CORNER_SELECTED = "green_corner_selected";
 
+    private static final String TAG_ROTATE_PANEL_MODE = "rotate_panel_mode";
+
     public static final String TAG_PREVIEW_SIDE_MAP = "crazy_preview_side_map";
 
     private StructureToolStackState() {
@@ -159,6 +161,7 @@ public final class StructureToolStackState {
     public static void clearStructure(ItemStack stack) {
         setStructureId(stack, null);
         clearAnchor(stack);
+        setRotatePanelMode(stack, false);
     }
 
     public static void setAnchor(ItemStack stack, ResourceKey<Level> dimension, BlockPos pos) {
@@ -281,6 +284,33 @@ public final class StructureToolStackState {
 
         if (tag != null) {
             tag.remove(TAG_GREEN_CORNER_SELECTED);
+        }
+    }
+
+    public static boolean isRotatePanelMode(ItemStack stack) {
+        if (stack == null || stack.isEmpty()) {
+            return false;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        return tag != null && tag.getBoolean(TAG_ROTATE_PANEL_MODE);
+    }
+
+    public static void setRotatePanelMode(ItemStack stack, boolean rotate) {
+        if (stack == null || stack.isEmpty()) {
+            return;
+        }
+
+        if (rotate) {
+            stack.getOrCreateTag().putBoolean(TAG_ROTATE_PANEL_MODE, true);
+            return;
+        }
+
+        CompoundTag tag = stack.getTag();
+
+        if (tag != null) {
+            tag.remove(TAG_ROTATE_PANEL_MODE);
         }
     }
 

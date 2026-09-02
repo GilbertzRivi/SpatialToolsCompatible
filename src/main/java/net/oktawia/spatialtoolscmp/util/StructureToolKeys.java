@@ -79,6 +79,9 @@ public final class StructureToolKeys {
             "lastRedstonePulses",
             "lightLevels");
 
+    public static final String AE2_QNB_INV_KEY = "inv";
+    public static final String AE2_QNB_DEFERRED_INV_KEY = "spatialtoolscmp:qnb_inv";
+
     public static final String CHISELED_BE_ID = "chiselsandbits:chiseled_block";
     public static final String CLONE_KEY_CHISELED = "chiseled";
     public static final String CHISELED_KEY_OPS = "ops";
@@ -89,4 +92,8 @@ public final class StructureToolKeys {
     public static final int CHISELED_OP_MIRROR_Z = 4;
     public static final int CHISELED_OP_MIRROR_X = 5;
     public static final int CHISELED_OP_MIRROR_Y = 6;
+    public static final int CHISELED_OP_ROTATE_X_CW = 7;
+    public static final int CHISELED_OP_ROTATE_X_CCW = 8;
+    public static final int CHISELED_OP_ROTATE_Z_CW = 9;
+    public static final int CHISELED_OP_ROTATE_Z_CCW = 10;
 }

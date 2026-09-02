@@ -1,6 +1,7 @@
 package net.oktawia.spatialtoolscmp.logic.extensions;
 
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -18,6 +19,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.level.LevelEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import appeng.api.crafting.PatternDetailsHelper;
@@ -28,6 +33,8 @@ import appeng.api.upgrades.IUpgradeInventory;
 import appeng.api.upgrades.IUpgradeableObject;
 import appeng.blockentity.AEBaseBlockEntity;
 import appeng.blockentity.networking.CableBusBlockEntity;
+import appeng.blockentity.qnb.QuantumBridgeBlockEntity;
+import appeng.core.definitions.AEBlocks;
 import appeng.core.definitions.AEItems;
 import appeng.helpers.patternprovider.PatternProviderLogic;
 import appeng.helpers.patternprovider.PatternProviderLogicHost;
@@ -38,11 +45,12 @@ import net.oktawia.spatialtoolscmp.items.helpers.ClonerBlockPlacer;
 import net.oktawia.spatialtoolscmp.logic.ClonerPasteContext;
 import net.oktawia.spatialtoolscmp.logic.PlacementPlan;
 import net.oktawia.spatialtoolscmp.logic.StructureCloneExtension;
+import net.oktawia.spatialtoolscmp.logic.StructurePasteExtension;
 import net.oktawia.spatialtoolscmp.util.NbtUtil;
 import net.oktawia.spatialtoolscmp.util.StructureToolKeys;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
-public final class AE2ClonerExtension implements StructureCloneExtension {
+public final class AE2StructureExtension implements StructureCloneExtension, StructurePasteExtension {
 
     private static final String AE2_CABLE_BUS_ID = "ae2:cable_bus";
 
@@ -53,6 +61,14 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
     private static final int CRAZY_PROVIDER_SLOTS_PER_UPGRADE = 9;
 
     private static final String CRAZY_UPGRADES_BLOCK_KEY = "";
+
+    private static final String AE2_QNB_INV_SLOT_PREFIX = "item";
+
+    private static final int QNB_MAX_WAIT_TICKS = 40;
+
+    private static final List<PendingQuantumBridgeInventory> PENDING_QNB = new CopyOnWriteArrayList<>();
+
+    private static volatile boolean qnbTickRegistered = false;
 
     private final Map<String, Integer> plannedCrazyUpgrades = new HashMap<>();
 
@@ -1149,8 +1165,13 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             List<ItemStack> refunds) {
         CompoundTag currentTag = saveCurrentTag(be);
 
-        if (be instanceof CableBusBlockEntity || isAe2CableBusTag(currentTag)) {
-            collectCableBusUndoRefunds(currentTag, refunds);
+        if (be instanceof CableBusBlockEntity cableBus) {
+            collectCableBusUndoRefunds(cableBus, currentTag, refunds);
+            return true;
+        }
+
+        if (isAe2CableBusTag(currentTag)) {
+            collectCableBusUndoRefunds(null, currentTag, refunds);
             return true;
         }
 
@@ -1207,6 +1228,7 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
     }
 
     private static void collectCableBusUndoRefunds(
+            @Nullable CableBusBlockEntity cableBus,
             @Nullable CompoundTag rawBeTag,
             List<ItemStack> refunds) {
         if (rawBeTag == null) {
@@ -1214,17 +1236,13 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
         }
 
         for (String key : StructureToolKeys.AE2_CABLE_BUS_KEYS) {
-            if (!rawBeTag.contains(key)) {
-                continue;
-            }
-
-            collectNestedSavedItemStacks(rawBeTag.get(key), refunds);
-
             if (!rawBeTag.contains(key, Tag.TAG_COMPOUND)) {
                 continue;
             }
 
             CompoundTag section = rawBeTag.getCompound(key);
+
+            collectCableBusPartUndoRefunds(cableBus, key, section, refunds);
 
             if (isCrazyProviderTag(section, StructureToolKeys.CRAZYAE2_PROVIDER_PART_ID)) {
                 ItemStack crazyUpgrades = crazyUpgradeStack(readCrazyAdded(section));
@@ -1241,6 +1259,36 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
             }
 
             collectNestedSavedItemStacks(rawBeTag.get(key), refunds);
+        }
+    }
+
+    private static void collectCableBusPartUndoRefunds(
+            @Nullable CableBusBlockEntity cableBus,
+            String sideKey,
+            CompoundTag section,
+            List<ItemStack> refunds) {
+        ItemStack partItem = normalizeSingle(NbtUtil.tryReadSavedItemStack(section));
+
+        if (!partItem.isEmpty()) {
+            refunds.add(partItem);
+        }
+
+        IPart part = cableBus != null ? cableBus.getPart(TemplateUtil.directionFromKey(sideKey)) : null;
+
+        if (part instanceof IUpgradeableObject upgradable) {
+            for (ItemStack upgrade : upgradable.getUpgrades()) {
+                if (!upgrade.isEmpty()) {
+                    refunds.add(upgrade.copy());
+                }
+            }
+        } else {
+            collectNestedSavedItemStacks(section.get(AE2_SETTINGS_UPGRADES_KEY), refunds);
+        }
+
+        int encodedPatterns = countEncodedPatterns(part);
+
+        if (encodedPatterns > 0) {
+            refunds.add(AEItems.BLANK_PATTERN.stack(encodedPatterns));
         }
     }
 
@@ -1271,5 +1319,157 @@ public final class AE2ClonerExtension implements StructureCloneExtension {
                 collectNestedSavedItemStacks(listTag.get(i), refunds);
             }
         }
+    }
+
+    @Override
+    public boolean sanitizeCapturedBlockEntityTag(BlockState state, CompoundTag rawBeTag) {
+        if (!isQuantumBridge(state)) {
+            return false;
+        }
+
+        if (!rawBeTag.contains(StructureToolKeys.AE2_QNB_INV_KEY, Tag.TAG_COMPOUND)) {
+            return false;
+        }
+
+        CompoundTag invTag = rawBeTag.getCompound(StructureToolKeys.AE2_QNB_INV_KEY);
+
+        if (!hasAnyStoredItem(invTag)) {
+            return false;
+        }
+
+        rawBeTag.put(StructureToolKeys.AE2_QNB_DEFERRED_INV_KEY, invTag.copy());
+        rawBeTag.remove(StructureToolKeys.AE2_QNB_INV_KEY);
+
+        return true;
+    }
+
+    @Override
+    public void onTemplatePasted(ServerLevel level, BlockPos placementOrigin, CompoundTag templateTag) {
+        for (TemplateUtil.BlockInfo info : TemplateUtil.parseRawBlocksFromTag(templateTag)) {
+            CompoundTag beTag = info.blockEntityTag();
+
+            if (beTag == null || !beTag.contains(StructureToolKeys.AE2_QNB_DEFERRED_INV_KEY, Tag.TAG_COMPOUND)) {
+                continue;
+            }
+
+            queueQuantumBridgeInventory(
+                    level,
+                    placementOrigin.offset(info.pos()).immutable(),
+                    beTag.getCompound(StructureToolKeys.AE2_QNB_DEFERRED_INV_KEY).copy());
+        }
+    }
+
+    @Override
+    public boolean hasPendingWork(ServerLevel level) {
+        for (PendingQuantumBridgeInventory pending : PENDING_QNB) {
+            if (pending.level == level) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static boolean isQuantumBridge(BlockState state) {
+        return state.is(AEBlocks.QUANTUM_LINK.block()) || state.is(AEBlocks.QUANTUM_RING.block());
+    }
+
+    private static boolean hasAnyStoredItem(CompoundTag invTag) {
+        for (String key : invTag.getAllKeys()) {
+            if (!key.startsWith(AE2_QNB_INV_SLOT_PREFIX)) {
+                continue;
+            }
+
+            if (!ItemStack.of(invTag.getCompound(key)).isEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void queueQuantumBridgeInventory(ServerLevel level, BlockPos pos, CompoundTag invTag) {
+        ensureQnbTickRegistered();
+        PENDING_QNB.add(new PendingQuantumBridgeInventory(level, pos, invTag, level.getGameTime()));
+    }
+
+    private static void ensureQnbTickRegistered() {
+        if (!qnbTickRegistered) {
+            synchronized (AE2StructureExtension.class) {
+                if (!qnbTickRegistered) {
+                    MinecraftForge.EVENT_BUS.register(AE2StructureExtension.class);
+                    qnbTickRegistered = true;
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLevelUnload(LevelEvent.Unload event) {
+        if (event.getLevel() instanceof ServerLevel level) {
+            PENDING_QNB.removeIf(pending -> pending.level == level);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLevelTick(TickEvent.LevelTickEvent event) {
+        if (event.phase != TickEvent.Phase.END || !(event.level instanceof ServerLevel level)) {
+            return;
+        }
+
+        if (PENDING_QNB.isEmpty()) {
+            return;
+        }
+
+        long now = level.getGameTime();
+        List<PendingQuantumBridgeInventory> ready = new ArrayList<>();
+
+        PENDING_QNB.removeIf(pending -> {
+            if (pending.level != level) {
+                return false;
+            }
+
+            boolean expired = now - pending.pastedGameTime >= QNB_MAX_WAIT_TICKS;
+
+            if (!(level.getBlockEntity(pending.pos) instanceof QuantumBridgeBlockEntity bridge)) {
+                return expired;
+            }
+
+            if (expired || bridge.getCluster() != null && bridge.getGridNode() != null) {
+                ready.add(pending);
+                return true;
+            }
+
+            return false;
+        });
+
+        for (PendingQuantumBridgeInventory pending : ready) {
+            restoreQuantumBridgeInventory(level, pending.pos, pending.invTag);
+        }
+    }
+
+    private static void restoreQuantumBridgeInventory(ServerLevel level, BlockPos pos, CompoundTag invTag) {
+        if (!(level.getBlockEntity(pos) instanceof QuantumBridgeBlockEntity bridge)) {
+            return;
+        }
+
+        InternalInventory inventory = bridge.getInternalInventory();
+
+        for (int slot = 0; slot < inventory.size(); slot++) {
+            ItemStack stack = ItemStack.of(invTag.getCompound(AE2_QNB_INV_SLOT_PREFIX + slot));
+
+            if (stack.isEmpty() || !inventory.getStackInSlot(slot).isEmpty()) {
+                continue;
+            }
+
+            inventory.setItemDirect(slot, stack);
+        }
+    }
+
+    private record PendingQuantumBridgeInventory(
+            ServerLevel level,
+            BlockPos pos,
+            CompoundTag invTag,
+            long pastedGameTime) {
     }
 }

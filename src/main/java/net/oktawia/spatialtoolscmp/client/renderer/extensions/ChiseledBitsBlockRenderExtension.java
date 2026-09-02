@@ -236,6 +236,10 @@ public final class ChiseledBitsBlockRenderExtension implements BlockRenderExtens
                 case StructureToolKeys.CHISELED_OP_MIRROR_Z -> snapshot.mirror(Direction.Axis.Z);
                 case StructureToolKeys.CHISELED_OP_MIRROR_X -> snapshot.mirror(Direction.Axis.X);
                 case StructureToolKeys.CHISELED_OP_MIRROR_Y -> snapshot.mirror(Direction.Axis.Y);
+                case StructureToolKeys.CHISELED_OP_ROTATE_X_CW -> snapshot.rotate(Direction.Axis.X, 1);
+                case StructureToolKeys.CHISELED_OP_ROTATE_X_CCW -> snapshot.rotate(Direction.Axis.X, 3);
+                case StructureToolKeys.CHISELED_OP_ROTATE_Z_CW -> snapshot.rotate(Direction.Axis.Z, 1);
+                case StructureToolKeys.CHISELED_OP_ROTATE_Z_CCW -> snapshot.rotate(Direction.Axis.Z, 3);
                 default -> {
                 }
             }

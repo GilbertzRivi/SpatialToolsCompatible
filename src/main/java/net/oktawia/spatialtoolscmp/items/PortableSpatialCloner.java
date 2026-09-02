@@ -574,6 +574,8 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
 
             ClonerUndoHandler.store(toolStack, level, undoPlacedBlocks);
 
+            StructureToolStackState.setRotatePanelMode(toolStack, false);
+
             showHud(
                     player,
                     HUD_TIME_MEDIUM,

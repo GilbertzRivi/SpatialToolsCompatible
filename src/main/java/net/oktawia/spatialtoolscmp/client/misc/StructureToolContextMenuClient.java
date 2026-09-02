@@ -35,13 +35,18 @@ public final class StructureToolContextMenuClient {
     }
 
     public static boolean isContextKeyDown() {
+        InputConstants.Key key = OPEN_CONTEXT_MENU.getKey();
+
+        if (key == InputConstants.UNKNOWN || key.getValue() < 0) {
+            return false;
+        }
+
         Minecraft mc = Minecraft.getInstance();
 
         if (mc == null || mc.getWindow() == null) {
             return OPEN_CONTEXT_MENU.isDown();
         }
 
-        InputConstants.Key key = OPEN_CONTEXT_MENU.getKey();
         long window = mc.getWindow().getWindow();
 
         if (key.getType() == InputConstants.Type.KEYSYM) {

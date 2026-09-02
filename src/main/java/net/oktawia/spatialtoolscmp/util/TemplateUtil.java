@@ -67,6 +67,40 @@ public final class TemplateUtil {
     private static final Set<String> PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES = Set.of(
             KEY_UPWARDS_FACING);
 
+    private static final String KEY_AXIS = "axis";
+    private static final String KEY_FACE = "face";
+    private static final String KEY_FACING = "facing";
+
+    private static final String FACE_FLOOR = "floor";
+    private static final String FACE_WALL = "wall";
+    private static final String FACE_CEILING = "ceiling";
+
+    private static final Set<String> UNROTATABLE_ON_AXIS_ROTATION_PROPERTIES = Set.of(
+            "half",
+            "shape",
+            "vertical_direction",
+            "orientation",
+            "rotation",
+            "hanging",
+            "top",
+            "top_half",
+            "front",
+            "right",
+            "x_axis",
+            "y_axis",
+            "y_asix",
+            "z_axis",
+            "facing_axis",
+            "facing_dir");
+
+    private static final String KEY_TYPE = "type";
+
+    private static final Set<String> UNROTATABLE_TYPE_VALUES = Set.of(
+            "top",
+            "bottom",
+            "left",
+            "right");
+
     public static final String TEMPLATE_OFFSET_X_KEY = "crazy_template_offset_x";
     public static final String TEMPLATE_OFFSET_Y_KEY = "crazy_template_offset_y";
     public static final String TEMPLATE_OFFSET_Z_KEY = "crazy_template_offset_z";
@@ -432,6 +466,114 @@ public final class TemplateUtil {
                 cableBusTransform);
     }
 
+    public static Direction rotateAroundAxis(Direction direction, Direction.Axis axis, boolean clockwise) {
+        int[] rotated = rotateVectorAroundAxis(
+                direction.getStepX(),
+                direction.getStepY(),
+                direction.getStepZ(),
+                axis,
+                clockwise);
+
+        for (Direction candidate : Direction.values()) {
+            if (candidate.getStepX() == rotated[0]
+                    && candidate.getStepY() == rotated[1]
+                    && candidate.getStepZ() == rotated[2]) {
+                return candidate;
+            }
+        }
+
+        return direction;
+    }
+
+    private static int[] rotateVectorAroundAxis(int x, int y, int z, Direction.Axis axis, boolean clockwise) {
+        return switch (axis) {
+            case X -> clockwise ? new int[] { x, z, -y } : new int[] { x, -z, y };
+            case Y -> clockwise ? new int[] { -z, y, x } : new int[] { z, y, -x };
+            case Z -> clockwise ? new int[] { y, -x, z } : new int[] { -y, x, z };
+        };
+    }
+
+    public static CompoundTag applyRotateAroundAxisToTag(CompoundTag tag, Direction.Axis axis, boolean clockwise) {
+        if (axis == Direction.Axis.Y) {
+            return applyRotateCWToTag(tag, clockwise ? 1 : 3);
+        }
+
+        CableBusTransform cableBusTransform = axisRotationCableBusTransform(axis, clockwise);
+
+        return applyTransform(
+                tag,
+                (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) -> rotateVectorAroundAxis(
+                        x - minX,
+                        y - minY,
+                        z - minZ,
+                        axis,
+                        clockwise),
+                state -> rotateStateAroundAxis(state, axis, clockwise),
+                cableBusTransform);
+    }
+
+    public static CompoundTag applyRotateAroundAxisAroundOriginToTag(
+            CompoundTag tag,
+            Direction.Axis axis,
+            boolean clockwise) {
+        if (axis == Direction.Axis.Y) {
+            return applyRotateCWAroundOriginToTag(tag, clockwise ? 1 : 3);
+        }
+
+        CompoundTag transformed = applyRotateAroundAxisToTag(tag, axis, clockwise);
+        setTemplateOffset(transformed, rotateOffsetAroundAxis(getTemplateOffset(tag), axis, clockwise));
+        return transformed;
+    }
+
+    public static int countUnrotatableBlocks(CompoundTag tag, Direction.Axis axis, boolean clockwise) {
+        if (axis == Direction.Axis.Y) {
+            return 0;
+        }
+
+        ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
+        ListTag blocksTag = tag.getList("blocks", Tag.TAG_COMPOUND);
+
+        if (paletteTag.isEmpty() || blocksTag.isEmpty()) {
+            return 0;
+        }
+
+        boolean[] unrotatable = new boolean[paletteTag.size()];
+
+        for (int i = 0; i < paletteTag.size(); i++) {
+            BlockState state = parseBlockStateFromTag(paletteTag.getCompound(i));
+            unrotatable[i] = state != null && isLossyAxisRotation(state, axis, clockwise);
+        }
+
+        int count = 0;
+
+        for (int i = 0; i < blocksTag.size(); i++) {
+            int stateIndex = blocksTag.getCompound(i).getInt("state");
+
+            if (stateIndex >= 0 && stateIndex < unrotatable.length && unrotatable[stateIndex]) {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private static BlockPos rotateOffsetAroundAxis(BlockPos offset, Direction.Axis axis, boolean clockwise) {
+        int[] rotated = rotateVectorAroundAxis(offset.getX(), offset.getY(), offset.getZ(), axis, clockwise);
+
+        return new BlockPos(
+                clampOffset(rotated[0]),
+                clampOffset(rotated[1]),
+                clampOffset(rotated[2]));
+    }
+
+    private static CableBusTransform axisRotationCableBusTransform(Direction.Axis axis, boolean clockwise) {
+        return switch (axis) {
+            case X -> clockwise ? CableBusTransform.ROTATE_X_CW : CableBusTransform.ROTATE_X_CCW;
+            case Y -> clockwise ? CableBusTransform.ROTATE_CW : CableBusTransform.ROTATE_CCW;
+            case Z -> clockwise ? CableBusTransform.ROTATE_Z_CW : CableBusTransform.ROTATE_Z_CCW;
+        };
+    }
+
     public static CompoundTag applyFlipHAroundOriginToTag(CompoundTag tag, Direction sourceFacing) {
         CompoundTag transformed = applyFlipHToTag(tag, sourceFacing);
         setTemplateOffset(transformed, flipHorizontalOffset(getTemplateOffset(tag), sourceFacing));
@@ -506,6 +648,10 @@ public final class TemplateUtil {
         ROTATE_CW,
         ROTATE_180,
         ROTATE_CCW,
+        ROTATE_X_CW,
+        ROTATE_X_CCW,
+        ROTATE_Z_CW,
+        ROTATE_Z_CCW,
         FLIP_H_AXIS_Z,
         FLIP_H_AXIS_X,
         FLIP_V
@@ -889,6 +1035,10 @@ public final class TemplateUtil {
             case ROTATE_CW -> StructureToolKeys.CHISELED_OP_ROTATE_CW;
             case ROTATE_180 -> StructureToolKeys.CHISELED_OP_ROTATE_180;
             case ROTATE_CCW -> StructureToolKeys.CHISELED_OP_ROTATE_CCW;
+            case ROTATE_X_CW -> StructureToolKeys.CHISELED_OP_ROTATE_X_CW;
+            case ROTATE_X_CCW -> StructureToolKeys.CHISELED_OP_ROTATE_X_CCW;
+            case ROTATE_Z_CW -> StructureToolKeys.CHISELED_OP_ROTATE_Z_CW;
+            case ROTATE_Z_CCW -> StructureToolKeys.CHISELED_OP_ROTATE_Z_CCW;
             case FLIP_H_AXIS_Z -> StructureToolKeys.CHISELED_OP_MIRROR_Z;
             case FLIP_H_AXIS_X -> StructureToolKeys.CHISELED_OP_MIRROR_X;
             case FLIP_V -> StructureToolKeys.CHISELED_OP_MIRROR_Y;
@@ -1219,14 +1369,14 @@ public final class TemplateUtil {
     }
 
     private static int[] transformRelativeOffset(int dx, int dy, int dz, CableBusTransform transform) {
-        return switch (transform) {
-            case ROTATE_CW -> new int[] { -dz, dy, dx };
-            case ROTATE_180 -> new int[] { -dx, dy, -dz };
-            case ROTATE_CCW -> new int[] { dz, dy, -dx };
-            case FLIP_H_AXIS_Z -> new int[] { -dx, dy, dz };
-            case FLIP_H_AXIS_X -> new int[] { dx, dy, -dz };
-            case FLIP_V -> new int[] { dx, -dy, dz };
-            case NONE -> new int[] { dx, dy, dz };
+        Direction alongX = mapCableBusSide(Direction.EAST, transform);
+        Direction alongY = mapCableBusSide(Direction.UP, transform);
+        Direction alongZ = mapCableBusSide(Direction.SOUTH, transform);
+
+        return new int[] {
+                alongX.getStepX() * dx + alongY.getStepX() * dy + alongZ.getStepX() * dz,
+                alongX.getStepY() * dx + alongY.getStepY() * dy + alongZ.getStepY() * dz,
+                alongX.getStepZ() * dx + alongY.getStepZ() * dy + alongZ.getStepZ() * dz
         };
     }
 
@@ -1964,6 +2114,10 @@ public final class TemplateUtil {
                 case DOWN -> Direction.UP;
                 default -> side;
             };
+            case ROTATE_X_CW -> rotateAroundAxis(side, Direction.Axis.X, true);
+            case ROTATE_X_CCW -> rotateAroundAxis(side, Direction.Axis.X, false);
+            case ROTATE_Z_CW -> rotateAroundAxis(side, Direction.Axis.Z, true);
+            case ROTATE_Z_CCW -> rotateAroundAxis(side, Direction.Axis.Z, false);
             case NONE -> side;
         };
     }
@@ -2039,17 +2193,17 @@ public final class TemplateUtil {
                 ? Mirror.FRONT_BACK
                 : Mirror.LEFT_RIGHT;
 
+        Set<String> preserved = preservedTransformProperties(state);
+
         BlockState mirrored = state.mirror(mirror);
 
-        mirrored = preserveNamedProperties(
-                state,
-                mirrored,
-                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES);
+        mirrored = preserveNamedProperties(state, mirrored, preserved);
 
         BlockState result = remapUnchangedHorizontalDirectionalProperties(
                 state,
                 mirrored,
-                sourceFacing.getAxis());
+                sourceFacing.getAxis(),
+                preserved);
 
         CableBusTransform transform = sourceFacing.getAxis() == Direction.Axis.Z
                 ? CableBusTransform.FLIP_H_AXIS_Z
@@ -2065,7 +2219,8 @@ public final class TemplateUtil {
     private static BlockState remapUnchangedHorizontalDirectionalProperties(
             BlockState original,
             BlockState transformed,
-            Direction.Axis sourceAxis) {
+            Direction.Axis sourceAxis,
+            Set<String> preserved) {
         if (original.getBlock() != transformed.getBlock()) {
             return transformed;
         }
@@ -2076,7 +2231,7 @@ public final class TemplateUtil {
         for (Map.Entry<Property<?>, Comparable<?>> entry : original.getValues().entrySet()) {
             Property<?> originalProperty = entry.getKey();
 
-            if (PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES.contains(originalProperty.getName())) {
+            if (preserved.contains(originalProperty.getName())) {
                 continue;
             }
 
@@ -2147,11 +2302,13 @@ public final class TemplateUtil {
                 "up", "down",
                 "down", "up"));
 
-        result = remapPropertyValues(result, KEY_UPWARDS_FACING, Map.of(
-                "north", "south",
-                "south", "north",
-                "east", "west",
-                "west", "east"));
+        if (hasRelativeUpwardsFacing(state)) {
+            result = remapPropertyValues(result, KEY_UPWARDS_FACING, Map.of(
+                    "north", "south",
+                    "south", "north",
+                    "east", "west",
+                    "west", "east"));
+        }
 
         result = flipVerticalDirectionProperties(result);
         result = remapFramedProperties(result, FramedPropertyTransform.FLIP_V);
@@ -2165,18 +2322,17 @@ public final class TemplateUtil {
     }
 
     private static BlockState rotateState(BlockState state, Rotation rotation) {
+        Set<String> preserved = preservedTransformProperties(state);
+
         BlockState rotated = state.rotate(rotation);
 
-        rotated = preserveNamedProperties(
-                state,
-                rotated,
-                PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES);
+        rotated = preserveNamedProperties(state, rotated, preserved);
 
         if (rotation == Rotation.NONE) {
             return rotated;
         }
 
-        BlockState result = rotateUnchangedDirectionalProperties(state, rotated, rotation);
+        BlockState result = rotateUnchangedDirectionalProperties(state, rotated, rotation, preserved);
 
         FramedPropertyTransform framedTransform = switch (rotation) {
             case CLOCKWISE_90 -> FramedPropertyTransform.ROTATE_CW;
@@ -2201,10 +2357,322 @@ public final class TemplateUtil {
                 : remapFramedProperties(result, framedTransform);
     }
 
+    private static BlockState rotateStateAroundAxis(BlockState state, Direction.Axis axis, boolean clockwise) {
+        BlockState rotated = rotateStateAroundAxisExactly(state, axis, clockwise);
+
+        return rotated != null ? rotated : state;
+    }
+
+    private static boolean isLossyAxisRotation(BlockState state, Direction.Axis axis, boolean clockwise) {
+        return rotateStateAroundAxisExactly(state, axis, clockwise) == null;
+    }
+
+    private static @Nullable BlockState rotateStateAroundAxisExactly(
+            BlockState state,
+            Direction.Axis axis,
+            boolean clockwise) {
+        boolean attachFace = hasAttachFace(state);
+        boolean upwardsFacing = !attachFace && hasRelativeUpwardsFacing(state);
+
+        BlockState result = state;
+
+        if (attachFace) {
+            result = rotateAttachFaceState(state, axis, clockwise);
+
+            if (result == null) {
+                return null;
+            }
+        }
+
+        if (upwardsFacing) {
+            result = rotateUpwardsFacingState(state, axis, clockwise);
+
+            if (result == null) {
+                return null;
+            }
+        }
+
+        for (Map.Entry<Property<?>, Comparable<?>> entry : state.getValues().entrySet()) {
+            Property<?> property = entry.getKey();
+            String name = property.getName();
+            Comparable<?> value = entry.getValue();
+
+            if (UNROTATABLE_ON_AXIS_ROTATION_PROPERTIES.contains(name)) {
+                return null;
+            }
+
+            if (KEY_TYPE.equals(name)
+                    && UNROTATABLE_TYPE_VALUES.contains(getPropertyValueName(property, value))) {
+                return null;
+            }
+
+            if (attachFace && (KEY_FACE.equals(name) || KEY_FACING.equals(name))) {
+                continue;
+            }
+
+            if (upwardsFacing && (KEY_FACING.equals(name) || KEY_UPWARDS_FACING.equals(name))) {
+                continue;
+            }
+
+            if (property.getPossibleValues().size() <= 1) {
+                continue;
+            }
+
+            if (value instanceof Direction direction) {
+                Direction mapped = rotateAroundAxis(direction, axis, clockwise);
+
+                if (!propertyContainsValue(property, mapped)) {
+                    return null;
+                }
+
+                result = setUnchecked(result, property, mapped);
+                continue;
+            }
+
+            if (value instanceof Direction.Axis valueAxis && KEY_AXIS.equals(name)) {
+                Direction.Axis mapped = rotateAxisValue(valueAxis, axis, clockwise);
+
+                if (!propertyContainsValue(property, mapped)) {
+                    return null;
+                }
+
+                result = setUnchecked(result, property, mapped);
+            }
+        }
+
+        return rotateDirectionalBooleanProperties(result, axis, clockwise);
+    }
+
+    private static @Nullable BlockState rotateDirectionalBooleanProperties(
+            BlockState state,
+            Direction.Axis axis,
+            boolean clockwise) {
+        StateDefinition<?, ?> definition = state.getBlock().getStateDefinition();
+
+        Map<Direction, Boolean> values = new EnumMap<>(Direction.class);
+
+        for (Direction direction : Direction.values()) {
+            Property<?> property = definition.getProperty(directionKey(direction));
+
+            if (property != null && getPropertyValue(state, property) instanceof Boolean bool) {
+                values.put(direction, bool);
+            }
+        }
+
+        if (values.isEmpty()) {
+            return state;
+        }
+
+        BlockState result = state;
+
+        for (Direction direction : values.keySet()) {
+            result = setUnchecked(result, definition.getProperty(directionKey(direction)), false);
+        }
+
+        for (Map.Entry<Direction, Boolean> entry : values.entrySet()) {
+            if (!entry.getValue()) {
+                continue;
+            }
+
+            Property<?> property = definition.getProperty(
+                    directionKey(rotateAroundAxis(entry.getKey(), axis, clockwise)));
+
+            if (property == null) {
+                return null;
+            }
+
+            result = setUnchecked(result, property, true);
+        }
+
+        return result;
+    }
+
+    private static Direction.Axis rotateAxisValue(Direction.Axis value, Direction.Axis axis, boolean clockwise) {
+        Direction along = Direction.fromAxisAndDirection(value, Direction.AxisDirection.POSITIVE);
+        return rotateAroundAxis(along, axis, clockwise).getAxis();
+    }
+
+    private static boolean hasAttachFace(BlockState state) {
+        StateDefinition<?, ?> definition = state.getBlock().getStateDefinition();
+
+        return definition.getProperty(KEY_FACE) != null && definition.getProperty(KEY_FACING) != null;
+    }
+
+    private static boolean hasUpwardsFacing(BlockState state) {
+        StateDefinition<?, ?> definition = state.getBlock().getStateDefinition();
+
+        return definition.getProperty(KEY_FACING) != null
+                && definition.getProperty(KEY_UPWARDS_FACING) != null;
+    }
+
+    private static boolean usesAbsoluteUpwardsFacing(BlockState state) {
+        Property<?> upwardsProperty = state.getBlock().getStateDefinition().getProperty(KEY_UPWARDS_FACING);
+
+        return upwardsProperty != null && propertyContainsValue(upwardsProperty, Direction.UP);
+    }
+
+    private static boolean hasRelativeUpwardsFacing(BlockState state) {
+        return hasUpwardsFacing(state) && !usesAbsoluteUpwardsFacing(state);
+    }
+
+    private static Set<String> preservedTransformProperties(BlockState state) {
+        return usesAbsoluteUpwardsFacing(state)
+                ? Set.of()
+                : PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES;
+    }
+
+    private static @Nullable BlockState rotateUpwardsFacingState(
+            BlockState state,
+            Direction.Axis axis,
+            boolean clockwise) {
+        StateDefinition<?, ?> definition = state.getBlock().getStateDefinition();
+
+        Property<?> facingProperty = definition.getProperty(KEY_FACING);
+        Property<?> upwardsProperty = definition.getProperty(KEY_UPWARDS_FACING);
+
+        Object facingValue = getPropertyValue(state, facingProperty);
+        Object upwardsValue = getPropertyValue(state, upwardsProperty);
+
+        if (!(facingValue instanceof Direction facing) || !(upwardsValue instanceof Direction upwards)) {
+            return null;
+        }
+
+        Direction worldUp = machineWorldUp(facing, upwards);
+
+        if (worldUp == null) {
+            return null;
+        }
+
+        Direction newFacing = rotateAroundAxis(facing, axis, clockwise);
+        Direction newWorldUp = rotateAroundAxis(worldUp, axis, clockwise);
+        Direction newUpwards = machineUpwardsFacing(newFacing, newWorldUp);
+
+        if (newUpwards == null
+                || !propertyContainsValue(facingProperty, newFacing)
+                || !propertyContainsValue(upwardsProperty, newUpwards)) {
+            return null;
+        }
+
+        BlockState result = setUnchecked(state, facingProperty, newFacing);
+
+        return setUnchecked(result, upwardsProperty, newUpwards);
+    }
+
+    private static @Nullable Direction machineWorldUp(Direction facing, Direction upwards) {
+        if (facing.getAxis() == Direction.Axis.Y) {
+            return upwards.getAxis() == Direction.Axis.Y ? null : upwards;
+        }
+
+        return switch (upwards) {
+            case NORTH -> Direction.UP;
+            case SOUTH -> Direction.DOWN;
+            case EAST -> facing.getCounterClockWise();
+            case WEST -> facing.getClockWise();
+            default -> null;
+        };
+    }
+
+    private static @Nullable Direction machineUpwardsFacing(Direction facing, Direction worldUp) {
+        if (facing.getAxis() == Direction.Axis.Y) {
+            return worldUp.getAxis() == Direction.Axis.Y ? null : worldUp;
+        }
+
+        if (worldUp == Direction.UP) {
+            return Direction.NORTH;
+        }
+
+        if (worldUp == Direction.DOWN) {
+            return Direction.SOUTH;
+        }
+
+        if (worldUp == facing.getCounterClockWise()) {
+            return Direction.EAST;
+        }
+
+        if (worldUp == facing.getClockWise()) {
+            return Direction.WEST;
+        }
+
+        return null;
+    }
+
+    private static @Nullable BlockState rotateAttachFaceState(
+            BlockState state,
+            Direction.Axis axis,
+            boolean clockwise) {
+        StateDefinition<?, ?> definition = state.getBlock().getStateDefinition();
+
+        Property<?> faceProperty = definition.getProperty(KEY_FACE);
+        Property<?> facingProperty = definition.getProperty(KEY_FACING);
+
+        Object faceValue = getPropertyValue(state, faceProperty);
+        Object facingValue = getPropertyValue(state, facingProperty);
+
+        if (faceValue == null || !(facingValue instanceof Direction facing)) {
+            return null;
+        }
+
+        String face = getPropertyValueName(faceProperty, faceValue);
+
+        Direction normal = attachNormal(face, facing);
+        Direction toggle = attachToggle(face, facing);
+
+        if (normal == null || toggle == null) {
+            return null;
+        }
+
+        Direction newNormal = rotateAroundAxis(normal, axis, clockwise);
+        Direction newToggle = rotateAroundAxis(toggle, axis, clockwise);
+
+        String newFace;
+        Direction newFacing;
+
+        if (newNormal == Direction.UP) {
+            newFace = FACE_FLOOR;
+            newFacing = newToggle;
+        } else if (newNormal == Direction.DOWN) {
+            newFace = FACE_CEILING;
+            newFacing = newToggle;
+        } else if (newToggle == Direction.UP) {
+            newFace = FACE_WALL;
+            newFacing = newNormal;
+        } else {
+            return null;
+        }
+
+        Optional<?> parsedFace = faceProperty.getValue(newFace);
+
+        if (parsedFace.isEmpty() || !propertyContainsValue(facingProperty, newFacing)) {
+            return null;
+        }
+
+        BlockState result = setUnchecked(state, faceProperty, (Comparable<?>) parsedFace.get());
+
+        return setUnchecked(result, facingProperty, newFacing);
+    }
+
+    private static @Nullable Direction attachNormal(String face, Direction facing) {
+        return switch (face) {
+            case FACE_FLOOR -> Direction.UP;
+            case FACE_CEILING -> Direction.DOWN;
+            case FACE_WALL -> facing;
+            default -> null;
+        };
+    }
+
+    private static @Nullable Direction attachToggle(String face, Direction facing) {
+        return switch (face) {
+            case FACE_FLOOR, FACE_CEILING -> facing;
+            case FACE_WALL -> Direction.UP;
+            default -> null;
+        };
+    }
+
     private static BlockState rotateUnchangedDirectionalProperties(
             BlockState original,
             BlockState transformed,
-            Rotation rotation) {
+            Rotation rotation,
+            Set<String> preserved) {
         if (rotation == Rotation.NONE || original.getBlock() != transformed.getBlock()) {
             return transformed;
         }
@@ -2215,7 +2683,7 @@ public final class TemplateUtil {
         for (Map.Entry<Property<?>, Comparable<?>> entry : original.getValues().entrySet()) {
             Property<?> originalProperty = entry.getKey();
 
-            if (PRESERVE_ON_ROTATE_AND_HORIZONTAL_FLIP_PROPERTIES.contains(originalProperty.getName())) {
+            if (preserved.contains(originalProperty.getName())) {
                 continue;
             }
 

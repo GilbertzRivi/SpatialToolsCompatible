@@ -1,7 +1,10 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Supplier;
+
+import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -26,11 +29,15 @@ import net.oktawia.spatialtoolscmp.logic.StructureToolPreviewDispatcher;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStackState;
 import net.oktawia.spatialtoolscmp.logic.StructureToolStructureStore;
 import net.oktawia.spatialtoolscmp.logic.StructureToolUtil;
+import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public class StructureToolContextActionPacket {
 
     private static final String PREVIEW_SIDE_MAP_KEY = StructureToolStackState.TAG_PREVIEW_SIDE_MAP;
+
+    private static final int KEPT_ORIENTATION_HUD_DURATION = 80;
+    private static final int KEPT_ORIENTATION_HUD_COLOR = 0xFFCC55;
 
     public static final int OFFSET_LEFT = 1;
     public static final int OFFSET_RIGHT = 2;
@@ -44,6 +51,13 @@ public class StructureToolContextActionPacket {
     public static final int FLIP_NORTH_SOUTH = 22;
     public static final int FLIP_VERTICAL = 23;
 
+    public static final int ROTATE_X_CW = 24;
+    public static final int ROTATE_X_CCW = 25;
+    public static final int ROTATE_Y_CW = 26;
+    public static final int ROTATE_Y_CCW = 27;
+    public static final int ROTATE_Z_CW = 28;
+    public static final int ROTATE_Z_CCW = 29;
+
     public static final int CYCLE_NESTED_ITEMS = 40;
 
     public static final int TOGGLE_ANCHOR = 60;
@@ -51,6 +65,8 @@ public class StructureToolContextActionPacket {
     public static final int CANCEL_SELECTION = 62;
     public static final int SELECT_CORNER_RED = 63;
     public static final int SELECT_CORNER_GREEN = 64;
+    public static final int SELECT_PANEL_MODE_MOVE = 65;
+    public static final int SELECT_PANEL_MODE_ROTATE = 66;
 
     public static final int MOVE_SELECTION_RED_WEST = 80;
     public static final int MOVE_SELECTION_RED_EAST = 81;
@@ -188,6 +204,15 @@ public class StructureToolContextActionPacket {
                 return;
             }
 
+            if (packet.action == SELECT_PANEL_MODE_MOVE || packet.action == SELECT_PANEL_MODE_ROTATE) {
+                StructureToolStackState.setRotatePanelMode(
+                        stack,
+                        packet.action == SELECT_PANEL_MODE_ROTATE);
+
+                syncStack(player);
+                return;
+            }
+
             if (packet.action == SELECT_CORNER_RED || packet.action == SELECT_CORNER_GREEN) {
                 StructureToolStackState.setGreenCornerSelected(
                         stack,
@@ -315,6 +340,13 @@ public class StructureToolContextActionPacket {
             return;
         }
 
+        Direction.Axis rotationAxis = rotationAxisFor(action);
+
+        if (rotationAxis != null) {
+            applyAxisRotation(player, stack, id, tag, rotationAxis, isClockwiseRotation(action), aroundOrigin);
+            return;
+        }
+
         CompoundTag transformed = switch (action) {
             case OFFSET_LEFT -> TemplateUtil.applyOffsetToTag(tag, -1, 0, 0);
             case OFFSET_RIGHT -> TemplateUtil.applyOffsetToTag(tag, 1, 0, 0);
@@ -366,6 +398,71 @@ public class StructureToolContextActionPacket {
 
         syncStack(player);
         StructureToolPreviewDispatcher.sendPreviewToPlayer(player, transformed);
+    }
+
+    private static @Nullable Direction.Axis rotationAxisFor(int action) {
+        return switch (action) {
+            case ROTATE_X_CW, ROTATE_X_CCW -> Direction.Axis.X;
+            case ROTATE_Y_CW, ROTATE_Y_CCW -> Direction.Axis.Y;
+            case ROTATE_Z_CW, ROTATE_Z_CCW -> Direction.Axis.Z;
+            default -> null;
+        };
+    }
+
+    private static boolean isClockwiseRotation(int action) {
+        return action == ROTATE_X_CW || action == ROTATE_Y_CW || action == ROTATE_Z_CW;
+    }
+
+    private static void applyAxisRotation(
+            ServerPlayer player,
+            ItemStack stack,
+            String id,
+            CompoundTag tag,
+            Direction.Axis axis,
+            boolean clockwise,
+            boolean aroundOrigin) {
+        int keptOrientation = TemplateUtil.countUnrotatableBlocks(tag, axis, clockwise);
+
+        CompoundTag transformed = aroundOrigin
+                ? TemplateUtil.applyRotateAroundAxisAroundOriginToTag(tag, axis, clockwise)
+                : TemplateUtil.applyRotateAroundAxisToTag(tag, axis, clockwise);
+
+        if (transformed == null || transformed.isEmpty()) {
+            return;
+        }
+
+        String savedId = saveStructure(player, stack, id, transformed);
+
+        if (savedId == null || savedId.isBlank()) {
+            return;
+        }
+
+        updatePreviewSideMap(stack, buildAxisRotationSideMap(axis, clockwise));
+
+        TemplateUtil.copyPreviewTransformState(transformed, stack.getOrCreateTag());
+
+        syncStack(player);
+        StructureToolPreviewDispatcher.sendPreviewToPlayer(player, transformed);
+
+        if (keptOrientation > 0) {
+            NetworkHandler.sendToPlayer(player, new ShowHudMessagePacket(
+                    KEPT_ORIENTATION_HUD_DURATION,
+                    List.of(new ShowHudMessagePacket.Line(
+                            Component.translatable(
+                                    LangDefs.ROTATE_BLOCKS_KEPT_ORIENTATION.getTranslationKey(),
+                                    keptOrientation),
+                            KEPT_ORIENTATION_HUD_COLOR))));
+        }
+    }
+
+    private static int[] buildAxisRotationSideMap(Direction.Axis axis, boolean clockwise) {
+        int[] map = identitySideMap();
+
+        for (Direction side : Direction.values()) {
+            map[side.ordinal()] = TemplateUtil.rotateAroundAxis(side, axis, clockwise).ordinal();
+        }
+
+        return map;
     }
 
     private static CompoundTag loadStructure(ServerPlayer player, ItemStack stack, String id) {

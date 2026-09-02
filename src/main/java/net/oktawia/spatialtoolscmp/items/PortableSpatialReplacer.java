@@ -1026,6 +1026,16 @@ public class PortableSpatialReplacer extends AbstractStructureCaptureToolItem {
             ClonerUndoHandler.removeBlocks(level, undoBlocks);
         }
 
+        Set<BlockPos> restoredPositions = new LinkedHashSet<>();
+
+        for (ClonerUndoHandler.ClonerUndoPlacedBlock undoBlock : undoBlocks) {
+            restoredPositions.add(undoBlock.pos().immutable());
+        }
+
+        for (ReplacerExtension ext : ReplacerExtensions.get()) {
+            ext.onBlocksRestored(level, restoredPositions, player);
+        }
+
         if (!player.isCreative() && hasSourceItems) {
             for (ItemStack needed : sourceItems) {
                 ClonerInventoryAccess.consumeForPaste(

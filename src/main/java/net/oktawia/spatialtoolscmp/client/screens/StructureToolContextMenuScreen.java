@@ -14,10 +14,12 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.DirectionStarWidget;
+import net.oktawia.spatialtoolscmp.client.misc.widgets.RotationAxisWidget;
 import net.oktawia.spatialtoolscmp.client.misc.widgets.ToolModeDropdownWidget;
 import net.oktawia.spatialtoolscmp.compat.gtceu.GTCEuCompat;
 import net.oktawia.spatialtoolscmp.defs.LangDefs;
@@ -43,9 +45,9 @@ public class StructureToolContextMenuScreen extends Screen {
     private static final int BUTTON_GAP = 6;
     private static final int BUTTON_STEP = BUTTON_SIZE + BUTTON_GAP;
 
-    private static final int MOVE_PANEL_HEIGHT = 168;
+    private static final int MOVE_PANEL_HEIGHT = 198;
     private static final int SELECTION_PANEL_HEIGHT = 198;
-    private static final int TRANSFORM_PANEL_HEIGHT = 92;
+    private static final int TRANSFORM_PANEL_HEIGHT = 62;
     private static final int OPTIONS_PANEL_HEIGHT = 62;
 
     private static final int TOOLTIP_MAX_CHARS = 30;
@@ -108,6 +110,17 @@ public class StructureToolContextMenuScreen extends Screen {
 
     private boolean movementStarVisible = false;
 
+    private enum PanelMode {
+        MOVE,
+        ROTATE
+    }
+
+    private final RotationAxisWidget rotationAxisWidget = new RotationAxisWidget();
+
+    private PanelMode panelMode = PanelMode.MOVE;
+
+    private boolean rotationAxisWidgetVisible = false;
+
     public StructureToolContextMenuScreen() {
         super(Component.translatable(LangDefs.CONTEXT_MENU_TITLE.getTranslationKey()));
     }
@@ -121,6 +134,7 @@ public class StructureToolContextMenuScreen extends Screen {
         this.panels.clear();
         this.buttons.clear();
         this.movementStarVisible = false;
+        this.rotationAxisWidgetVisible = false;
 
         ItemStack held = getHeldStack();
 
@@ -145,6 +159,11 @@ public class StructureToolContextMenuScreen extends Screen {
         this.lastNestedMode = getNestedInventoryMode();
         this.lastSelectionMode = getSelectionMode();
         this.selectedGreenCorner = StructureToolStackState.isGreenCornerSelected(held);
+        this.panelMode = StructureToolStackState.isRotatePanelMode(held) ? PanelMode.ROTATE : PanelMode.MOVE;
+
+        if (this.panelMode == PanelMode.MOVE) {
+            this.rotationAxisWidget.setSelectedAxis(null);
+        }
 
         if (this.lastHoldingReplacer) {
             this.lastReplacerRadius = PortableSpatialReplacer.getRadius(held);
@@ -198,7 +217,9 @@ public class StructureToolContextMenuScreen extends Screen {
                     leftPanelY,
                     PANEL_WIDTH,
                     MOVE_PANEL_HEIGHT,
-                    Component.translatable(LangDefs.CONTEXT_MENU_OFFSET_GROUP.getTranslationKey()),
+                    Component.translatable((this.panelMode == PanelMode.ROTATE
+                            ? LangDefs.CONTEXT_MENU_ROTATE_GROUP
+                            : LangDefs.CONTEXT_MENU_OFFSET_GROUP).getTranslationKey()),
                     null);
 
             buildOffsetPanel(leftPanelX, leftPanelY);
@@ -362,15 +383,113 @@ public class StructureToolContextMenuScreen extends Screen {
     private void buildOffsetPanel(int panelX, int panelY) {
         int baseY = panelY + 24;
 
-        buildMovementGrid(
-                panelX,
+        if (this.panelMode == PanelMode.ROTATE) {
+            buildRotationGrid(panelX, baseY);
+        } else {
+            buildMovementGrid(
+                    panelX,
+                    baseY,
+                    StructureToolContextActionPacket.OFFSET_LEFT,
+                    StructureToolContextActionPacket.OFFSET_RIGHT,
+                    StructureToolContextActionPacket.OFFSET_FRONT,
+                    StructureToolContextActionPacket.OFFSET_BACK,
+                    StructureToolContextActionPacket.OFFSET_UP,
+                    StructureToolContextActionPacket.OFFSET_DOWN);
+        }
+
+        buildPanelModeToggle(panelX, baseY + DirectionStarWidget.SIZE + BUTTON_GAP);
+    }
+
+    private void buildRotationGrid(int panelX, int baseY) {
+        int widgetX = panelX + (PANEL_WIDTH - RotationAxisWidget.SIZE) / 2;
+
+        this.rotationAxisWidget.setPosition(widgetX, baseY);
+        this.rotationAxisWidget.setEnabled(true);
+        this.rotationAxisWidgetVisible = true;
+
+        Direction.Axis axis = this.rotationAxisWidget.getSelectedAxis();
+
+        if (axis == null) {
+            return;
+        }
+
+        boolean aroundOrigin = this.lastShiftDown;
+        boolean mirrored = isAxisRotationMirroredForViewer(axis);
+
+        int buttonY = baseY + (RotationAxisWidget.SIZE - BUTTON_SIZE) / 2 - BUTTON_STEP;
+
+        addButton(
+                mirrored ? clockwiseActionFor(axis) : counterClockwiseActionFor(axis),
+                aroundOrigin,
+                aroundOrigin ? LangDefs.ROTATE_LEFT_AROUND_ORIGIN : LangDefs.ROTATE_LEFT,
+                Icon.ARROW_LEFT,
+                widgetX + 4,
+                buttonY);
+
+        addButton(
+                mirrored ? counterClockwiseActionFor(axis) : clockwiseActionFor(axis),
+                aroundOrigin,
+                aroundOrigin ? LangDefs.ROTATE_RIGHT_AROUND_ORIGIN : LangDefs.ROTATE_RIGHT,
+                Icon.ARROW_RIGHT,
+                widgetX + RotationAxisWidget.SIZE - 4 - BUTTON_SIZE,
+                buttonY);
+    }
+
+    private static boolean isAxisRotationMirroredForViewer(Direction.Axis axis) {
+        if (axis == Direction.Axis.Y) {
+            return false;
+        }
+
+        Minecraft mc = Minecraft.getInstance();
+
+        if (mc.player == null) {
+            return false;
+        }
+
+        Vec3 look = mc.player.getLookAngle();
+
+        return axis == Direction.Axis.X ? look.x > 0.0 : look.z > 0.0;
+    }
+
+    private void buildPanelModeToggle(int panelX, int baseY) {
+        int totalWidth = BUTTON_SIZE * 2 + BUTTON_GAP;
+        int buttonX = panelX + (PANEL_WIDTH - totalWidth) / 2;
+
+        addButton(
+                StructureToolContextActionPacket.SELECT_PANEL_MODE_MOVE,
+                false,
+                LangDefs.CONTEXT_MENU_MODE_MOVE,
+                Icon.ARROW_FRONT,
+                buttonX,
                 baseY,
-                StructureToolContextActionPacket.OFFSET_LEFT,
-                StructureToolContextActionPacket.OFFSET_RIGHT,
-                StructureToolContextActionPacket.OFFSET_FRONT,
-                StructureToolContextActionPacket.OFFSET_BACK,
-                StructureToolContextActionPacket.OFFSET_UP,
-                StructureToolContextActionPacket.OFFSET_DOWN);
+                true,
+                this.panelMode == PanelMode.MOVE);
+
+        addButton(
+                StructureToolContextActionPacket.SELECT_PANEL_MODE_ROTATE,
+                false,
+                LangDefs.CONTEXT_MENU_MODE_ROTATE,
+                Icon.ROTATE,
+                buttonX + BUTTON_SIZE + BUTTON_GAP,
+                baseY,
+                true,
+                this.panelMode == PanelMode.ROTATE);
+    }
+
+    private static int clockwiseActionFor(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> StructureToolContextActionPacket.ROTATE_X_CW;
+            case Y -> StructureToolContextActionPacket.ROTATE_Y_CW;
+            case Z -> StructureToolContextActionPacket.ROTATE_Z_CW;
+        };
+    }
+
+    private static int counterClockwiseActionFor(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> StructureToolContextActionPacket.ROTATE_X_CCW;
+            case Y -> StructureToolContextActionPacket.ROTATE_Y_CCW;
+            case Z -> StructureToolContextActionPacket.ROTATE_Z_CCW;
+        };
     }
 
     private void buildSelectionPanel(int panelX, int panelY) {
@@ -457,19 +576,11 @@ public class StructureToolContextMenuScreen extends Screen {
         boolean aroundOrigin = this.lastShiftDown;
 
         addButton(
-                StructureToolContextActionPacket.ROTATE_CLOCKWISE,
-                aroundOrigin,
-                aroundOrigin ? LangDefs.ROTATE_CLOCKWISE_AROUND_ORIGIN : LangDefs.ROTATE_CLOCKWISE,
-                Icon.ROTATE,
-                baseX,
-                baseY);
-
-        addButton(
                 StructureToolContextActionPacket.FLIP_EAST_WEST,
                 aroundOrigin,
                 aroundOrigin ? LangDefs.FLIP_EAST_WEST_AROUND_ORIGIN : LangDefs.FLIP_EAST_WEST,
                 Icon.ARROW_LEFT,
-                baseX + BUTTON_STEP,
+                baseX,
                 baseY);
 
         addButton(
@@ -477,7 +588,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 aroundOrigin,
                 aroundOrigin ? LangDefs.FLIP_NORTH_SOUTH_AROUND_ORIGIN : LangDefs.FLIP_NORTH_SOUTH,
                 Icon.ARROW_FRONT,
-                baseX + BUTTON_STEP * 2,
+                baseX + BUTTON_STEP,
                 baseY);
 
         addButton(
@@ -485,8 +596,8 @@ public class StructureToolContextMenuScreen extends Screen {
                 aroundOrigin,
                 aroundOrigin ? LangDefs.FLIP_VERTICAL_AROUND_ORIGIN : LangDefs.FLIP_VERTICAL,
                 Icon.ARROW_UP,
-                baseX + BUTTON_STEP,
-                baseY + BUTTON_STEP);
+                baseX + BUTTON_STEP * 2,
+                baseY);
     }
 
     private void buildOptionsPanel(int panelX, int panelY) {
@@ -606,6 +717,7 @@ public class StructureToolContextMenuScreen extends Screen {
         boolean hasSelectionB = StructureToolStackState.getSelectionB(held) != null;
         boolean anchorEnabled = StructureToolStackState.isAnchorEnabled(held);
         boolean greenCorner = StructureToolStackState.isGreenCornerSelected(held);
+        boolean rotatePanelMode = StructureToolStackState.isRotatePanelMode(held);
 
         PortableSpatialCloner.NestedInventoryResourceMode nestedMode = getNestedInventoryMode();
         StructureToolStackState.SelectionMode selectionMode = getSelectionMode();
@@ -650,6 +762,7 @@ public class StructureToolContextMenuScreen extends Screen {
                 || hasSelectionB != this.lastHasSelectionB
                 || anchorEnabled != this.lastAnchorEnabled
                 || greenCorner != this.selectedGreenCorner
+                || rotatePanelMode != (this.panelMode == PanelMode.ROTATE)
                 || nestedMode != this.lastNestedMode
                 || selectionMode != this.lastSelectionMode
                 || replacerRadius != this.lastReplacerRadius
@@ -705,11 +818,28 @@ public class StructureToolContextMenuScreen extends Screen {
         ContextButton hovered = getHoveredButton(mouseX, mouseY);
 
         if (hovered == null) {
+            if (this.rotationAxisWidgetVisible) {
+                clickRotationAxis(mouseX, mouseY);
+            }
+
             return true;
         }
 
         if (!hovered.enabled()) {
             return true;
+        }
+
+        if (hovered.action() == StructureToolContextActionPacket.SELECT_PANEL_MODE_MOVE
+                || hovered.action() == StructureToolContextActionPacket.SELECT_PANEL_MODE_ROTATE) {
+            ItemStack held = getHeldStack();
+
+            if (!held.isEmpty()) {
+                StructureToolStackState.setRotatePanelMode(
+                        held,
+                        hovered.action() == StructureToolContextActionPacket.SELECT_PANEL_MODE_ROTATE);
+
+                rebuildLayout();
+            }
         }
 
         if (hovered.action() == StructureToolContextActionPacket.SELECT_CORNER_RED
@@ -800,6 +930,25 @@ public class StructureToolContextMenuScreen extends Screen {
         return true;
     }
 
+    private void clickRotationAxis(double mouseX, double mouseY) {
+        if (this.rotationAxisWidget.isHoveringHub(mouseX, mouseY)) {
+            this.rotationAxisWidget.setSelectedAxis(null);
+            rebuildLayout();
+            return;
+        }
+
+        Direction.Axis axis = this.rotationAxisWidget.getHoveredAxis(mouseX, mouseY);
+
+        if (axis == null) {
+            return;
+        }
+
+        this.rotationAxisWidget.setSelectedAxis(
+                axis == this.rotationAxisWidget.getSelectedAxis() ? null : axis);
+
+        rebuildLayout();
+    }
+
     private boolean clickMovementStar(double mouseX, double mouseY) {
         Integer action = this.movementStar.getActionAt(mouseX, mouseY);
 
@@ -847,11 +996,19 @@ public class StructureToolContextMenuScreen extends Screen {
 
         renderPanels(graphics);
 
+        ContextButton hovered = getHoveredButton(mouseX, mouseY);
+
         if (this.movementStarVisible) {
             this.movementStar.render(graphics, mouseX, mouseY, partialTick);
         }
 
-        ContextButton hovered = getHoveredButton(mouseX, mouseY);
+        if (this.rotationAxisWidgetVisible) {
+            if (hovered == null) {
+                this.rotationAxisWidget.render(graphics, mouseX, mouseY, partialTick);
+            } else {
+                this.rotationAxisWidget.render(graphics, -1.0D, -1.0D, partialTick);
+            }
+        }
 
         for (ContextButton button : this.buttons) {
             renderButton(graphics, button, button == hovered);
@@ -870,6 +1027,39 @@ public class StructureToolContextMenuScreen extends Screen {
         }
 
         renderMovementStarTooltip(graphics, mouseX, mouseY);
+        renderRotationAxisTooltip(graphics, mouseX, mouseY);
+    }
+
+    private void renderRotationAxisTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
+        if (!this.rotationAxisWidgetVisible) {
+            return;
+        }
+
+        if (this.rotationAxisWidget.isHoveringHub(mouseX, mouseY)) {
+            graphics.renderComponentTooltip(
+                    this.font,
+                    List.of(Component.translatable(LangDefs.CONTEXT_MENU_CLEAR_AXIS.getTranslationKey())),
+                    mouseX,
+                    mouseY);
+
+            return;
+        }
+
+        Direction.Axis hovered = this.rotationAxisWidget.getHoveredAxis(mouseX, mouseY);
+
+        if (hovered == null) {
+            return;
+        }
+
+        LangDefs label = hovered == this.rotationAxisWidget.getSelectedAxis()
+                ? LangDefs.CONTEXT_MENU_CLEAR_AXIS
+                : this.rotationAxisWidget.tooltipFor(hovered);
+
+        graphics.renderComponentTooltip(
+                this.font,
+                List.of(Component.translatable(label.getTranslationKey())),
+                mouseX,
+                mouseY);
     }
 
     private void renderMovementStarTooltip(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -1052,6 +1242,15 @@ public class StructureToolContextMenuScreen extends Screen {
             lines.add(Component.translatable(
                     LangDefs.CONTEXT_MENU_HOLD_SHIFT_ORIGIN.getTranslationKey()).withStyle(
                             isShiftPhysicallyDown() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY));
+        }
+
+        if (button.action() == StructureToolContextActionPacket.SELECT_PANEL_MODE_ROTATE
+                && this.panelMode == PanelMode.ROTATE
+                && this.rotationAxisWidget.getSelectedAxis() == null) {
+            addWrappedTooltipLines(
+                    lines,
+                    Component.translatable(LangDefs.CONTEXT_MENU_PICK_AXIS.getTranslationKey())
+                            .withStyle(ChatFormatting.GRAY));
         }
 
         if (button.action() == StructureToolContextActionPacket.TOGGLE_SELECTION_MODE) {
@@ -1246,7 +1445,9 @@ public class StructureToolContextMenuScreen extends Screen {
         return action == StructureToolContextActionPacket.ROTATE_CLOCKWISE
                 || action == StructureToolContextActionPacket.FLIP_EAST_WEST
                 || action == StructureToolContextActionPacket.FLIP_NORTH_SOUTH
-                || action == StructureToolContextActionPacket.FLIP_VERTICAL;
+                || action == StructureToolContextActionPacket.FLIP_VERTICAL
+                || (action >= StructureToolContextActionPacket.ROTATE_X_CW
+                        && action <= StructureToolContextActionPacket.ROTATE_Z_CCW);
     }
 
     private static boolean isStructureAction(int action) {

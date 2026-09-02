@@ -92,7 +92,9 @@ public class SpatialToolsCMP {
             if (IsModLoaded.AE2) {
                 AE2Compat.register();
                 AE2BlockRegistrar.registerCreativeTabItems();
-                StructureToolExtensions.registerClonerExtension(new AE2ClonerExtension());
+                AE2StructureExtension ae2Extension = new AE2StructureExtension();
+                StructureToolExtensions.registerClonerExtension(ae2Extension);
+                StructureToolExtensions.registerPasteExtension(ae2Extension);
                 ReplacerExtensions.register(new AE2ReplacerExtension());
                 PiperExtensions.register(new AE2PiperExtension());
             }

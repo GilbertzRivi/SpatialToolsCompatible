@@ -84,6 +84,7 @@ public final class GTCEuStructureExtension
     private static final String NBT_TRAIT_HOLDER = "traitHolder";
     private static final String NBT_AUTO_OUTPUT = "autoOutput";
     private static final String NBT_CIRCUIT = "circuit";
+    private static final String NBT_CIRCUIT_SLOT = "circuitSlot";
     private static final String NBT_COVER_DATA = "data";
     private static final String NBT_MONITOR_GROUPS = "monitorGroups";
     private static final String NBT_MONITOR_ORIGIN = "monitorGroupsOrigin";
@@ -265,8 +266,7 @@ public final class GTCEuStructureExtension
                 return false;
             }
 
-            BlockState current = level.getBlockState(pos);
-            level.sendBlockUpdated(pos, current, current, 3);
+            syncGregBlockEntity(level, pos, be);
             scheduleSingleMachineCoverReinit(level, pos);
         }
 
@@ -457,13 +457,14 @@ public final class GTCEuStructureExtension
                 continue;
             }
 
-            controller.invalidateStructure(name);
-            mwsd.removeMapping(state);
-            state.setFormed(false);
-            state.setError(null);
+            state.getCache().clear();
+            state.clearErrors();
             state.setState(PatternState.CheckState.UNINITIALIZED);
             state.setShouldUpdate(true);
-            state.getCache().clear();
+            state.setFormed(false);
+
+            controller.invalidateStructure(name);
+            mwsd.removeMapping(state);
         }
     }
 
@@ -749,7 +750,7 @@ public final class GTCEuStructureExtension
             collectPatternBufferLinkMetadata(level, pos, rawBeTag, machineTag);
             collectMonitorGroupMetadata(pos, rawBeTag, machineTag);
 
-            copyGregTraitSubTag(rawBeTag, machineTag, NBT_CIRCUIT);
+            copyGregCircuitState(rawBeTag, machineTag);
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "activeRecipeType");
 
             copyGregTransformerState(rawBeTag, machineTag);
@@ -1279,6 +1280,11 @@ public final class GTCEuStructureExtension
         copyGregLockedFluidSettings(from, to);
     }
 
+    private static void copyGregCircuitState(CompoundTag from, CompoundTag to) {
+        copyGregTraitSubTag(from, to, NBT_CIRCUIT);
+        NbtUtil.copyTagIfPresent(from, to, NBT_CIRCUIT_SLOT);
+    }
+
     private static void copyGregTraitSubTag(CompoundTag from, CompoundTag to, String traitKey) {
         if (!from.contains(NBT_TRAIT_HOLDER, Tag.TAG_COMPOUND)) {
             return;
@@ -1465,7 +1471,7 @@ public final class GTCEuStructureExtension
 
         NbtUtil.copyTagIfPresent(machineData, out, NBT_BUFFER_POS);
 
-        copyGregTraitSubTag(machineData, out, NBT_CIRCUIT);
+        copyGregCircuitState(machineData, out);
         NbtUtil.copyIntIfPresent(machineData, out, "activeRecipeType");
 
         copyGregTransformerState(machineData, out);
@@ -1482,6 +1488,10 @@ public final class GTCEuStructureExtension
 
         if (!filteredCover.isEmpty()) {
             out.put(NBT_COVER, filteredCover.copy());
+        }
+
+        if (!out.contains(NBT_TRAIT_HOLDER, Tag.TAG_COMPOUND)) {
+            out.put(NBT_TRAIT_HOLDER, new CompoundTag());
         }
 
         return out;
@@ -2832,10 +2842,32 @@ public final class GTCEuStructureExtension
             return;
         }
 
-        ItemStack stack = readCostItemStack(parent.getCompound(key));
+        CompoundTag child = parent.getCompound(key);
+        ItemStack stack = readCostItemStack(child);
 
         if (!stack.isEmpty()) {
             sink.accept(stack);
+            return;
+        }
+
+        collectHandlerCostItems(child, sink);
+    }
+
+    private static void collectHandlerCostItems(
+            CompoundTag handlerTag,
+            java.util.function.Consumer<ItemStack> sink) {
+        if (!handlerTag.contains("Items", Tag.TAG_LIST)) {
+            return;
+        }
+
+        ListTag items = handlerTag.getList("Items", Tag.TAG_COMPOUND);
+
+        for (int i = 0; i < items.size(); i++) {
+            ItemStack stack = readCostItemStack(items.getCompound(i));
+
+            if (!stack.isEmpty()) {
+                sink.accept(stack);
+            }
         }
     }
 
@@ -3079,7 +3111,7 @@ public final class GTCEuStructureExtension
                 pos,
                 false);
 
-        ItemStack picked = level.getBlockState(pos).getCloneItemStack(hit, level, pos, null);
+        ItemStack picked = normalizeSingle(level.getBlockState(pos).getCloneItemStack(hit, level, pos, null));
 
         if (!picked.isEmpty()) {
             refunds.add(picked);

@@ -81,6 +81,8 @@ public final class GTCEuStructureExtension
     private static final String NBT_FE_TO_EU = "feToEu";
     private static final String NBT_RENDER_FE_TO_EU = "fe_to_eu";
     private static final String NBT_ENERGY_CONTAINER = "energyContainer";
+    private static final String NBT_FILTER_HANDLER = "filterHandler";
+    private static final String NBT_FILTER_ITEM = "filterItem";
 
     private static final long NEXT_TICK_DELAY = 1L;
     private static final long MULTIBLOCK_REFORM_DELAY = NEXT_TICK_DELAY + 1L;
@@ -545,7 +547,18 @@ public final class GTCEuStructureExtension
                     costs,
                     null);
 
-            CompoundTag beTag = createWhitelistedGregMachineTag(rawBeTag, machineData, filteredCover);
+            CompoundTag filteredFilterHandler = filterGregMachineFilterForPlacement(
+                    machineData,
+                    null,
+                    true,
+                    costs,
+                    null);
+
+            CompoundTag beTag = createWhitelistedGregMachineTag(
+                    rawBeTag,
+                    machineData,
+                    filteredCover,
+                    filteredFilterHandler);
 
             return new PlacementPlan(true, stateToPlace, beTag, costs);
         }
@@ -566,7 +579,18 @@ public final class GTCEuStructureExtension
                 costs,
                 ctx);
 
-        CompoundTag beTag = createWhitelistedGregMachineTag(rawBeTag, machineData, filteredCover);
+        CompoundTag filteredFilterHandler = filterGregMachineFilterForPlacement(
+                machineData,
+                reserved,
+                false,
+                costs,
+                ctx);
+
+        CompoundTag beTag = createWhitelistedGregMachineTag(
+                rawBeTag,
+                machineData,
+                filteredCover,
+                filteredFilterHandler);
 
         return new PlacementPlan(true, stateToPlace, beTag, costs);
     }
@@ -717,6 +741,8 @@ public final class GTCEuStructureExtension
 
             NbtUtil.copyTagIfPresent(rawBeTag, machineTag, "circuitInventory");
             NbtUtil.copyIntIfPresent(rawBeTag, machineTag, "activeRecipeType");
+
+            collectGregMachineFilterMetadata(rawBeTag, machineTag, requirements);
 
             copyGregTransformerState(rawBeTag, machineTag);
             copyWorldAcceleratorState(rawBeTag, machineTag);
@@ -1238,6 +1264,70 @@ public final class GTCEuStructureExtension
         return changed;
     }
 
+    private static ItemStack readGregFilterItem(@Nullable CompoundTag tag) {
+        if (tag == null || !tag.contains(NBT_FILTER_HANDLER, Tag.TAG_COMPOUND)) {
+            return ItemStack.EMPTY;
+        }
+
+        CompoundTag filterHandler = tag.getCompound(NBT_FILTER_HANDLER);
+
+        if (!filterHandler.contains(NBT_FILTER_ITEM, Tag.TAG_COMPOUND)) {
+            return ItemStack.EMPTY;
+        }
+
+        return readCostItemStack(filterHandler.getCompound(NBT_FILTER_ITEM));
+    }
+
+    private static void collectGregMachineFilterMetadata(
+            CompoundTag rawBeTag,
+            CompoundTag machineTag,
+            AbstractStructureCaptureToolItem.RequirementSink requirements) {
+        ItemStack filterItem = readGregFilterItem(rawBeTag);
+
+        if (filterItem.isEmpty()) {
+            return;
+        }
+
+        machineTag.put(NBT_FILTER_HANDLER, rawBeTag.getCompound(NBT_FILTER_HANDLER).copy());
+        requirements.add(filterItem);
+    }
+
+    private static CompoundTag filterGregMachineFilterForPlacement(
+            CompoundTag machineData,
+            @Nullable Map<Item, Integer> reserved,
+            boolean creative,
+            @Nullable List<ItemStack> costs,
+            @Nullable ClonerPasteContext ctx) {
+        CompoundTag out = new CompoundTag();
+
+        ItemStack filterItem = readGregFilterItem(machineData);
+
+        if (filterItem.isEmpty()) {
+            return out;
+        }
+
+        if (!creative) {
+            if (reserved == null || ctx == null) {
+                return out;
+            }
+
+            ItemStack wanted = filterItem.copy();
+            wanted.setCount(1);
+
+            if (!ctx.canReserveForPaste(reserved, wanted, Math.max(1, filterItem.getCount()))) {
+                return out;
+            }
+        }
+
+        out.put(NBT_FILTER_HANDLER, machineData.getCompound(NBT_FILTER_HANDLER).copy());
+
+        if (costs != null) {
+            costs.add(filterItem);
+        }
+
+        return out;
+    }
+
     private static void collectGregCoverRequirements(
             CompoundTag coverTag,
             AbstractStructureCaptureToolItem.RequirementSink requirements) {
@@ -1268,7 +1358,8 @@ public final class GTCEuStructureExtension
     private static CompoundTag createWhitelistedGregMachineTag(
             CompoundTag rawBeTag,
             CompoundTag machineData,
-            CompoundTag filteredCover) {
+            CompoundTag filteredCover,
+            CompoundTag filteredFilterHandler) {
         CompoundTag out = new CompoundTag();
 
         NbtUtil.copyStringIfPresent(rawBeTag, out, NBT_ID);
@@ -1308,6 +1399,10 @@ public final class GTCEuStructureExtension
 
         if (!filteredCover.isEmpty()) {
             out.put(NBT_COVER, filteredCover.copy());
+        }
+
+        if (filteredFilterHandler.contains(NBT_FILTER_HANDLER, Tag.TAG_COMPOUND)) {
+            out.put(NBT_FILTER_HANDLER, filteredFilterHandler.getCompound(NBT_FILTER_HANDLER).copy());
         }
 
         return out;
@@ -1829,6 +1924,7 @@ public final class GTCEuStructureExtension
                 || tag.contains("durationMultiplier", Tag.TAG_ANY_NUMERIC)
                 || tag.contains("renderState", Tag.TAG_COMPOUND)
                 || tag.contains("circuitInventory", Tag.TAG_COMPOUND)
+                || tag.contains(NBT_FILTER_HANDLER, Tag.TAG_COMPOUND)
                 || tag.contains(NBT_BUFFER_POS, Tag.TAG_COMPOUND)
                 || tag.contains(NBT_MY_BUFFER_POS, Tag.TAG_COMPOUND)
                 || tag.contains("outputFacingItems")

@@ -30,6 +30,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
+import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.logic.ReplacerContext;
 import net.oktawia.spatialtoolscmp.logic.ReplacerExtension;
 
@@ -185,6 +186,23 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
         }
     }
 
+    @Override
+    public void onBlocksRestored(ServerLevel level, Set<BlockPos> positions, @Nullable ServerPlayer player) {
+        Set<BlockPos> controllers = new LinkedHashSet<>();
+
+        collectAffectedControllers(level, positions, controllers);
+
+        if (controllers.isEmpty()) {
+            return;
+        }
+
+        MultiblockWorldSavedData mwsd = MultiblockWorldSavedData.getOrCreate(level);
+
+        for (BlockPos controllerPos : controllers) {
+            forceRevalidate(level, mwsd, controllerPos);
+        }
+    }
+
     private static void captureMachineFacings(
             ServerLevel level,
             Set<BlockPos> positions,
@@ -295,7 +313,8 @@ public final class GTCEuReplacerExtension implements ReplacerExtension {
             } else {
                 GTCEuStructureExtension.scheduleStructureCheck(level, controller);
             }
-        } catch (Throwable ignored) {
+        } catch (Throwable throwable) {
+            SpatialToolsCMP.getLOGGER().warn("[gt] multiblock revalidate failed at {}", controllerPos, throwable);
         }
     }
 
