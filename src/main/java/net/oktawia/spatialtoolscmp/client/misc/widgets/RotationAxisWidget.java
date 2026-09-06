@@ -1,11 +1,16 @@
 package net.oktawia.spatialtoolscmp.client.misc.widgets;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
 import org.jetbrains.annotations.Nullable;
+import org.joml.Matrix3f;
+import org.joml.Vector3f;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -26,7 +31,7 @@ public class RotationAxisWidget {
 
     public static final int SIZE = 132;
 
-    private static final float PIXELS_PER_UNIT = 46.0f;
+    private static final float PIXELS_PER_UNIT = 42.0f;
 
     private static final float CAMERA_PITCH = 24.0f;
 
@@ -37,16 +42,54 @@ public class RotationAxisWidget {
     private static final float[] ARM_DISTANCES = { 0.40f, 0.70f, 1.00f };
     private static final float ARM_SIZE = 0.3f;
 
+    private static final float ARC_RADIUS = 0.90f;
+    private static final float ARC_START = 25.0f;
+    private static final float ARC_SPAN = 110.0f;
+    private static final int ARC_SEGMENTS = 12;
+    private static final float ARC_SIZE = 0.22f;
+
+    private static final float TIP_SIZE = 0.24f;
+    private static final float TIP_FORWARD = 0.10f;
+
+    private static final float[][] BARBS = {
+            { 0.22f, 0.10f, 0.10f },
+            { 0.21f, 0.21f, 0.21f },
+            { 0.19f, 0.32f, 0.32f },
+            { 0.17f, 0.43f, 0.43f }
+    };
+
     private static final float HOVER_GROW = 1.25f;
 
     private static final float HIT_RADIUS = 0.25f;
 
     private static final float HUB_HIT_RADIUS = 0.32f;
 
+    private static final float HIT_TIE_RANGE = 2.0f;
+
     private static final Direction.Axis[] AXES = Direction.Axis.values();
 
     private static final BlockState HUB_BLOCK = Blocks.WHITE_WOOL.defaultBlockState();
     private static final BlockState DISABLED_BLOCK = Blocks.GRAY_WOOL.defaultBlockState();
+    private static final BlockState ARROW_BLOCK = Blocks.ANDESITE.defaultBlockState();
+
+    private enum Part {
+        HUB,
+        AXIS,
+        ROTATION
+    }
+
+    private enum Role {
+        HUB,
+        ARM,
+        ARC,
+        TIP
+    }
+
+    private record Target(Part part, @Nullable Direction.Axis axis, boolean clockwise) {
+    }
+
+    private record Node(Vector3f position, float size, Role role, Target target) {
+    }
 
     private int x;
     private int y;
@@ -69,64 +112,21 @@ public class RotationAxisWidget {
     }
 
     public boolean isHoveringHub(double mouseX, double mouseY) {
-        if (!this.enabled || this.selectedAxis == null) {
-            return false;
-        }
+        Target hovered = hovered(mouseX, mouseY);
 
-        float dx = (float) mouseX - (this.x + SIZE / 2.0f);
-        float dy = (float) mouseY - (this.y + SIZE / 2.0f);
-
-        return Mth.sqrt(dx * dx + dy * dy) <= HUB_HIT_RADIUS * PIXELS_PER_UNIT;
+        return hovered != null && hovered.part() == Part.HUB && this.selectedAxis != null;
     }
 
     public @Nullable Direction.Axis getHoveredAxis(double mouseX, double mouseY) {
-        if (!this.enabled || isHoveringHub(mouseX, mouseY)) {
-            return null;
-        }
+        Target hovered = hovered(mouseX, mouseY);
 
-        View view = new View(playerYaw(Minecraft.getInstance().getFrameTime()));
+        return hovered != null && hovered.part() == Part.AXIS ? hovered.axis() : null;
+    }
 
-        float centerX = this.x + SIZE / 2.0f;
-        float centerY = this.y + SIZE / 2.0f;
-        float hitRange = HIT_RADIUS * PIXELS_PER_UNIT;
+    public @Nullable Boolean getHoveredRotation(double mouseX, double mouseY) {
+        Target hovered = hovered(mouseX, mouseY);
 
-        Direction.Axis best = null;
-        float bestDistance = Float.MAX_VALUE;
-        float bestDepth = Float.MAX_VALUE;
-
-        for (Direction.Axis axis : AXES) {
-            if (this.selectedAxis != null && axis != this.selectedAxis) {
-                continue;
-            }
-
-            for (int sign = -1; sign <= 1; sign += 2) {
-                for (float armDistance : ARM_DISTANCES) {
-                    float[] end = view.project(
-                            stepX(axis) * armDistance * sign,
-                            stepY(axis) * armDistance * sign,
-                            stepZ(axis) * armDistance * sign);
-
-                    float dx = (float) mouseX - (centerX + end[0]);
-                    float dy = (float) mouseY - (centerY + end[1]);
-                    float distance = Mth.sqrt(dx * dx + dy * dy);
-
-                    if (distance > hitRange) {
-                        continue;
-                    }
-
-                    boolean closerToCursor = distance < bestDistance - 2.0f;
-                    boolean sameSpotButNearerCamera = distance < bestDistance + 2.0f && end[2] < bestDepth;
-
-                    if (closerToCursor || sameSpotButNearerCamera) {
-                        bestDistance = distance;
-                        bestDepth = end[2];
-                        best = axis;
-                    }
-                }
-            }
-        }
-
-        return best;
+        return hovered != null && hovered.part() == Part.ROTATION ? hovered.clockwise() : null;
     }
 
     public LangDefs tooltipFor(Direction.Axis axis) {
@@ -138,7 +138,7 @@ public class RotationAxisWidget {
     }
 
     public void render(GuiGraphics graphics, double mouseX, double mouseY, float partialTick) {
-        Direction.Axis hovered = getHoveredAxis(mouseX, mouseY);
+        Target hovered = hovered(mouseX, mouseY);
 
         graphics.flush();
 
@@ -157,31 +157,10 @@ public class RotationAxisWidget {
         RenderSystem.enableDepthTest();
         Lighting.setupLevel(pose.last().pose());
 
-        float hubSize = isHoveringHub(mouseX, mouseY) ? HUB_SIZE * HOVER_GROW : HUB_SIZE;
+        for (Node node : nodes()) {
+            float size = node.target().equals(hovered) ? node.size() * HOVER_GROW : node.size();
 
-        renderCube(dispatcher, pose, bufferSource, hubBlock(), 0.0f, 0.0f, 0.0f, hubSize);
-
-        for (Direction.Axis axis : AXES) {
-            if (this.selectedAxis != null && axis != this.selectedAxis) {
-                continue;
-            }
-
-            BlockState state = blockFor(axis);
-            float size = axis == hovered ? ARM_SIZE * HOVER_GROW : ARM_SIZE;
-
-            for (int sign = -1; sign <= 1; sign += 2) {
-                for (float distance : ARM_DISTANCES) {
-                    renderCube(
-                            dispatcher,
-                            pose,
-                            bufferSource,
-                            state,
-                            stepX(axis) * distance * sign,
-                            stepY(axis) * distance * sign,
-                            stepZ(axis) * distance * sign,
-                            size);
-                }
-            }
+            renderCube(dispatcher, pose, bufferSource, blockFor(node), node.position(), size);
         }
 
         bufferSource.endBatch();
@@ -191,18 +170,146 @@ public class RotationAxisWidget {
         Lighting.setupFor3DItems();
     }
 
+    private List<Node> nodes() {
+        List<Node> nodes = new ArrayList<>();
+
+        nodes.add(new Node(new Vector3f(), HUB_SIZE, Role.HUB, new Target(Part.HUB, this.selectedAxis, false)));
+
+        for (Direction.Axis axis : AXES) {
+            if (this.selectedAxis != null && axis != this.selectedAxis) {
+                continue;
+            }
+
+            Target target = new Target(Part.AXIS, axis, false);
+            Vector3f step = axisVector(axis);
+
+            for (int sign = -1; sign <= 1; sign += 2) {
+                for (float distance : ARM_DISTANCES) {
+                    nodes.add(new Node(new Vector3f(step).mul(distance * sign), ARM_SIZE, Role.ARM, target));
+                }
+            }
+        }
+
+        if (this.selectedAxis != null) {
+            addArrow(nodes, this.selectedAxis, false);
+            addArrow(nodes, this.selectedAxis, true);
+        }
+
+        return nodes;
+    }
+
+    private void addArrow(List<Node> nodes, Direction.Axis axis, boolean clockwise) {
+        Target target = new Target(Part.ROTATION, axis, clockwise);
+
+        Vector3f u = planeU(axis);
+        Vector3f v = planeV(axis);
+
+        float tail = clockwise ? ARC_START + ARC_SPAN + 180.0f : ARC_START;
+        float span = clockwise ? -ARC_SPAN : ARC_SPAN;
+
+        for (int i = 0; i < ARC_SEGMENTS - 1; i++) {
+            float angle = tail + span * i / (ARC_SEGMENTS - 1);
+
+            nodes.add(new Node(onCircle(u, v, angle, ARC_RADIUS), ARC_SIZE, Role.ARC, target));
+        }
+
+        float headAngle = tail + span;
+
+        Vector3f head = onCircle(u, v, headAngle, ARC_RADIUS);
+        Vector3f radial = onCircle(u, v, headAngle, 1.0f);
+        Vector3f forward = onCircle(u, v, headAngle + 90.0f, clockwise ? -1.0f : 1.0f);
+
+        nodes.add(new Node(
+                new Vector3f(head).add(new Vector3f(forward).mul(TIP_FORWARD)),
+                TIP_SIZE,
+                Role.TIP,
+                target));
+
+        for (float[] barb : BARBS) {
+            for (int side = -1; side <= 1; side += 2) {
+                Vector3f position = new Vector3f(head)
+                        .add(new Vector3f(forward).mul(-barb[1]))
+                        .add(new Vector3f(radial).mul(barb[2] * side));
+
+                nodes.add(new Node(position, barb[0], Role.TIP, target));
+            }
+        }
+    }
+
+    private @Nullable Target hovered(double mouseX, double mouseY) {
+        if (!this.enabled) {
+            return null;
+        }
+
+        Matrix3f orientation = orientation(Minecraft.getInstance().getFrameTime());
+
+        float centerX = this.x + SIZE / 2.0f;
+        float centerY = this.y + SIZE / 2.0f;
+
+        Target best = null;
+        float bestDistance = Float.MAX_VALUE;
+        float bestNearness = -Float.MAX_VALUE;
+
+        for (Node node : nodes()) {
+            Vector3f screen = orientation.transform(new Vector3f(node.position()));
+
+            float dx = (float) mouseX - (centerX + screen.x() * PIXELS_PER_UNIT);
+            float dy = (float) mouseY - (centerY - screen.y() * PIXELS_PER_UNIT);
+            float distance = Mth.sqrt(dx * dx + dy * dy);
+
+            if (distance > hitRadius(node.role()) * PIXELS_PER_UNIT) {
+                continue;
+            }
+
+            boolean closerToCursor = distance < bestDistance - HIT_TIE_RANGE;
+            boolean sameSpotButNearerCamera = distance < bestDistance + HIT_TIE_RANGE && screen.z() > bestNearness;
+
+            if (closerToCursor || sameSpotButNearerCamera) {
+                bestDistance = distance;
+                bestNearness = screen.z();
+                best = node.target();
+            }
+        }
+
+        return best;
+    }
+
+    private static Matrix3f orientation(float partialTick) {
+        return new Matrix3f()
+                .rotateX((float) Math.toRadians(CAMERA_PITCH))
+                .rotateY((float) Math.toRadians(playerYaw(partialTick) + 180.0f));
+    }
+
+    private static float hitRadius(Role role) {
+        return role == Role.HUB ? HUB_HIT_RADIUS : HIT_RADIUS;
+    }
+
+    private BlockState blockFor(Node node) {
+        if (!this.enabled) {
+            return DISABLED_BLOCK;
+        }
+
+        return switch (node.role()) {
+            case HUB -> HUB_BLOCK;
+            case ARC -> ARROW_BLOCK;
+            case ARM, TIP -> {
+                Direction.Axis axis = node.target().axis();
+
+                yield axis == null ? HUB_BLOCK : blockFor(axis);
+            }
+        };
+    }
+
     private static void renderCube(
             BlockRenderDispatcher dispatcher,
             PoseStack pose,
             MultiBufferSource bufferSource,
             BlockState state,
-            float offsetX,
-            float offsetY,
-            float offsetZ,
+            Vector3f position,
             float size) {
         pose.pushPose();
 
-        pose.translate(offsetX, offsetY, offsetZ);
+        pose.translate(position.x(), position.y(), position.z());
 
         pose.scale(size, size, size);
         pose.translate(-0.5f, -0.5f, -0.5f);
@@ -217,15 +324,7 @@ public class RotationAxisWidget {
         pose.popPose();
     }
 
-    private BlockState hubBlock() {
-        return this.enabled ? HUB_BLOCK : DISABLED_BLOCK;
-    }
-
-    private BlockState blockFor(Direction.Axis axis) {
-        if (!this.enabled) {
-            return DISABLED_BLOCK;
-        }
-
+    private static BlockState blockFor(Direction.Axis axis) {
         return switch (axis) {
             case X -> Blocks.RED_WOOL.defaultBlockState();
             case Y -> Blocks.LIME_WOOL.defaultBlockState();
@@ -233,16 +332,34 @@ public class RotationAxisWidget {
         };
     }
 
-    private static float stepX(Direction.Axis axis) {
-        return axis == Direction.Axis.X ? 1.0f : 0.0f;
+    private static Vector3f onCircle(Vector3f u, Vector3f v, float degrees, float radius) {
+        float radians = (float) Math.toRadians(degrees);
+
+        return new Vector3f(u).mul(Mth.cos(radians)).add(new Vector3f(v).mul(Mth.sin(radians))).mul(radius);
     }
 
-    private static float stepY(Direction.Axis axis) {
-        return axis == Direction.Axis.Y ? 1.0f : 0.0f;
+    private static Vector3f axisVector(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> new Vector3f(1.0f, 0.0f, 0.0f);
+            case Y -> new Vector3f(0.0f, 1.0f, 0.0f);
+            case Z -> new Vector3f(0.0f, 0.0f, 1.0f);
+        };
     }
 
-    private static float stepZ(Direction.Axis axis) {
-        return axis == Direction.Axis.Z ? 1.0f : 0.0f;
+    private static Vector3f planeU(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> new Vector3f(0.0f, 1.0f, 0.0f);
+            case Y -> new Vector3f(0.0f, 0.0f, 1.0f);
+            case Z -> new Vector3f(1.0f, 0.0f, 0.0f);
+        };
+    }
+
+    private static Vector3f planeV(Direction.Axis axis) {
+        return switch (axis) {
+            case X -> new Vector3f(0.0f, 0.0f, 1.0f);
+            case Y -> new Vector3f(1.0f, 0.0f, 0.0f);
+            case Z -> new Vector3f(0.0f, 1.0f, 0.0f);
+        };
     }
 
     private static float playerYaw(float partialTick) {
@@ -253,51 +370,5 @@ public class RotationAxisWidget {
         }
 
         return mc.player.getViewYRot(partialTick);
-    }
-
-    private static final class View {
-
-        private final float rightX;
-        private final float rightZ;
-
-        private final float upX;
-        private final float upY;
-        private final float upZ;
-
-        private final float depthX;
-        private final float depthY;
-        private final float depthZ;
-
-        private View(float yawDegrees) {
-            float yaw = (float) Math.toRadians(yawDegrees);
-
-            float sinYaw = Mth.sin(yaw);
-            float cosYaw = Mth.cos(yaw);
-
-            float sinPitch = Mth.sin((float) Math.toRadians(CAMERA_PITCH));
-            float cosPitch = Mth.cos((float) Math.toRadians(CAMERA_PITCH));
-
-            float forwardX = -sinYaw;
-            float forwardZ = cosYaw;
-
-            this.rightX = -cosYaw;
-            this.rightZ = -sinYaw;
-
-            this.upX = forwardX * sinPitch;
-            this.upY = cosPitch;
-            this.upZ = forwardZ * sinPitch;
-
-            this.depthX = forwardX * cosPitch;
-            this.depthY = -sinPitch;
-            this.depthZ = forwardZ * cosPitch;
-        }
-
-        private float[] project(float x, float y, float z) {
-            return new float[] {
-                    (x * this.rightX + z * this.rightZ) * PIXELS_PER_UNIT,
-                    -(x * this.upX + y * this.upY + z * this.upZ) * PIXELS_PER_UNIT,
-                    (x * this.depthX + y * this.depthY + z * this.depthZ) * PIXELS_PER_UNIT
-            };
-        }
     }
 }

@@ -209,7 +209,7 @@ public final class PreviewStructure {
     }
 
     public static PreviewStructure fromTemplateTag(CompoundTag tag) {
-        List<TemplateUtil.BlockInfo> parsed = TemplateUtil.parseBlocksFromTag(tag);
+        List<TemplateUtil.BlockInfo> parsed = TemplateUtil.parseRawBlocksFromTag(tag);
         Map<BlockPos, CompoundTag> cloneMetadata = readCloneMetadata(tag);
         List<PreviewBlock> blocks = new ArrayList<>(parsed.size());
 
@@ -235,7 +235,6 @@ public final class PreviewStructure {
             return Map.of();
         }
 
-        BlockPos templateOffset = TemplateUtil.getTemplateOffset(tag);
         ListTag entries = tag.getCompound(StructureToolKeys.CLONE_METADATA_KEY)
                 .getList(StructureToolKeys.CLONE_METADATA_BLOCKS_KEY, Tag.TAG_COMPOUND);
 
@@ -248,7 +247,7 @@ public final class PreviewStructure {
             BlockPos pos = new BlockPos(
                     posTag.getInt("x"),
                     posTag.getInt("y"),
-                    posTag.getInt("z")).offset(templateOffset);
+                    posTag.getInt("z"));
 
             result.put(pos, entry);
         }

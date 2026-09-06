@@ -306,10 +306,11 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
         }
 
         BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(savedTag);
+        BlockPos templateOffset = TemplateUtil.getTemplateOffset(savedTag);
 
         double requiredPower = StructureToolUtil.calculatePreviewStructurePower(
                 savedTag,
-                energyOrigin,
+                energyOrigin.subtract(templateOffset),
                 getPowerPerBlockPaste(),
                 getEnergyCostMultiplier());
 
@@ -318,7 +319,6 @@ public class PortableSpatialCloner extends AbstractStructureCaptureToolItem {
             return;
         }
 
-        BlockPos templateOffset = TemplateUtil.getTemplateOffset(savedTag);
         List<TemplateUtil.BlockInfo> rawBlocks = TemplateUtil.parseRawBlocksFromTag(savedTag);
         Map<BlockPos, CompoundTag> metadataByPos = parseMetadataByPos(savedTag);
 

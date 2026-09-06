@@ -14,7 +14,6 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.phys.Vec3;
 
 import net.oktawia.spatialtoolscmp.client.misc.Icon;
 import net.oktawia.spatialtoolscmp.client.misc.StructureToolContextMenuClient;
@@ -401,54 +400,9 @@ public class StructureToolContextMenuScreen extends Screen {
     }
 
     private void buildRotationGrid(int panelX, int baseY) {
-        int widgetX = panelX + (PANEL_WIDTH - RotationAxisWidget.SIZE) / 2;
-
-        this.rotationAxisWidget.setPosition(widgetX, baseY);
+        this.rotationAxisWidget.setPosition(panelX + (PANEL_WIDTH - RotationAxisWidget.SIZE) / 2, baseY);
         this.rotationAxisWidget.setEnabled(true);
         this.rotationAxisWidgetVisible = true;
-
-        Direction.Axis axis = this.rotationAxisWidget.getSelectedAxis();
-
-        if (axis == null) {
-            return;
-        }
-
-        boolean aroundOrigin = this.lastShiftDown;
-        boolean mirrored = isAxisRotationMirroredForViewer(axis);
-
-        int buttonY = baseY + (RotationAxisWidget.SIZE - BUTTON_SIZE) / 2 - BUTTON_STEP;
-
-        addButton(
-                mirrored ? clockwiseActionFor(axis) : counterClockwiseActionFor(axis),
-                aroundOrigin,
-                aroundOrigin ? LangDefs.ROTATE_LEFT_AROUND_ORIGIN : LangDefs.ROTATE_LEFT,
-                Icon.ARROW_LEFT,
-                widgetX + 4,
-                buttonY);
-
-        addButton(
-                mirrored ? counterClockwiseActionFor(axis) : clockwiseActionFor(axis),
-                aroundOrigin,
-                aroundOrigin ? LangDefs.ROTATE_RIGHT_AROUND_ORIGIN : LangDefs.ROTATE_RIGHT,
-                Icon.ARROW_RIGHT,
-                widgetX + RotationAxisWidget.SIZE - 4 - BUTTON_SIZE,
-                buttonY);
-    }
-
-    private static boolean isAxisRotationMirroredForViewer(Direction.Axis axis) {
-        if (axis == Direction.Axis.Y) {
-            return false;
-        }
-
-        Minecraft mc = Minecraft.getInstance();
-
-        if (mc.player == null) {
-            return false;
-        }
-
-        Vec3 look = mc.player.getLookAngle();
-
-        return axis == Direction.Axis.X ? look.x > 0.0 : look.z > 0.0;
     }
 
     private void buildPanelModeToggle(int panelX, int baseY) {
@@ -931,6 +885,22 @@ public class StructureToolContextMenuScreen extends Screen {
     }
 
     private void clickRotationAxis(double mouseX, double mouseY) {
+        Boolean clockwise = this.rotationAxisWidget.getHoveredRotation(mouseX, mouseY);
+
+        if (clockwise != null) {
+            Direction.Axis selected = this.rotationAxisWidget.getSelectedAxis();
+
+            if (selected == null) {
+                return;
+            }
+
+            int action = clockwise ? clockwiseActionFor(selected) : counterClockwiseActionFor(selected);
+
+            NetworkHandler.sendToServer(new StructureToolContextActionPacket(action, isShiftPhysicallyDown()));
+
+            return;
+        }
+
         if (this.rotationAxisWidget.isHoveringHub(mouseX, mouseY)) {
             this.rotationAxisWidget.setSelectedAxis(null);
             rebuildLayout();
@@ -1036,12 +1006,14 @@ public class StructureToolContextMenuScreen extends Screen {
         }
 
         if (this.rotationAxisWidget.isHoveringHub(mouseX, mouseY)) {
-            graphics.renderComponentTooltip(
-                    this.font,
-                    List.of(Component.translatable(LangDefs.CONTEXT_MENU_CLEAR_AXIS.getTranslationKey())),
-                    mouseX,
-                    mouseY);
+            renderTooltipLine(graphics, LangDefs.CONTEXT_MENU_CLEAR_AXIS, mouseX, mouseY);
+            return;
+        }
 
+        Boolean clockwise = this.rotationAxisWidget.getHoveredRotation(mouseX, mouseY);
+
+        if (clockwise != null) {
+            renderTooltipLine(graphics, rotationTooltipFor(clockwise), mouseX, mouseY);
             return;
         }
 
@@ -1055,6 +1027,20 @@ public class StructureToolContextMenuScreen extends Screen {
                 ? LangDefs.CONTEXT_MENU_CLEAR_AXIS
                 : this.rotationAxisWidget.tooltipFor(hovered);
 
+        renderTooltipLine(graphics, label, mouseX, mouseY);
+    }
+
+    private LangDefs rotationTooltipFor(boolean clockwise) {
+        if (isShiftPhysicallyDown()) {
+            return clockwise
+                    ? LangDefs.ROTATE_CLOCKWISE_AROUND_ORIGIN
+                    : LangDefs.ROTATE_COUNTER_CLOCKWISE_AROUND_ORIGIN;
+        }
+
+        return clockwise ? LangDefs.ROTATE_CLOCKWISE : LangDefs.ROTATE_COUNTER_CLOCKWISE;
+    }
+
+    private void renderTooltipLine(GuiGraphics graphics, LangDefs label, int mouseX, int mouseY) {
         graphics.renderComponentTooltip(
                 this.font,
                 List.of(Component.translatable(label.getTranslationKey())),

@@ -620,8 +620,6 @@ public abstract class AbstractPortableStructureToolMenu extends AbstractContaine
         } catch (Exception ignored) {
             return;
         }
-
-        requestPreviewServer();
     }
 
     protected void syncItemPreviewMirror(CompoundTag structureTag) {

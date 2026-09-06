@@ -47,13 +47,14 @@ public class GadgetCostPreviewClient {
     private static boolean pasteCostCacheValid = false;
     private static String pasteCostStructureId = "";
     private static PreviewStructure pasteCostStructure = null;
-    private static BlockPos pasteCostEnergyOrigin = BlockPos.ZERO;
+    private static BlockPos pasteCostOrigin = BlockPos.ZERO;
     private static double pasteCostEffectivePowerPerBlock = 0.0D;
     private static long pasteCostValue = 0L;
 
     private static Component currentText = null;
-    private static Component currentWarning = null;
+    private static Component currentSubText = null;
     private static int currentColor = COLOR_OK;
+    private static int currentSubColor = COLOR_RED;
 
     private static final int MISSING_BLOCKS_POLL_TICKS = 20;
 
@@ -66,8 +67,9 @@ public class GadgetCostPreviewClient {
         }
 
         currentText = null;
-        currentWarning = null;
+        currentSubText = null;
         currentColor = COLOR_CYAN;
+        currentSubColor = COLOR_RED;
 
         Minecraft mc = Minecraft.getInstance();
 
@@ -89,12 +91,6 @@ public class GadgetCostPreviewClient {
         }
 
         double effectivePowerPerBlock = getEffectivePowerPerBlock(held);
-
-        if (effectivePowerPerBlock <= 0.0D) {
-            resetCaches();
-            return;
-        }
-
         long energy = getStoredEnergy(held);
 
         if (held.getItem() instanceof PortableSpatialReplacer
@@ -115,10 +111,17 @@ public class GadgetCostPreviewClient {
                     ? PortableSpatialReplacerPreviewRenderer.getPreviewDistanceSum()
                     : PortableSpatialPiperPreviewRenderer.getPreviewDistanceSum();
 
-            long cost = ceilToLongClamped(
-                    SpatialPowerCost.fromDistanceSum(distanceSum, effectivePowerPerBlock));
+            long cost = effectivePowerPerBlock > 0.0D
+                    ? ceilToLongClamped(SpatialPowerCost.fromDistanceSum(distanceSum, effectivePowerPerBlock))
+                    : 0L;
+
+            Component blockCount = Component.translatable(
+                    (replacer ? LangDefs.REPLACER_BLOCKS_PREVIEW : LangDefs.PIPER_BLOCKS_PREVIEW).getTranslationKey(),
+                    String.format("%,d", blocks));
 
             if (cost <= 0) {
+                currentText = blockCount;
+                currentColor = COLOR_CYAN;
                 return;
             }
 
@@ -131,6 +134,14 @@ public class GadgetCostPreviewClient {
                     String.format("%,d", cost));
 
             currentColor = cost > energy ? COLOR_RED : COLOR_CYAN;
+            currentSubText = blockCount;
+            currentSubColor = COLOR_CYAN;
+
+            return;
+        }
+
+        if (effectivePowerPerBlock <= 0.0D) {
+            resetCaches();
             return;
         }
 
@@ -165,7 +176,7 @@ public class GadgetCostPreviewClient {
                 pollMissingBlocks();
 
                 if (ClonerMissingBlocksClientCache.isMissing()) {
-                    currentWarning = Component.translatable(LangDefs.MISSING_BLOCKS.getTranslationKey());
+                    currentSubText = Component.translatable(LangDefs.MISSING_BLOCKS.getTranslationKey());
                 }
             } else {
                 resetMissingBlocks();
@@ -286,12 +297,13 @@ public class GadgetCostPreviewClient {
         }
 
         CompoundTag tag = stack.getTag();
-        BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(tag);
+        BlockPos costOrigin = TemplateUtil.getEnergyOrigin(tag)
+                .subtract(TemplateUtil.getTemplateOffset(tag));
 
         if (pasteCostCacheValid
                 && structureId.equals(pasteCostStructureId)
                 && structure == pasteCostStructure
-                && energyOrigin.equals(pasteCostEnergyOrigin)
+                && costOrigin.equals(pasteCostOrigin)
                 && Double.compare(effectivePowerPerBlock, pasteCostEffectivePowerPerBlock) == 0) {
             return pasteCostValue;
         }
@@ -301,9 +313,9 @@ public class GadgetCostPreviewClient {
         for (PreviewBlock previewBlock : structure.blocks()) {
             BlockPos pos = previewBlock.pos();
 
-            double dx = pos.getX() - energyOrigin.getX();
-            double dy = pos.getY() - energyOrigin.getY();
-            double dz = pos.getZ() - energyOrigin.getZ();
+            double dx = pos.getX() - costOrigin.getX();
+            double dy = pos.getY() - costOrigin.getY();
+            double dz = pos.getZ() - costOrigin.getZ();
 
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             total += distance * effectivePowerPerBlock;
@@ -314,7 +326,7 @@ public class GadgetCostPreviewClient {
         pasteCostCacheValid = true;
         pasteCostStructureId = structureId;
         pasteCostStructure = structure;
-        pasteCostEnergyOrigin = energyOrigin.immutable();
+        pasteCostOrigin = costOrigin.immutable();
         pasteCostEffectivePowerPerBlock = effectivePowerPerBlock;
         pasteCostValue = cost;
 
@@ -347,7 +359,7 @@ public class GadgetCostPreviewClient {
         pasteCostCacheValid = false;
         pasteCostStructureId = "";
         pasteCostStructure = null;
-        pasteCostEnergyOrigin = BlockPos.ZERO;
+        pasteCostOrigin = BlockPos.ZERO;
         pasteCostEffectivePowerPerBlock = 0.0D;
         pasteCostValue = 0L;
     }
@@ -373,8 +385,8 @@ public class GadgetCostPreviewClient {
 
         gui.drawString(mc.font, currentText, x, y, currentColor, true);
 
-        if (currentWarning != null) {
-            gui.drawString(mc.font, currentWarning, x, y + mc.font.lineHeight + 1, COLOR_RED, true);
+        if (currentSubText != null) {
+            gui.drawString(mc.font, currentSubText, x, y + mc.font.lineHeight + 1, currentSubColor, true);
         }
     }
 

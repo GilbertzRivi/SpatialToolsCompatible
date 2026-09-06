@@ -397,7 +397,14 @@ public class StructureToolContextActionPacket {
         TemplateUtil.copyPreviewTransformState(transformed, stack.getOrCreateTag());
 
         syncStack(player);
-        StructureToolPreviewDispatcher.sendPreviewToPlayer(player, transformed);
+
+        if (!isOffsetAction(action)) {
+            StructureToolPreviewDispatcher.sendPreviewToPlayer(player, transformed);
+        }
+    }
+
+    private static boolean isOffsetAction(int action) {
+        return action >= OFFSET_LEFT && action <= OFFSET_BACK;
     }
 
     private static @Nullable Direction.Axis rotationAxisFor(int action) {

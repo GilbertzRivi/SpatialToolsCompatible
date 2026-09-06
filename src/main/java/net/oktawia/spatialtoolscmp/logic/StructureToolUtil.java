@@ -106,7 +106,7 @@ public final class StructureToolUtil {
 
         double total = 0.0D;
 
-        for (TemplateUtil.BlockInfo blockInfo : TemplateUtil.parseBlocksFromTag(templateTag)) {
+        for (TemplateUtil.BlockInfo blockInfo : TemplateUtil.parseRawBlocksFromTag(templateTag)) {
             BlockPos pos = blockInfo.pos();
 
             double dx = pos.getX() - localOrigin.getX();

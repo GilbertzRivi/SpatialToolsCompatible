@@ -1,5 +1,6 @@
 package net.oktawia.spatialtoolscmp.network.packets;
 
+import java.util.Arrays;
 import java.util.function.Supplier;
 
 import net.minecraft.nbt.CompoundTag;
@@ -8,13 +9,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureTransfer;
 import net.oktawia.spatialtoolscmp.menus.PortableSpatialClonerMenu;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.util.TemplateUtil;
 
 public class ExportClonerStructurePacket {
-
-    private static final int MAX_EXPORT_BYTES = 16 * 1024 * 1024;
 
     private final int containerId;
     private final String id;
@@ -26,13 +26,13 @@ public class ExportClonerStructurePacket {
 
     public static void encode(ExportClonerStructurePacket packet, FriendlyByteBuf buffer) {
         buffer.writeVarInt(packet.containerId);
-        buffer.writeUtf(packet.id, 32767);
+        buffer.writeUtf(packet.id, ClonerStructureTransfer.MAX_ID_LENGTH);
     }
 
     public static ExportClonerStructurePacket decode(FriendlyByteBuf buffer) {
         return new ExportClonerStructurePacket(
                 buffer.readVarInt(),
-                buffer.readUtf(32767));
+                buffer.readUtf(ClonerStructureTransfer.MAX_ID_LENGTH));
     }
 
     public static void handle(ExportClonerStructurePacket packet, Supplier<NetworkEvent.Context> contextSupplier) {
@@ -62,13 +62,20 @@ public class ExportClonerStructurePacket {
 
                 byte[] bytes = TemplateUtil.compressNbt(tag);
 
-                if (bytes.length > MAX_EXPORT_BYTES) {
+                if (bytes.length == 0 || bytes.length > ClonerStructureTransfer.MAX_TRANSFER_BYTES) {
                     return;
                 }
 
-                NetworkHandler.sendToPlayer(
-                        player,
-                        new ExportClonerStructureResultPacket(packet.id, bytes));
+                NetworkHandler.sendToPlayer(player, ExportClonerStructureResultPacket.begin(packet.id));
+
+                for (int offset = 0; offset < bytes.length; offset += ClonerStructureTransfer.CHUNK_BYTES) {
+                    int end = Math.min(bytes.length, offset + ClonerStructureTransfer.CHUNK_BYTES);
+                    NetworkHandler.sendToPlayer(
+                            player,
+                            ExportClonerStructureResultPacket.data(packet.id, Arrays.copyOfRange(bytes, offset, end)));
+                }
+
+                NetworkHandler.sendToPlayer(player, ExportClonerStructureResultPacket.end(packet.id));
             } catch (Exception ignored) {
             }
         });

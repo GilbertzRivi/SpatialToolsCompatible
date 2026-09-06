@@ -278,7 +278,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
             Set<BlockPos> rawPositions = new HashSet<>();
 
             for (TemplateUtil.BlockInfo blockInfo : deferredBlocks) {
-                rawPositions.add(blockInfo.pos().subtract(templateOffset));
+                rawPositions.add(blockInfo.pos());
             }
 
             placeTag = TemplateUtil.withoutBlocksAt(savedTag, rawPositions);
@@ -289,7 +289,7 @@ public class PortableSpatialStorage extends AbstractStructureCaptureToolItem {
 
         double requiredPower = StructureToolUtil.calculatePreviewStructurePower(
                 savedTag,
-                energyOrigin,
+                energyOrigin.subtract(templateOffset),
                 getPowerPerBlockPaste(),
                 getEnergyCostMultiplier());
 

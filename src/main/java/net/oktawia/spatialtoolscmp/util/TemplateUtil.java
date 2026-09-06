@@ -205,21 +205,11 @@ public final class TemplateUtil {
         setEnergyOrigin(target, getEnergyOrigin(source));
     }
 
-    public static List<BlockInfo> parseBlocksFromTag(CompoundTag tag) {
-        return parseBlocksFromTag(tag, true);
-    }
-
     public static List<BlockInfo> parseRawBlocksFromTag(CompoundTag tag) {
-        return parseBlocksFromTag(tag, false);
-    }
-
-    private static List<BlockInfo> parseBlocksFromTag(CompoundTag tag, boolean applyTemplateOffset) {
         List<BlockInfo> out = new ArrayList<>();
         if (tag == null) {
             return out;
         }
-
-        BlockPos templateOffset = applyTemplateOffset ? getTemplateOffset(tag) : BlockPos.ZERO;
 
         ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
         List<BlockState> palette = new ArrayList<>(paletteTag.size());
@@ -248,7 +238,7 @@ public final class TemplateUtil {
             BlockPos pos = new BlockPos(
                     posTag.getInt(0),
                     posTag.getInt(1),
-                    posTag.getInt(2)).offset(templateOffset);
+                    posTag.getInt(2));
 
             CompoundTag blockEntityTag = blockTag.contains("nbt", Tag.TAG_COMPOUND)
                     ? blockTag.getCompound("nbt").copy()
@@ -371,6 +361,10 @@ public final class TemplateUtil {
     }
 
     public static CompoundTag applyFlipHToTag(CompoundTag tag, Direction sourceFacing) {
+        return applyFlipHToTag(tag, sourceFacing, false);
+    }
+
+    private static CompoundTag applyFlipHToTag(CompoundTag tag, Direction sourceFacing, boolean moveOriginWithBlocks) {
         Direction.Axis mirrorAxis = horizontalMirrorAxisForSourceFacing(sourceFacing);
 
         CableBusTransform cableBusTransform = sourceFacing.getAxis() == Direction.Axis.Z
@@ -381,7 +375,8 @@ public final class TemplateUtil {
                 tag,
                 horizontalFlipPositionTransform(mirrorAxis),
                 state -> flipHorizontalState(state, sourceFacing),
-                cableBusTransform);
+                cableBusTransform,
+                moveOriginWithBlocks);
     }
 
     public static CompoundTag applyFlipEastWestToTag(CompoundTag tag) {
@@ -415,14 +410,23 @@ public final class TemplateUtil {
     }
 
     public static CompoundTag applyFlipVToTag(CompoundTag tag) {
+        return applyFlipVToTag(tag, false);
+    }
+
+    private static CompoundTag applyFlipVToTag(CompoundTag tag, boolean moveOriginWithBlocks) {
         return applyTransform(
                 tag,
                 (x, y, z, minX, maxX, minY, maxY, minZ, maxZ) -> new int[] { x, minY + maxY - y, z },
                 TemplateUtil::flipVerticalState,
-                CableBusTransform.FLIP_V);
+                CableBusTransform.FLIP_V,
+                moveOriginWithBlocks);
     }
 
     public static CompoundTag applyRotateCWToTag(CompoundTag tag, int times) {
+        return applyRotateCWToTag(tag, times, false);
+    }
+
+    private static CompoundTag applyRotateCWToTag(CompoundTag tag, int times, boolean moveOriginWithBlocks) {
         int normalizedTurns = ((times % 4) + 4) % 4;
         if (normalizedTurns == 0) {
             return tag;
@@ -463,7 +467,8 @@ public final class TemplateUtil {
                     default -> new int[] { x, y, z };
                 },
                 state -> rotateState(state, rotation),
-                cableBusTransform);
+                cableBusTransform,
+                moveOriginWithBlocks);
     }
 
     public static Direction rotateAroundAxis(Direction direction, Direction.Axis axis, boolean clockwise) {
@@ -494,8 +499,16 @@ public final class TemplateUtil {
     }
 
     public static CompoundTag applyRotateAroundAxisToTag(CompoundTag tag, Direction.Axis axis, boolean clockwise) {
+        return applyRotateAroundAxisToTag(tag, axis, clockwise, false);
+    }
+
+    private static CompoundTag applyRotateAroundAxisToTag(
+            CompoundTag tag,
+            Direction.Axis axis,
+            boolean clockwise,
+            boolean moveOriginWithBlocks) {
         if (axis == Direction.Axis.Y) {
-            return applyRotateCWToTag(tag, clockwise ? 1 : 3);
+            return applyRotateCWToTag(tag, clockwise ? 1 : 3, moveOriginWithBlocks);
         }
 
         CableBusTransform cableBusTransform = axisRotationCableBusTransform(axis, clockwise);
@@ -509,20 +522,15 @@ public final class TemplateUtil {
                         axis,
                         clockwise),
                 state -> rotateStateAroundAxis(state, axis, clockwise),
-                cableBusTransform);
+                cableBusTransform,
+                moveOriginWithBlocks);
     }
 
     public static CompoundTag applyRotateAroundAxisAroundOriginToTag(
             CompoundTag tag,
             Direction.Axis axis,
             boolean clockwise) {
-        if (axis == Direction.Axis.Y) {
-            return applyRotateCWAroundOriginToTag(tag, clockwise ? 1 : 3);
-        }
-
-        CompoundTag transformed = applyRotateAroundAxisToTag(tag, axis, clockwise);
-        setTemplateOffset(transformed, rotateOffsetAroundAxis(getTemplateOffset(tag), axis, clockwise));
-        return transformed;
+        return applyRotateAroundAxisToTag(tag, axis, clockwise, true);
     }
 
     public static int countUnrotatableBlocks(CompoundTag tag, Direction.Axis axis, boolean clockwise) {
@@ -557,15 +565,6 @@ public final class TemplateUtil {
         return count;
     }
 
-    private static BlockPos rotateOffsetAroundAxis(BlockPos offset, Direction.Axis axis, boolean clockwise) {
-        int[] rotated = rotateVectorAroundAxis(offset.getX(), offset.getY(), offset.getZ(), axis, clockwise);
-
-        return new BlockPos(
-                clampOffset(rotated[0]),
-                clampOffset(rotated[1]),
-                clampOffset(rotated[2]));
-    }
-
     private static CableBusTransform axisRotationCableBusTransform(Direction.Axis axis, boolean clockwise) {
         return switch (axis) {
             case X -> clockwise ? CableBusTransform.ROTATE_X_CW : CableBusTransform.ROTATE_X_CCW;
@@ -575,67 +574,15 @@ public final class TemplateUtil {
     }
 
     public static CompoundTag applyFlipHAroundOriginToTag(CompoundTag tag, Direction sourceFacing) {
-        CompoundTag transformed = applyFlipHToTag(tag, sourceFacing);
-        setTemplateOffset(transformed, flipHorizontalOffset(getTemplateOffset(tag), sourceFacing));
-        return transformed;
+        return applyFlipHToTag(tag, sourceFacing, true);
     }
 
     public static CompoundTag applyFlipVAroundOriginToTag(CompoundTag tag) {
-        CompoundTag transformed = applyFlipVToTag(tag);
-        setTemplateOffset(transformed, flipVerticalOffset(getTemplateOffset(tag)));
-        return transformed;
+        return applyFlipVToTag(tag, true);
     }
 
     public static CompoundTag applyRotateCWAroundOriginToTag(CompoundTag tag, int times) {
-        int normalizedTurns = ((times % 4) + 4) % 4;
-        if (normalizedTurns == 0) {
-            return tag;
-        }
-
-        CompoundTag transformed = applyRotateCWToTag(tag, times);
-        setTemplateOffset(transformed, rotateOffsetCW(getTemplateOffset(tag), normalizedTurns));
-        return transformed;
-    }
-
-    private static BlockPos rotateOffsetCW(BlockPos offset, int normalizedTurns) {
-        return switch (normalizedTurns) {
-            case 1 -> new BlockPos(
-                    clampOffset(-offset.getZ()),
-                    clampOffset(offset.getY()),
-                    clampOffset(offset.getX()));
-            case 2 -> new BlockPos(
-                    clampOffset(-offset.getX()),
-                    clampOffset(offset.getY()),
-                    clampOffset(-offset.getZ()));
-            case 3 -> new BlockPos(
-                    clampOffset(offset.getZ()),
-                    clampOffset(offset.getY()),
-                    clampOffset(-offset.getX()));
-            default -> offset;
-        };
-    }
-
-    private static BlockPos flipHorizontalOffset(BlockPos offset, Direction sourceFacing) {
-        Direction.Axis mirrorAxis = horizontalMirrorAxisForSourceFacing(sourceFacing);
-
-        if (mirrorAxis == Direction.Axis.X) {
-            return new BlockPos(
-                    clampOffset(-offset.getX()),
-                    clampOffset(offset.getY()),
-                    clampOffset(offset.getZ()));
-        }
-
-        return new BlockPos(
-                clampOffset(offset.getX()),
-                clampOffset(offset.getY()),
-                clampOffset(-offset.getZ()));
-    }
-
-    private static BlockPos flipVerticalOffset(BlockPos offset) {
-        return new BlockPos(
-                clampOffset(offset.getX()),
-                clampOffset(-offset.getY()),
-                clampOffset(offset.getZ()));
+        return applyRotateCWToTag(tag, times, true);
     }
 
     @FunctionalInterface
@@ -673,15 +620,8 @@ public final class TemplateUtil {
             CompoundTag tag,
             Transform positionTransform,
             UnaryOperator<BlockState> stateTransform,
-            CableBusTransform cableBusTransform) {
-        return applyTransformInternal(tag, positionTransform, stateTransform, cableBusTransform);
-    }
-
-    private static CompoundTag applyTransformInternal(
-            CompoundTag tag,
-            Transform positionTransform,
-            UnaryOperator<BlockState> stateTransform,
-            CableBusTransform cableBusTransform) {
+            CableBusTransform cableBusTransform,
+            boolean moveOriginWithBlocks) {
         ListTag blocksTag = tag.getList("blocks", Tag.TAG_COMPOUND);
         ListTag paletteTag = tag.getList("palette", Tag.TAG_COMPOUND);
 
@@ -846,30 +786,25 @@ public final class TemplateUtil {
         sizeTag.add(IntTag.valueOf(newMaxZ + 1));
         result.put("size", sizeTag);
 
-        BlockPos oldOrigin = getEnergyOrigin(tag);
-        BlockPos oldOffset = getTemplateOffset(tag);
+        if (moveOriginWithBlocks) {
+            BlockPos oldOrigin = getEnergyOrigin(tag);
 
-        int[] transformedOrigin = positionTransform.apply(
-                oldOrigin.getX(),
-                oldOrigin.getY(),
-                oldOrigin.getZ(),
-                minX,
-                maxX,
-                minY,
-                maxY,
-                minZ,
-                maxZ);
+            int[] transformedOrigin = positionTransform.apply(
+                    oldOrigin.getX(),
+                    oldOrigin.getY(),
+                    oldOrigin.getZ(),
+                    minX,
+                    maxX,
+                    minY,
+                    maxY,
+                    minZ,
+                    maxZ);
 
-        BlockPos newOrigin = new BlockPos(
-                transformedOrigin[0] - newMinX,
-                transformedOrigin[1] - newMinY,
-                transformedOrigin[2] - newMinZ);
-
-        setEnergyOrigin(result, newOrigin);
-        setTemplateOffset(result, new BlockPos(
-                clampOffset(oldOffset.getX() + newOrigin.getX() - oldOrigin.getX()),
-                clampOffset(oldOffset.getY() + newOrigin.getY() - oldOrigin.getY()),
-                clampOffset(oldOffset.getZ() + newOrigin.getZ() - oldOrigin.getZ())));
+            setEnergyOrigin(result, new BlockPos(
+                    transformedOrigin[0] - newMinX,
+                    transformedOrigin[1] - newMinY,
+                    transformedOrigin[2] - newMinZ));
+        }
 
         transformCloneMetadata(
                 result,
@@ -2395,7 +2330,7 @@ public final class TemplateUtil {
         for (Map.Entry<Property<?>, Comparable<?>> entry : state.getValues().entrySet()) {
             Property<?> property = entry.getKey();
             String name = property.getName();
-            Comparable<?> value = entry.getValue();
+            Object value = entry.getValue();
 
             if (UNROTATABLE_ON_AXIS_ROTATION_PROPERTIES.contains(name)) {
                 return null;

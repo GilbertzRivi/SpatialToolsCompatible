@@ -1,7 +1,9 @@
 package net.oktawia.spatialtoolscmp.client.misc;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
@@ -10,6 +12,7 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 import net.oktawia.spatialtoolscmp.SpatialToolsCMP;
 import net.oktawia.spatialtoolscmp.logic.ClonerStructureLibraryStore;
+import net.oktawia.spatialtoolscmp.logic.ClonerStructureTransfer;
 import net.oktawia.spatialtoolscmp.network.NetworkHandler;
 import net.oktawia.spatialtoolscmp.network.packets.ExportClonerStructurePacket;
 import net.oktawia.spatialtoolscmp.network.packets.ImportClonerStructurePacket;
@@ -18,9 +21,10 @@ import net.oktawia.spatialtoolscmp.network.packets.ImportClonerStructurePacket;
 public final class ClonerStructureFileTransferClient {
 
     private static final String EXTENSION = ".stcstr";
-    private static final int MAX_IMPORT_BYTES = 16 * 1024 * 1024;
 
     private static Path pendingExportPath = null;
+    private static String pendingExportId = null;
+    private static ByteArrayOutputStream pendingExportBuffer = null;
 
     private ClonerStructureFileTransferClient() {
     }
@@ -47,30 +51,58 @@ public final class ClonerStructureFileTransferClient {
         }
 
         try {
-            pendingExportPath = Path.of(stripQuotes(selected.trim()));
-            pendingExportPath = ensurePathExtension(pendingExportPath);
+            pendingExportPath = ensurePathExtension(Path.of(stripQuotes(selected.trim())));
+            pendingExportId = id;
+            pendingExportBuffer = null;
         } catch (Throwable e) {
             SpatialToolsCMP.getLOGGER().debug("invalid cloner structure export path", e);
-            pendingExportPath = null;
+            cancelExport();
             return;
         }
 
         NetworkHandler.sendToServer(new ExportClonerStructurePacket(containerId, id));
     }
 
-    public static void completeExport(String id, byte[] bytes) {
-        if (pendingExportPath == null || bytes == null || bytes.length == 0) {
-            pendingExportPath = null;
+    public static void beginExportStream(String id) {
+        if (pendingExportPath == null || id == null || !id.equals(pendingExportId)) {
+            return;
+        }
+
+        pendingExportBuffer = new ByteArrayOutputStream();
+    }
+
+    public static void appendExportStream(String id, byte[] bytes) {
+        if (pendingExportBuffer == null || bytes == null || id == null || !id.equals(pendingExportId)) {
+            return;
+        }
+
+        if (pendingExportBuffer.size() + bytes.length > ClonerStructureTransfer.MAX_TRANSFER_BYTES) {
+            cancelExport();
+            return;
+        }
+
+        pendingExportBuffer.writeBytes(bytes);
+    }
+
+    public static void completeExport(String id) {
+        if (pendingExportPath == null || pendingExportBuffer == null || id == null || !id.equals(pendingExportId)) {
+            cancelExport();
             return;
         }
 
         try {
-            Files.write(pendingExportPath, bytes);
+            Files.write(pendingExportPath, pendingExportBuffer.toByteArray());
         } catch (Throwable e) {
             SpatialToolsCMP.getLOGGER().debug("failed to export cloner structure", e);
         } finally {
-            pendingExportPath = null;
+            cancelExport();
         }
+    }
+
+    public static void cancelExport() {
+        pendingExportPath = null;
+        pendingExportId = null;
+        pendingExportBuffer = null;
     }
 
     public static void beginImport(int containerId) {
@@ -94,14 +126,22 @@ public final class ClonerStructureFileTransferClient {
 
             byte[] bytes = Files.readAllBytes(path);
 
-            if (bytes.length <= 0 || bytes.length > MAX_IMPORT_BYTES) {
+            if (bytes.length <= 0 || bytes.length > ClonerStructureTransfer.MAX_TRANSFER_BYTES) {
                 return;
             }
 
-            NetworkHandler.sendToServer(new ImportClonerStructurePacket(
+            NetworkHandler.sendToServer(ImportClonerStructurePacket.begin(
                     containerId,
-                    nameFromFile(path.getFileName().toString()),
-                    bytes));
+                    nameFromFile(path.getFileName().toString())));
+
+            for (int offset = 0; offset < bytes.length; offset += ClonerStructureTransfer.CHUNK_BYTES) {
+                int end = Math.min(bytes.length, offset + ClonerStructureTransfer.CHUNK_BYTES);
+                NetworkHandler.sendToServer(ImportClonerStructurePacket.data(
+                        containerId,
+                        Arrays.copyOfRange(bytes, offset, end)));
+            }
+
+            NetworkHandler.sendToServer(ImportClonerStructurePacket.end(containerId));
         } catch (Throwable e) {
             SpatialToolsCMP.getLOGGER().debug("failed to import cloner structure", e);
         }

@@ -183,7 +183,9 @@ public class PortableSpatialStoragePreviewRenderer {
 
             CompoundTag stackTag = stack.getTag();
             BlockPos energyOrigin = TemplateUtil.getEnergyOrigin(stackTag);
-            BlockPos placementOrigin = anchor.subtract(energyOrigin);
+            BlockPos placementOrigin = anchor
+                    .subtract(energyOrigin)
+                    .offset(TemplateUtil.getTemplateOffset(stackTag));
             BlockPos size = structure.size();
 
             AABB structureBounds = new AABB(

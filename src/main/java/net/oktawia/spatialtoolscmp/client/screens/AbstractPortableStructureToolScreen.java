@@ -68,6 +68,7 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
     protected int lastSceneWidth = -1;
     protected int lastSceneHeight = -1;
     protected int previewReloadDelay = -1;
+    protected BlockPos lastSceneOffset = BlockPos.ZERO;
 
     protected AbstractPortableStructureToolScreen(
             M menu,
@@ -185,8 +186,15 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
             return;
         }
 
+        BlockPos offset = readCurrentOffset();
+
         this.offsetControls.setScreenPosition(this.leftPos, this.topPos);
-        this.offsetControls.setOffset(readCurrentOffset());
+        this.offsetControls.setOffset(offset);
+
+        if (!offset.equals(this.lastSceneOffset)) {
+            this.lastSceneOffset = offset;
+            markPreviewDirty();
+        }
     }
 
     protected BlockPos readCurrentOffset() {
@@ -427,8 +435,9 @@ public abstract class AbstractPortableStructureToolScreen<M extends AbstractPort
         CompoundTag stackTag = stack.getTag();
 
         if (stackTag != null) {
-            originMarkerPos = TemplateUtil.getEnergyOrigin(stackTag);
-            floorAnchorPos = TemplateUtil.getEnergyOrigin(stackTag);
+            originMarkerPos = TemplateUtil.getEnergyOrigin(stackTag)
+                    .subtract(TemplateUtil.getTemplateOffset(stackTag));
+            floorAnchorPos = originMarkerPos;
         }
 
         this.renderedCore = surfacePositions(newStructure);
